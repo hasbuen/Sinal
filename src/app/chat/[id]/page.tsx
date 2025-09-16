@@ -9,6 +9,8 @@ import { ArrowLeft, Paperclip, Mic, X } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import MessageActions from "@/components/MessageActions";
 import useLongPress from "@/hooks/useLongPress";
+import EmojiPicker, { Theme } from "emoji-picker-react";
+import { Smile } from "lucide-react";
 
 interface Mensagem {
   id: string;
@@ -70,6 +72,7 @@ export default function PaginaChat({
   const chunks = useRef<Blob[]>([]);
   const fimDasMensagens = useRef<HTMLDivElement>(null);
   const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
 
   useEffect(() => {
     mensagensRef.current = mensagens;
@@ -134,33 +137,33 @@ export default function PaginaChat({
 
     // Lógica para comparar e atualizar mensagens
     const novasMensagens = mensagensDoChat.filter(
-        (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
+      (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
     );
 
     const reacoesAtualizadas = mensagensDoChat.filter(
-        (m) => {
-            const mensagemAntiga = mensagensRef.current.find((existing) => existing.id === m.id);
-            return (
-                mensagemAntiga &&
-                JSON.stringify(m.reacoes) !== JSON.stringify(mensagemAntiga.reacoes)
-            );
-        }
+      (m) => {
+        const mensagemAntiga = mensagensRef.current.find((existing) => existing.id === m.id);
+        return (
+          mensagemAntiga &&
+          JSON.stringify(m.reacoes) !== JSON.stringify(mensagemAntiga.reacoes)
+        );
+      }
     );
 
     if (novasMensagens.length > 0) {
-        setMensagens((prev) => [...prev, ...novasMensagens]);
-        novasMensagens.forEach((msg) => {
-            if (msg.remetente !== userId) {
-                marcarMensagensComoLidas();
-            }
-        });
+      setMensagens((prev) => [...prev, ...novasMensagens]);
+      novasMensagens.forEach((msg) => {
+        if (msg.remetente !== userId) {
+          marcarMensagensComoLidas();
+        }
+      });
     }
 
     if (reacoesAtualizadas.length > 0) {
-        setMensagens((prev) => prev.map((msg) => {
-            const reacaoAtualizada = reacoesAtualizadas.find((m) => m.id === msg.id);
-            return reacaoAtualizada ? { ...msg, reacoes: reacaoAtualizada.reacoes } : msg;
-        }));
+      setMensagens((prev) => prev.map((msg) => {
+        const reacaoAtualizada = reacoesAtualizadas.find((m) => m.id === msg.id);
+        return reacaoAtualizada ? { ...msg, reacoes: reacaoAtualizada.reacoes } : msg;
+      }));
     }
   };
 
@@ -514,6 +517,16 @@ export default function PaginaChat({
           </div>
         )}
         <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" onClick={() => (gravando ? toggleGravacao() : document.getElementById("anexo-input")?.click())}>
+            <Paperclip className="h-5 w-5 text-gray-400 hover:text-white" />
+            <input
+              id="anexo-input"
+              type="file"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && enviarImagem(e.target.files[0])}
+            />
+          </Button>
+
           <Input
             type="text"
             value={texto}
@@ -527,15 +540,28 @@ export default function PaginaChat({
             placeholder="Digite uma mensagem..."
             className="flex-1 bg-gray-800 border-none text-white"
           />
-          <Button variant="ghost" size="icon" onClick={() => (gravando ? toggleGravacao() : document.getElementById("anexo-input")?.click())}>
-            <Paperclip className="h-5 w-5 text-gray-400 hover:text-white" />
-            <input
-              id="anexo-input"
-              type="file"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && enviarImagem(e.target.files[0])}
-            />
+
+          {/* Botão de emoji */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
+          >
+            <Smile className="w-5 h-5 text-white" />
           </Button>
+
+          {/* Emoji picker */}
+          {mostrarModalEmojis && (
+            <div className="absolute bottom-16 right-4 z-50">
+              <EmojiPicker
+                theme={Theme.DARK}
+                onEmojiClick={(emojiData) => {
+                  setTexto((prev) => prev + emojiData.emoji);
+                  setMostrarModalEmojis(false);
+                }}
+              />
+            </div>
+          )}
           <Button variant="ghost" size="icon" onClick={texto.trim() ? () => enviarMensagem("texto") : toggleGravacao}>
             {texto.trim() ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send-horizonal text-gray-400 hover:text-white">

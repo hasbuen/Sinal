@@ -2,8 +2,7 @@
 
 import { useState, useRef } from "react";
 import { Smile, MoreHorizontal, Reply, Edit2, Trash2 } from "lucide-react";
-import Picker from "@emoji-mart/react";
-import data from "@emoji-mart/data";
+import EmojiPicker, { Theme } from "emoji-picker-react";
 
 const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
 
@@ -64,7 +63,7 @@ export default function MessageActions({
     }
     setMostrarModalEmojis(true);
   };
-  
+
   const handleModalEmojisLeave = () => {
     modalEmojisTimeoutRef.current = setTimeout(() => {
       setMostrarModalEmojis(false);
@@ -176,11 +175,10 @@ export default function MessageActions({
           onMouseEnter={handleModalEmojisEnter}
           onMouseLeave={handleModalEmojisLeave}
         >
-          <Picker
-            data={data}
-            theme="dark"
-            onEmojiSelect={(emoji: any) => {
-              onReact(emoji.native);
+          <EmojiPicker
+            theme={Theme.DARK} 
+            onEmojiClick={(emojiData: any) => {
+              onReact(emojiData.emoji);
               setMostrarModalEmojis(false);
             }}
           />

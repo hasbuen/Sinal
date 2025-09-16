@@ -27,13 +27,14 @@ export default function Dashboard() {
   const [carregado, setCarregado] = useState(false);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<string | null>(null);
   const [contagemNaoLida, setContagemNaoLida] = useState<{ [key: string]: number }>({});
+  const [totalNaoLidas, setTotalNaoLidas] = useState(0);
 
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "online" | "offline">("todos");
   const [termoBusca, setTermoBusca] = useState("");
 
   useEffect(() => {
     const canal = supabase
-      .channel("tempo-real:perfis")
+      .channel("realtime:perfis")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "perfis" },
@@ -57,21 +58,50 @@ export default function Dashboard() {
           if (!nova || !userId) return;
 
           if (payload.eventType === "INSERT" && nova.destinatario === userId) {
-            setContagemNaoLida((prev) => ({
-              ...prev,
-              [nova.remetente]: (prev[nova.remetente] || 0) + 1,
-            }));
+            setContagemNaoLida((prev) => {
+              const novaContagem = {
+                ...prev,
+                [nova.remetente]: (prev[nova.remetente] || 0) + 1,
+              };
+              const novoTotal = Object.values(novaContagem).reduce<number>(
+                (sum, count) => sum + (count as number),
+                0
+              );
+
+              setTotalNaoLidas(novoTotal);
+
+              const som = new Audio("/assets/notification.mp3");
+              som.play().catch(e => console.error("Erro ao tocar som: ", e));
+
+              return novaContagem;
+            });
           }
 
           if (payload.eventType === "UPDATE" && nova.destinatario === userId && nova.lida) {
-            setContagemNaoLida((prev) => ({
-              ...prev,
-              [nova.remetente]: 0,
-            }));
+            setContagemNaoLida((prev) => {
+              const novaContagem = { ...prev, [nova.remetente]: 0 };
+              const novoTotal = (Object.values(novaContagem) as number[]).reduce(
+                (sum, count) => sum + count,
+                0
+              );
+
+              setTotalNaoLidas(novoTotal);
+              return novaContagem;
+            });
           }
         }
       )
       .subscribe();
+
+    useEffect(() => {
+      if ("setAppBadge" in navigator) {
+        if (totalNaoLidas > 0) {
+          (navigator as any).setAppBadge(totalNaoLidas);
+        } else {
+          (navigator as any).clearAppBadge();
+        }
+      }
+    }, [totalNaoLidas]);
 
     return () => {
       supabase.removeChannel(canal);
@@ -171,7 +201,7 @@ export default function Dashboard() {
             Sair
           </Button>
         </div>
-        
+
         <Input
           type="text"
           placeholder="Buscar por nome..."

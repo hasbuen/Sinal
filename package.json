@@ -1,6 +1,7 @@
 {
   "name": "sinal",
   "description": "Um aplicativo de chat e mensagens em tempo real para conexões rápidas e seguras.",
+  "authors": "Julio Cesar O. Bueno <https://github.com/hasbuen>",
   "version": "0.1.0",
   "private": true,
   "scripts": {

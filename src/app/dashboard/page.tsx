@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import PaginaChat from "@/app/chat/[id]/page";
 import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import { AnimatePresence, motion } from "framer-motion"; // Importando motion
+import { AnimatePresence, motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
+import ChatComponent from "../chat/[id]/chatComponent"; // Importa o componente ChatComponent
 
 interface Perfil {
   id: string;
@@ -27,7 +27,7 @@ export default function Dashboard() {
   const [carregado, setCarregado] = useState(false);
   const [usuarioSelecionado, setUsuarioSelecionado] = useState<string | null>(null);
   const [contagemNaoLida, setContagemNaoLida] = useState<{ [key: string]: number }>({});
-  
+
   const [filtroStatus, setFiltroStatus] = useState<"todos" | "online" | "offline">("todos");
   const [termoBusca, setTermoBusca] = useState("");
 
@@ -212,7 +212,7 @@ export default function Dashboard() {
             return (
               <div
                 key={u.id}
-                onClick={() => setUsuarioSelecionado(u.id)}
+                onClick={() => setUsuarioSelecionado(u.id)} // Mantém o estado para a versão mobile
                 className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[#1f2937] cursor-pointer transition-colors border-b border-gray-800"
               >
                 <div className="flex items-center gap-3">
@@ -270,7 +270,7 @@ export default function Dashboard() {
               transition={{ duration: 0.3 }}
               className="absolute inset-0"
             >
-              <PaginaChat
+              <ChatComponent
                 destinatarioId={usuarioSelecionado}
                 onClose={() => setUsuarioSelecionado(null)}
               />
@@ -286,13 +286,13 @@ export default function Dashboard() {
         </div>
         <div className="flex-1">
           {!usuarioSelecionado ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-[#00d4ff] text-lg text-center h-full"> {/* Adicionado h-full */}
+            <div className="flex-1 flex flex-col items-center justify-center text-[#00d4ff] text-lg text-center h-full">
               <motion.div
-                animate={{ y: ["-10%", "10%", "-10%"] }} // Flutua para cima e para baixo
+                animate={{ y: ["-10%", "10%", "-10%"] }}
                 transition={{
-                  duration: 4,     // Duração da animação completa
-                  repeat: Infinity, // Repete infinitamente
-                  ease: "easeInOut", // Suavidade do movimento
+                  duration: 4,
+                  repeat: Infinity,
+                  ease: "easeInOut",
                 }}
               >
                 <Image
@@ -305,7 +305,7 @@ export default function Dashboard() {
               </motion.div>
             </div>
           ) : (
-            <PaginaChat
+            <ChatComponent
               destinatarioId={usuarioSelecionado}
               onClose={() => setUsuarioSelecionado(null)}
             />

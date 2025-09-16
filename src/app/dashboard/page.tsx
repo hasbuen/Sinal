@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { AnimatePresence, motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
-import ChatComponent from "../chat/[id]/chatComponent"; // Importa o componente ChatComponent
+import ChatComponent from "../chat/[id]/chatComponent";
 
 interface Perfil {
   id: string;
@@ -25,13 +25,20 @@ export default function Dashboard() {
   const [status, setStatus] = useState("offline");
   const [usuarios, setUsuarios] = useState<Perfil[]>([]);
   const [carregado, setCarregado] = useState(false);
-  const [usuarioSelecionado, setUsuarioSelecionado] = useState<string | null>(null);
-  const [contagemNaoLida, setContagemNaoLida] = useState<{ [key: string]: number }>({});
+  const [usuarioSelecionado, setUsuarioSelecionado] = useState<string | null>(
+    null
+  );
+  const [contagemNaoLida, setContagemNaoLida] = useState<{
+    [key: string]: number;
+  }>({});
   const [totalNaoLidas, setTotalNaoLidas] = useState(0);
 
-  const [filtroStatus, setFiltroStatus] = useState<"todos" | "online" | "offline">("todos");
+  const [filtroStatus, setFiltroStatus] = useState<
+    "todos" | "online" | "offline"
+  >("todos");
   const [termoBusca, setTermoBusca] = useState("");
 
+  // Escuta realtime (status e mensagens)
   useEffect(() => {
     const canal = supabase
       .channel("realtime:perfis")
@@ -41,7 +48,9 @@ export default function Dashboard() {
         (payload) => {
           setUsuarios((prev) =>
             prev.map((u) =>
-              u.id === payload.new.id ? { ...u, status: payload.new.status } : u
+              u.id === payload.new.id
+                ? { ...u, status: payload.new.status }
+                : u
             )
           );
         }
@@ -63,27 +72,31 @@ export default function Dashboard() {
                 ...prev,
                 [nova.remetente]: (prev[nova.remetente] || 0) + 1,
               };
-              const novoTotal = Object.values(novaContagem).reduce<number>(
-                (sum, count) => sum + (count as number),
-                0
-              );
+              const novoTotal = (
+                Object.values(novaContagem) as number[]
+              ).reduce((sum, count) => sum + count, 0);
 
               setTotalNaoLidas(novoTotal);
 
               const som = new Audio("/assets/notification.mp3");
-              som.play().catch(e => console.error("Erro ao tocar som: ", e));
+              som.play().catch((e) =>
+                console.error("Erro ao tocar som: ", e)
+              );
 
               return novaContagem;
             });
           }
 
-          if (payload.eventType === "UPDATE" && nova.destinatario === userId && nova.lida) {
+          if (
+            payload.eventType === "UPDATE" &&
+            nova.destinatario === userId &&
+            nova.lida
+          ) {
             setContagemNaoLida((prev) => {
               const novaContagem = { ...prev, [nova.remetente]: 0 };
-              const novoTotal = (Object.values(novaContagem) as number[]).reduce(
-                (sum, count) => sum + count,
-                0
-              );
+              const novoTotal = (
+                Object.values(novaContagem) as number[]
+              ).reduce((sum, count) => sum + count, 0);
 
               setTotalNaoLidas(novoTotal);
               return novaContagem;
@@ -93,22 +106,24 @@ export default function Dashboard() {
       )
       .subscribe();
 
-    useEffect(() => {
-      if ("setAppBadge" in navigator) {
-        if (totalNaoLidas > 0) {
-          (navigator as any).setAppBadge(totalNaoLidas);
-        } else {
-          (navigator as any).clearAppBadge();
-        }
-      }
-    }, [totalNaoLidas]);
-
     return () => {
       supabase.removeChannel(canal);
       supabase.removeChannel(canalMensagens);
     };
   }, [userId]);
 
+  // Badge no navegador
+  useEffect(() => {
+    if ("setAppBadge" in navigator) {
+      if (totalNaoLidas > 0) {
+        (navigator as any).setAppBadge(totalNaoLidas);
+      } else {
+        (navigator as any).clearAppBadge();
+      }
+    }
+  }, [totalNaoLidas]);
+
+  // Carrega perfil e dados iniciais
   useEffect(() => {
     const carregarPerfil = async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -128,7 +143,10 @@ export default function Dashboard() {
         setNome(perfil.nome);
         setFotoUrl(perfil.foto_url);
         setStatus(perfil.status);
-        await supabase.from("perfis").update({ status: perfil.status }).eq("id", uid);
+        await supabase
+          .from("perfis")
+          .update({ status: perfil.status })
+          .eq("id", uid);
       }
 
       const { data: outros } = await supabase
@@ -161,7 +179,9 @@ export default function Dashboard() {
   }
 
   const usuariosFiltrados = usuarios.filter((u) => {
-    const nomeCorresponde = u.nome.toLowerCase().includes(termoBusca.toLowerCase());
+    const nomeCorresponde = u.nome
+      .toLowerCase()
+      .includes(termoBusca.toLowerCase());
     const statusCorresponde =
       filtroStatus === "todos" || u.status === filtroStatus;
     return nomeCorresponde && statusCorresponde;
@@ -181,17 +201,34 @@ export default function Dashboard() {
           <div className="flex-1">
             <div className="font-bold text-[#00d4ff]">{nome}</div>
             <div className="flex items-center gap-2 text-sm">
-              <span className={`w-2 h-2 rounded-full ${status === "online" ? "bg-[#00ff87]" : "bg-red-500"}`} />
-              <span className={`${status === "online" ? "text-[#00ff87]" : "text-red-400"}`}>{status}</span>
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  status === "online" ? "bg-[#00ff87]" : "bg-red-500"
+                }`}
+              />
+              <span
+                className={`${
+                  status === "online" ? "text-[#00ff87]" : "text-red-400"
+                }`}
+              >
+                {status}
+              </span>
             </div>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => router.push('/configuracoes')}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => router.push("/configuracoes")}
+          >
             <Settings className="h-5 w-5 text-gray-400 hover:text-white" />
           </Button>
           <Button
             onClick={async () => {
               if (userId) {
-                await supabase.from("perfis").update({ status: "offline" }).eq("id", userId);
+                await supabase
+                  .from("perfis")
+                  .update({ status: "offline" })
+                  .eq("id", userId);
               }
               await supabase.auth.signOut();
               window.location.href = "/login";
@@ -214,21 +251,33 @@ export default function Dashboard() {
           <Button
             variant="ghost"
             onClick={() => setFiltroStatus("todos")}
-            className={`${filtroStatus === "todos" ? "text-[#00d4ff] border-b-2 border-[#00d4ff]" : "hover:text-white"}`}
+            className={`${
+              filtroStatus === "todos"
+                ? "text-[#00d4ff] border-b-2 border-[#00d4ff]"
+                : "hover:text-white"
+            }`}
           >
             Todos
           </Button>
           <Button
             variant="ghost"
             onClick={() => setFiltroStatus("online")}
-            className={`${filtroStatus === "online" ? "text-[#00ff87] border-b-2 border-[#00ff87]" : "hover:text-white"}`}
+            className={`${
+              filtroStatus === "online"
+                ? "text-[#00ff87] border-b-2 border-[#00ff87]"
+                : "hover:text-white"
+            }`}
           >
             Online
           </Button>
           <Button
             variant="ghost"
             onClick={() => setFiltroStatus("offline")}
-            className={`${filtroStatus === "offline" ? "text-red-400 border-b-2 border-red-400" : "hover:text-white"}`}
+            className={`${
+              filtroStatus === "offline"
+                ? "text-red-400 border-b-2 border-red-400"
+                : "hover:text-white"
+            }`}
           >
             Offline
           </Button>
@@ -242,7 +291,7 @@ export default function Dashboard() {
             return (
               <div
                 key={u.id}
-                onClick={() => setUsuarioSelecionado(u.id)} // Mantém o estado para a versão mobile
+                onClick={() => setUsuarioSelecionado(u.id)}
                 className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-[#1f2937] cursor-pointer transition-colors border-b border-gray-800"
               >
                 <div className="flex items-center gap-3">
@@ -254,10 +303,26 @@ export default function Dashboard() {
                     alt={u.nome}
                   />
                   <div>
-                    <span className="font-medium text-[#00d4ff]">{u.nome}</span>
+                    <span className="font-medium text-[#00d4ff]">
+                      {u.nome}
+                    </span>
                     <div className="flex items-center gap-2 text-xs">
-                      <span className={`w-2 h-2 rounded-full ${u.status === "online" ? "bg-[#00ff87]" : "bg-red-500"}`} />
-                      <span className={`${u.status === "online" ? "text-[#00ff87]" : "text-red-400"}`}>{u.status}</span>
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          u.status === "online"
+                            ? "bg-[#00ff87]"
+                            : "bg-red-500"
+                        }`}
+                      />
+                      <span
+                        className={`${
+                          u.status === "online"
+                            ? "text-[#00ff87]"
+                            : "text-red-400"
+                        }`}
+                      >
+                        {u.status}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -270,7 +335,9 @@ export default function Dashboard() {
             );
           })
         ) : (
-          <p className="p-4 text-center text-gray-500">Nenhum usuário encontrado.</p>
+          <p className="p-4 text-center text-gray-500">
+            Nenhum usuário encontrado.
+          </p>
         )}
       </div>
     </div>
@@ -278,7 +345,7 @@ export default function Dashboard() {
 
   return (
     <div className="flex min-h-screen bg-[#0a0a0f] text-white">
-      {/* Visualização para Mobile - Uma aba por vez com animação */}
+      {/* Mobile */}
       <div className="w-full md:hidden">
         <AnimatePresence mode="wait">
           {!usuarioSelecionado ? (
@@ -309,7 +376,7 @@ export default function Dashboard() {
         </AnimatePresence>
       </div>
 
-      {/* Visualização para Desktop - Lado a lado (com a nova imagem) */}
+      {/* Desktop */}
       <div className="hidden md:flex w-full">
         <div className="w-72">
           <ListaChats />

@@ -133,6 +133,7 @@ export default function Dashboard() {
       setUserId(uid);
       if (!uid) {
         setCarregado(true);
+        // Não é necessário atualizar o status aqui, pois o usuário não está logado
         return;
       }
 
@@ -144,11 +145,15 @@ export default function Dashboard() {
       if (perfil) {
         setNome(perfil.nome);
         setFotoUrl(perfil.foto_url);
-        setStatus(perfil.status);
+        
+        // CORREÇÃO: Atualiza o status do banco de dados para "online"
         await supabase
           .from("perfis")
           .update({ status: "online" })
           .eq("id", uid);
+
+        // Define o estado local como "online"
+        setStatus("online");
       }
 
       const { data: outros } = await supabase

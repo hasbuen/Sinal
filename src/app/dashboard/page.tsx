@@ -3,12 +3,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import Image from "next/image";
+import Image, { ImageLoaderProps } from "next/image";
 import { Input } from "@/components/ui/input";
 import { AnimatePresence, motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ChatComponent from "../chat/[id]/chatComponent";
+
+const myLoader = ({ src, width, quality }: ImageLoaderProps) => {
+  return `${src}?w=${width}&q=${quality || 75}`;
+};
 
 interface Perfil {
   id: string;
@@ -112,7 +116,6 @@ export default function Dashboard() {
     };
   }, [userId]);
 
-  // Badge no navegador
   useEffect(() => {
     if ("setAppBadge" in navigator) {
       if (totalNaoLidas > 0) {
@@ -123,7 +126,6 @@ export default function Dashboard() {
     }
   }, [totalNaoLidas]);
 
-  // Carrega perfil e dados iniciais
   useEffect(() => {
     const carregarPerfil = async () => {
       const { data: userData } = await supabase.auth.getUser();
@@ -175,7 +177,23 @@ export default function Dashboard() {
   }, [userId]);
 
   if (!carregado) {
-    return <p className="text-center text-white">Carregando...</p>;
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
+        <motion.p
+          className="text-center text-white text-lg font-medium"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{
+            duration: 0.8,
+            repeat: Infinity,
+            repeatType: "reverse",
+            ease: "easeInOut",
+          }}
+        >
+          Carregando...
+        </motion.p>
+      </div>
+    );
   }
 
   const usuariosFiltrados = usuarios.filter((u) => {
@@ -187,29 +205,29 @@ export default function Dashboard() {
     return nomeCorresponde && statusCorresponde;
   });
 
+
   const ListaChats = () => (
     <div className="flex flex-col h-screen w-full bg-[#111827] border-r border-gray-800">
       <div className="flex flex-col gap-4 p-4 border-b border-gray-800">
         <div className="flex items-center gap-3">
           <Image
+            loader={myLoader}
             src={fotoUrl || "/assets/avatar.png"}
-            alt="avatar"
+            alt={nome}
             width={48}
             height={48}
-            className="w-12 h-12 rounded-full object-cover border border-[#00d4ff]"
+            className="w-12 h-12 rounded-full object-cover border border-transparent"
           />
           <div className="flex-1">
             <div className="font-bold text-[#00d4ff]">{nome}</div>
             <div className="flex items-center gap-2 text-sm">
               <span
-                className={`w-2 h-2 rounded-full ${
-                  status === "online" ? "bg-[#00ff87]" : "bg-red-500"
-                }`}
+                className={`w-2 h-2 rounded-full ${status === "online" ? "bg-[#00ff87]" : "bg-red-500"
+                  }`}
               />
               <span
-                className={`${
-                  status === "online" ? "text-[#00ff87]" : "text-red-400"
-                }`}
+                className={`${status === "online" ? "text-[#00ff87]" : "text-red-400"
+                  }`}
               >
                 {status}
               </span>
@@ -251,33 +269,30 @@ export default function Dashboard() {
           <Button
             variant="ghost"
             onClick={() => setFiltroStatus("todos")}
-            className={`${
-              filtroStatus === "todos"
-                ? "text-[#00d4ff] border-b-2 border-[#00d4ff]"
-                : "hover:text-white"
-            }`}
+            className={`${filtroStatus === "todos"
+              ? "text-[#00d4ff] border-b-2 border-[#00d4ff]"
+              : "hover:text-white"
+              }`}
           >
             Todos
           </Button>
           <Button
             variant="ghost"
             onClick={() => setFiltroStatus("online")}
-            className={`${
-              filtroStatus === "online"
-                ? "text-[#00ff87] border-b-2 border-[#00ff87]"
-                : "hover:text-white"
-            }`}
+            className={`${filtroStatus === "online"
+              ? "text-[#00ff87] border-b-2 border-[#00ff87]"
+              : "hover:text-white"
+              }`}
           >
             Online
           </Button>
           <Button
             variant="ghost"
             onClick={() => setFiltroStatus("offline")}
-            className={`${
-              filtroStatus === "offline"
-                ? "text-red-400 border-b-2 border-red-400"
-                : "hover:text-white"
-            }`}
+            className={`${filtroStatus === "offline"
+              ? "text-red-400 border-b-2 border-red-400"
+              : "hover:text-white"
+              }`}
           >
             Offline
           </Button>
@@ -296,11 +311,12 @@ export default function Dashboard() {
               >
                 <div className="flex items-center gap-3">
                   <Image
+                    loader={myLoader}
                     src={u.foto_url || "/assets/avatar.png"}
+                    alt={u.nome}
                     width={40}
                     height={40}
-                    className="w-10 h-10 rounded-full object-cover border border-[#6a00f4]"
-                    alt={u.nome}
+                    className="w-10 h-10 rounded-full object-cover border border-transparent"
                   />
                   <div>
                     <span className="font-medium text-[#00d4ff]">
@@ -308,18 +324,16 @@ export default function Dashboard() {
                     </span>
                     <div className="flex items-center gap-2 text-xs">
                       <span
-                        className={`w-2 h-2 rounded-full ${
-                          u.status === "online"
-                            ? "bg-[#00ff87]"
-                            : "bg-red-500"
-                        }`}
+                        className={`w-2 h-2 rounded-full ${u.status === "online"
+                          ? "bg-[#00ff87]"
+                          : "bg-red-500"
+                          }`}
                       />
                       <span
-                        className={`${
-                          u.status === "online"
-                            ? "text-[#00ff87]"
-                            : "text-red-400"
-                        }`}
+                        className={`${u.status === "online"
+                          ? "text-[#00ff87]"
+                          : "text-red-400"
+                          }`}
                       >
                         {u.status}
                       </span>

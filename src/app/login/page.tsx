@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { toast } from 'sonner';
 
 export default function PaginaLogin() {
   const [email, setEmail] = useState("");
@@ -17,7 +18,7 @@ export default function PaginaLogin() {
     });
 
     if (loginError) {
-      alert("Erro ao fazer login: " + loginError.message);
+      toast.error("Erro ao fazer login: " + loginError.message);
     } else {
       window.location.href = "/dashboard"; 
     }

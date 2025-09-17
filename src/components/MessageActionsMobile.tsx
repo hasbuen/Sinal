@@ -9,7 +9,7 @@ interface MessageActionsMobileProps {
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
-  onOpenEmojiPicker: () => void; // Nova prop para abrir o seletor
+  onOpenEmojiPicker: () => void; 
 }
 
 export default function MessageActionsMobile({

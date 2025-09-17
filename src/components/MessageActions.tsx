@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Smile, MoreHorizontal, Reply, Edit2, Trash2 } from "lucide-react";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 
@@ -57,18 +57,11 @@ export default function MessageActions({
     }, 200);
   };
 
-  const handleModalEmojisEnter = () => {
-    if (modalEmojisTimeoutRef.current) {
-      clearTimeout(modalEmojisTimeoutRef.current);
-    }
-    setMostrarModalEmojis(true);
-  };
-
-  const handleModalEmojisLeave = () => {
-    modalEmojisTimeoutRef.current = setTimeout(() => {
-      setMostrarModalEmojis(false);
-    }, 200);
-  };
+  useEffect(() => {
+    if (mostrarModalEmojis) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mostrarModalEmojis]);
 
   return (
     <div className="flex items-center gap-2 bg-[#1f2937] px-2 py-1 rounded-xl shadow-md relative">
@@ -170,20 +163,20 @@ export default function MessageActions({
 
       {/* Picker de Emojis */}
       {mostrarModalEmojis && (
-        <div
-          className={`absolute bottom-full right-0 mb-2 z-50`}
-          onMouseEnter={handleModalEmojisEnter}
-          onMouseLeave={handleModalEmojisLeave}
-        >
-          <EmojiPicker
-            theme={Theme.DARK} 
-            onEmojiClick={(emojiData: any) => {
-              onReact(emojiData.emoji);
-              setMostrarModalEmojis(false);
-            }}
-          />
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setMostrarModalEmojis(false)} />
+          <div className="relative p-4 bg-[#0b1220] rounded-xl shadow-lg max-w-[90vw] max-h-[80vh] overflow-auto">
+            <EmojiPicker
+              theme={Theme.DARK}
+              onEmojiClick={(emojiData: any) => {
+                onReact(emojiData.emoji);
+                setMostrarModalEmojis(false);
+              }}
+            />
+          </div>
         </div>
       )}
+
     </div>
   );
 }

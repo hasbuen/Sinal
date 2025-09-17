@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, User, Camera, Ban, Circle } from "lucide-react";
-import Image from "next/image";
+import Image, { ImageLoaderProps } from "next/image";
 
 export default function ConfiguracoesPage() {
   const router = useRouter();
@@ -15,6 +15,10 @@ export default function ConfiguracoesPage() {
   const [novaFoto, setNovaFoto] = useState<File | null>(null);
   const [carregando, setCarregando] = useState(false);
   const [mensagem, setMensagem] = useState("");
+
+  const myLoader = ({ src, width, quality }: ImageLoaderProps) => {
+    return `${src}?w=${width}&q=${quality || 75}`;
+  };
 
   useEffect(() => {
     const carregarPerfil = async () => {
@@ -31,7 +35,7 @@ export default function ConfiguracoesPage() {
         .select("nome, foto_url, status")
         .eq("id", userData.user.id)
         .single();
-      
+
       if (perfilData) {
         setNome(perfilData.nome);
         setStatus(perfilData.status);
@@ -83,8 +87,8 @@ export default function ConfiguracoesPage() {
         .eq("id", userId);
 
       if (updateError) throw updateError;
-      
-      setMensagem("Perfil atualizado com sucesso!");
+
+      router.push("/dashboard");
 
     } catch (error: any) {
       setMensagem("Erro ao atualizar o perfil: " + error.message);
@@ -121,8 +125,9 @@ export default function ConfiguracoesPage() {
         <form onSubmit={handleSalvar} className="flex flex-col items-center gap-6">
           <div className="relative w-28 h-28">
             <Image
-              src={fotoUrl || "/default-avatar.png"}
-              alt="Avatar do usuário"
+              loader={myLoader}
+              src={fotoUrl || "/assets/avatar.png"}
+              alt={nome}
               fill
               className="rounded-full object-cover border-2 border-[#00d4ff]"
             />
@@ -172,7 +177,7 @@ export default function ConfiguracoesPage() {
               </div>
             </div>
           </div>
-          
+
           <button
             type="submit"
             className="w-full max-w-sm h-10 flex items-center justify-center rounded-md bg-[#6a00f4] hover:bg-[#5b00d5] text-white font-bold transition-colors"

@@ -147,7 +147,7 @@ export default function Dashboard() {
         setStatus(perfil.status);
         await supabase
           .from("perfis")
-          .update({ status: perfil.status })
+          .update({ status: "online" })
           .eq("id", uid);
       }
 

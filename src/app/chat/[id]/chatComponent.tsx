@@ -114,10 +114,10 @@ export default function ChatComponent({
             .from("mensagens")
             .select(
                 `
-        *,
-        resposta:resposta_id(conteudo, tipo),
-        reacoes:mensagens_reacoes(id, remetente, emoji, mensagem_id)
-        `
+                *,
+                resposta:resposta_id(conteudo, tipo),
+                reacoes:mensagens_reacoes(id, remetente, emoji, mensagem_id)
+                `
             )
             .order("criado_em", { ascending: true });
 
@@ -132,34 +132,40 @@ export default function ChatComponent({
                 (m.remetente === destinatarioId && m.destinatario === userId)
         );
 
-        const novasMensagens = mensagensDoChat.filter(
-            (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
-        );
+        const isSameChat = mensagensRef.current.some(m => mensagensDoChat.some(nm => nm.id === m.id));
+        
+        if (!isSameChat || mensagensRef.current.length === 0) {
+            setMensagens(mensagensDoChat);
+        } else {
+            const novasMensagens = mensagensDoChat.filter(
+                (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
+            );
 
-        const reacoesAtualizadas = mensagensDoChat.filter(
-            (m) => {
-                const mensagemAntiga = mensagensRef.current.find((existing) => existing.id === m.id);
-                return (
-                    mensagemAntiga &&
-                    JSON.stringify(m.reacoes) !== JSON.stringify(mensagemAntiga.reacoes)
-                );
-            }
-        );
-
-        if (novasMensagens.length > 0) {
-            setMensagens((prev) => [...prev, ...novasMensagens]);
-            novasMensagens.forEach((msg) => {
-                if (msg.remetente !== userId) {
-                    marcarMensagensComoLidas();
+            const reacoesAtualizadas = mensagensDoChat.filter(
+                (m) => {
+                    const mensagemAntiga = mensagensRef.current.find((existing) => existing.id === m.id);
+                    return (
+                        mensagemAntiga &&
+                        JSON.stringify(m.reacoes) !== JSON.stringify(mensagemAntiga.reacoes)
+                    );
                 }
-            });
-        }
+            );
 
-        if (reacoesAtualizadas.length > 0) {
-            setMensagens((prev) => prev.map((msg) => {
-                const reacaoAtualizada = reacoesAtualizadas.find((m) => m.id === msg.id);
-                return reacaoAtualizada ? { ...msg, reacoes: reacaoAtualizada.reacoes } : msg;
-            }));
+            if (novasMensagens.length > 0) {
+                setMensagens((prev) => [...prev, ...novasMensagens]);
+                novasMensagens.forEach((msg) => {
+                    if (msg.remetente !== userId) {
+                        marcarMensagensComoLidas();
+                    }
+                });
+            }
+
+            if (reacoesAtualizadas.length > 0) {
+                setMensagens((prev) => prev.map((msg) => {
+                    const reacaoAtualizada = reacoesAtualizadas.find((m) => m.id === msg.id);
+                    return reacaoAtualizada ? { ...msg, reacoes: reacaoAtualizada.reacoes } : msg;
+                }));
+            }
         }
     };
 
@@ -368,11 +374,11 @@ export default function ChatComponent({
                                     key={m.id}
                                     ref={(el) => { if (el) mensagemRefs.current.set(m.id, el); }}
                                     className={`flex ${souEu ? "justify-end" : "justify-start"}
-                  ${mensagemDestacada === m.id ? 'destaque-mensagem' : ''}`}
+                    ${mensagemDestacada === m.id ? 'destaque-mensagem' : ''}`}
                                 >
                                     <div
                                         className={`max-w-[75%] px-3 pt-2 pb-5 text-sm whitespace-pre-wrap break-words relative group
-                    ${souEu ? "rounded-2xl rounded-br-sm bg-transparent hover:bg-white/10 text-white" : "rounded-2xl rounded-bl-sm bg-transparent hover:bg-gray-700/50 text-white"}`}
+                      ${souEu ? "rounded-2xl rounded-br-sm bg-transparent hover:bg-white/10 text-white" : "rounded-2xl rounded-bl-sm bg-transparent hover:bg-gray-700/50 text-white"}`}
                                         onMouseDown={() => setMensagemSelecionada(m.id)}
                                         onTouchStart={() => setMensagemSelecionada(m.id)}
                                         onMouseLeave={() => setMensagemSelecionada(null)}
@@ -436,7 +442,7 @@ export default function ChatComponent({
                                         {mensagemSelecionada === m.id && (
                                             <div
                                                 className={`absolute top-1 z-10
-                          ${souEu ? "right-[100%] pr-2" : "left-[100%] pl-2"}`}
+                            ${souEu ? "right-[100%] pr-2" : "left-[100%] pl-2"}`}
                                                 onMouseLeave={() => setMensagemSelecionada(null)}
                                             >
                                                 <MessageActions

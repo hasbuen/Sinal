@@ -45,9 +45,8 @@ interface MensagensAgrupadas {
 }
 
 interface Rascunho {
-    tipo: "texto" | "imagem" | "audio" | "anexo";
+    tipo: "imagem" | "audio" | "anexo";
     conteudo: string;
-    legenda?: string;
     file?: File | Blob;
 }
 
@@ -74,7 +73,6 @@ export default function ChatComponent({
     const panStartRef = useRef<{ x: number; y: number } | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
-    // Corrigido: o tipo deve ser HTMLDivElement
     const fimDasMensagens = useRef<HTMLDivElement>(null);
     const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
@@ -200,15 +198,15 @@ export default function ChatComponent({
         }
     }, [mensagemDestacada]);
 
-    // Modificando a função para aceitar 'anexo'
     const enviarMensagem = async (
         tipo: "texto" | "imagem" | "audio" | "anexo" = "texto",
         conteudo?: string,
         file?: File | Blob
     ) => {
         if (!destinatarioId || !userId) return;
-
-        let url = conteudo;
+    
+        let conteudoParaSalvar = conteudo;
+    
         if (file) {
             const filePath = `${tipo}s/${Date.now()}-${file instanceof File ? file.name : 'audio.webm'}`;
             const { error } = await supabase.storage.from("uploads").upload(filePath, file);
@@ -217,33 +215,39 @@ export default function ChatComponent({
                 return;
             }
             const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
-            url = data?.publicUrl;
+            const url = data?.publicUrl;
+    
+            if (url) {
+                if (conteudo && conteudo.includes("|SEPARATOR|")) {
+                    const [, legendaExistente] = conteudo.split("|SEPARATOR|");
+                    conteudoParaSalvar = `${url}|SEPARATOR|${legendaExistente}`;
+                } else if (conteudo) {
+                    conteudoParaSalvar = `${url}|SEPARATOR|${conteudo}`;
+                } else {
+                    conteudoParaSalvar = url;
+                }
+            } else {
+                console.error("URL do arquivo não encontrada.");
+                return;
+            }
         }
-
+    
         if (editandoId) {
             await supabase
                 .from("mensagens")
-                .update({ conteudo: conteudo || texto })
+                .update({ conteudo: conteudoParaSalvar || texto })
                 .eq("id", editandoId);
             setEditandoId(null);
-        } else if (url) {
-            await supabase.from("mensagens").insert({
-                remetente: userId,
-                destinatario: destinatarioId,
-                conteudo: url,
-                tipo: tipo,
-                resposta_id: resposta?.id || null,
-            });
         } else {
              await supabase.from("mensagens").insert({
                 remetente: userId,
                 destinatario: destinatarioId,
-                conteudo: conteudo,
+                conteudo: conteudoParaSalvar,
                 tipo: tipo,
                 resposta_id: resposta?.id || null,
             });
         }
-
+    
         setTexto("");
         setResposta(null);
         setRascunhoParaEnviar(null);
@@ -253,22 +257,27 @@ export default function ChatComponent({
 
     const toggleGravacao = async () => {
         if (!gravando) {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream);
-            chunks.current = [];
-            mediaRecorderRef.current.ondataavailable = (e) => {
-                if (e.data.size > 0) chunks.current.push(e.data);
-            };
-            mediaRecorderRef.current.onstop = () => {
-                const audioBlob = new Blob(chunks.current, { type: "audio/webm" });
-                setRascunhoParaEnviar({
-                    tipo: "audio",
-                    conteudo: URL.createObjectURL(audioBlob),
-                    file: audioBlob,
-                });
-            };
-            mediaRecorderRef.current.start();
-            setGravando(true);
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorderRef.current = new MediaRecorder(stream);
+                chunks.current = [];
+                mediaRecorderRef.current.ondataavailable = (e) => {
+                    if (e.data.size > 0) chunks.current.push(e.data);
+                };
+                mediaRecorderRef.current.onstop = () => {
+                    const audioBlob = new Blob(chunks.current, { type: "audio/webm" });
+                    setRascunhoParaEnviar({
+                        tipo: "audio",
+                        conteudo: URL.createObjectURL(audioBlob),
+                        file: audioBlob,
+                    });
+                    stream.getTracks().forEach(track => track.stop());
+                };
+                mediaRecorderRef.current.start();
+                setGravando(true);
+            } catch (error) {
+                console.error("Erro ao acessar microfone:", error);
+            }
         } else {
             mediaRecorderRef.current?.stop();
             setGravando(false);
@@ -377,19 +386,14 @@ export default function ChatComponent({
                 conteudo: URL.createObjectURL(e.target.files[0]),
                 file: e.target.files[0],
             });
+            setLegenda(""); 
         }
     };
 
     const handleSendDraft = async () => {
         if (!rascunhoParaEnviar) return;
-
-        let conteudoFinal = rascunhoParaEnviar.conteudo;
-        // Corrigido: Agora a lógica de legenda também se aplica a anexos e áudios se necessário
-        if (rascunhoParaEnviar.tipo !== "texto" && legenda.trim()) {
-            conteudoFinal = `${rascunhoParaEnviar.conteudo}|SEPARATOR|${legenda.trim()}`;
-        }
         
-        await enviarMensagem(rascunhoParaEnviar.tipo, conteudoFinal, rascunhoParaEnviar.file);
+        await enviarMensagem(rascunhoParaEnviar.tipo, legenda.trim(), rascunhoParaEnviar.file);
         setRascunhoParaEnviar(null);
         setLegenda("");
     };
@@ -403,24 +407,11 @@ export default function ChatComponent({
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const novoTexto = e.target.value;
         setTexto(novoTexto);
-
-        if (novoTexto.trim()) {
-            setRascunhoParaEnviar({
-                tipo: "texto",
-                conteudo: novoTexto,
-            });
-        } else if (rascunhoParaEnviar?.tipo === "texto") {
-            setRascunhoParaEnviar(null);
-        }
     };
 
     const onEmojiClick = (emojiData: any) => {
         const novoTexto = texto + emojiData.emoji;
         setTexto(novoTexto);
-        setRascunhoParaEnviar({
-            tipo: "texto",
-            conteudo: novoTexto,
-        });
     };
 
     return (
@@ -514,11 +505,21 @@ export default function ChatComponent({
                                                 )}
                                             </>
                                         ) : tipo === "audio" ? (
-                                            <AudioPlayer src={m.conteudo} />
+                                            <>
+                                                <AudioPlayer src={conteudoDaMensagem} />
+                                                {legendaDaMensagem && (
+                                                    <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
+                                                )}
+                                            </>
                                         ) : tipo === "anexo" ? (
-                                            <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
-                                                📎 Anexo: {conteudoDaMensagem.split('/').pop()}
-                                            </a>
+                                            <>
+                                                <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
+                                                    📎 Anexo: {conteudoDaMensagem.split('/').pop()}
+                                                </a>
+                                                {legendaDaMensagem && (
+                                                    <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
+                                                )}
+                                            </>
                                         ) : null}
 
                                         {Object.keys(reacoesAgrupadas || {}).length > 0 && (
@@ -603,19 +604,50 @@ export default function ChatComponent({
             )}
 
             <div className="relative p-2 bg-[#202c33] flex flex-col gap-2">
-                {resposta && (
+                {/* Prévia de Resposta e Rascunho de Mídia */}
+                {(resposta || rascunhoParaEnviar) && (
                     <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
-                        <div className="text-xs text-gray-300">
-                            <span className="block font-semibold">Respondendo:</span>
-                            {resposta.tipo === "texto" && <span className="block truncate">{resposta.conteudo}</span>}
-                            {resposta.tipo === "imagem" && <span className="italic opacity-80">📷 Imagem</span>}
-                            {resposta.tipo === "audio" && <span className="italic opacity-80">🎤 Áudio</span>}
-                            {resposta.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
+                        <div className="text-xs text-gray-300 flex-1">
+                            {resposta && (
+                                <div className="mb-2">
+                                    <span className="block font-semibold">Respondendo:</span>
+                                    {resposta.tipo === "texto" && <span className="block truncate">{resposta.conteudo}</span>}
+                                    {resposta.tipo === "imagem" && <span className="italic opacity-80">📷 Imagem</span>}
+                                    {resposta.tipo === "audio" && <span className="italic opacity-80">🎤 Áudio</span>}
+                                    {resposta.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
+                                </div>
+                            )}
+                            {rascunhoParaEnviar && (
+                                <div className="flex items-center gap-2">
+                                    {rascunhoParaEnviar.tipo === "imagem" && <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />}
+                                    {rascunhoParaEnviar.tipo === "audio" && <AudioPlayer src={rascunhoParaEnviar.conteudo} />}
+                                    {rascunhoParaEnviar.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
+                                </div>
+                            )}
                         </div>
-                        <X onClick={() => setResposta(null)} className="w-4 h-4 cursor-pointer text-gray-400 hover:text-white" />
+                        {rascunhoParaEnviar && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleCancelDraft}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <X className="w-6 h-6" />
+                            </Button>
+                        )}
+                        {resposta && !rascunhoParaEnviar && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setResposta(null)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <X className="w-6 h-6" />
+                            </Button>
+                        )}
                     </div>
                 )}
-
+                
                 {mostrarModalEmojis && (
                     <div className="absolute bottom-[calc(100%+8px)] left-0 w-full z-50">
                         <EmojiPicker
@@ -627,124 +659,82 @@ export default function ChatComponent({
                     </div>
                 )}
 
-                {rascunhoParaEnviar ? (
-                    <div className="flex items-end gap-2">
-                        <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleCancelDraft}
-                                className="text-gray-400 hover:text-white"
-                            >
-                                <X className="w-6 h-6" />
-                            </Button>
-                            {rascunhoParaEnviar.tipo === "imagem" && (
-                                <img
-                                    src={rascunhoParaEnviar.conteudo}
-                                    alt="Pré-visualização"
-                                    className="h-8 w-8 rounded-md object-cover mr-2"
-                                />
-                            )}
-                            {rascunhoParaEnviar.tipo === "audio" && (
-                                <AudioPlayer src={rascunhoParaEnviar.conteudo} />
-                            )}
-                            {rascunhoParaEnviar.tipo === "anexo" && (
-                                <div className="h-8 w-8 rounded-md bg-gray-500 flex items-center justify-center mr-2">
-                                    <Paperclip className="h-4 w-4 text-white" />
-                                </div>
-                            )}
-                            <Input
-                                type="text"
-                                value={rascunhoParaEnviar.tipo === "texto" ? rascunhoParaEnviar.conteudo : legenda}
-                                onChange={rascunhoParaEnviar.tipo === "texto" ? handleTextChange : (e) => setLegenda(e.target.value)}
-                                placeholder={rascunhoParaEnviar.tipo === "texto" ? "Type a message" : "Add a caption..."}
-                                className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 px-2 py-0 resize-none overflow-hidden h-auto"
-                                style={{ paddingTop: '8px', paddingBottom: '8px' }}
-                            />
-                        </div>
+                <div className="flex items-end gap-2">
+                    <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
-                            onClick={handleSendDraft}
+                            onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
+                            className="text-gray-400 hover:text-white"
                         >
-                            <SendHorizonal className="h-6 w-6 text-white" />
+                            <Smile className="w-6 h-6" />
                         </Button>
-                    </div>
-                ) : (
-                    <div className="flex items-end gap-2">
-                        <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
-                                className="text-gray-400 hover:text-white"
-                            >
-                                <Smile className="w-6 h-6" />
-                            </Button>
-                            <Input
-                                type="text"
-                                value={texto}
-                                onChange={handleTextChange}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
-                                        e.preventDefault();
+                        <Input
+                            type="text"
+                            value={rascunhoParaEnviar ? legenda : texto}
+                            onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if(rascunhoParaEnviar) {
+                                        handleSendDraft();
+                                    } else if(texto.trim()) {
                                         enviarMensagem("texto", texto);
                                     }
-                                }}
-                                placeholder="Type a message"
-                                className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
-                                style={{ paddingTop: '8px', paddingBottom: '8px' }}
-                            />
-                            {!texto.trim() && (
-                                <>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={handleAnexoClick}
-                                        className="text-gray-400 hover:text-white"
-                                    >
-                                        <Paperclip className="h-6 w-6" />
-                                        <input
-                                            id="anexo-input"
-                                            type="file"
-                                            className="hidden"
-                                            onChange={(e) => handleFileChange(e, "anexo")}
-                                        />
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-gray-400 hover:text-white"
-                                        onClick={handleCameraClick}
-                                    >
-                                        <Camera className="h-6 w-6" />
-                                        <input
-                                            id="camera-input"
-                                            type="file"
-                                            accept="image/*"
-                                            capture="environment"
-                                            className="hidden"
-                                            onChange={(e) => handleFileChange(e, "imagem")}
-                                        />
-                                    </Button>
-                                </>
-                            )}
-                        </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
-                            onClick={texto.trim() ? () => enviarMensagem("texto", texto) : toggleGravacao}
-                        >
-                            {texto.trim() ? (
-                                <SendHorizonal className="h-6 w-6 text-white" />
-                            ) : (
-                                <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
-                            )}
-                        </Button>
+                                }
+                            }}
+                            placeholder={rascunhoParaEnviar ? "Adicione uma legenda..." : "Digite uma mensagem"}
+                            className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
+                            style={{ paddingTop: '8px', paddingBottom: '8px' }}
+                        />
+                        {!rascunhoParaEnviar && !texto.trim() && (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={handleAnexoClick}
+                                    className="text-gray-400 hover:text-white"
+                                >
+                                    <Paperclip className="h-6 w-6" />
+                                    <input
+                                        id="anexo-input"
+                                        type="file"
+                                        className="hidden"
+                                        onChange={(e) => handleFileChange(e, "anexo")}
+                                    />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-gray-400 hover:text-white"
+                                    onClick={handleCameraClick}
+                                >
+                                    <Camera className="h-6 w-6" />
+                                    <input
+                                        id="camera-input"
+                                        type="file"
+                                        accept="image/*"
+                                        capture="environment"
+                                        className="hidden"
+                                        onChange={(e) => handleFileChange(e, "imagem")}
+                                    />
+                                </Button>
+                            </>
+                        )}
                     </div>
-                )}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
+                        onClick={rascunhoParaEnviar ? handleSendDraft : (texto.trim() ? () => enviarMensagem("texto", texto) : toggleGravacao)}
+                    >
+                        {(texto.trim() || rascunhoParaEnviar) ? (
+                            <SendHorizonal className="h-6 w-6 text-white" />
+                        ) : (
+                            <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
+                        )}
+                    </Button>
+                </div>
             </div>
         </div>
     );

@@ -5,12 +5,13 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Paperclip, Mic, X } from "lucide-react";
+import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import MessageActions from "@/components/MessageActions";
 import useLongPress from "@/hooks/useLongPress";
 import EmojiPicker, { Theme } from "emoji-picker-react";
 import { Smile } from "lucide-react";
+import Image from "next/image";
 
 interface Mensagem {
     id: string;
@@ -338,10 +339,10 @@ export default function ChatComponent({
     const mensagensAgrupadas = agruparMensagensPorData(mensagens);
 
     return (
-        <div className="flex flex-col h-screen bg-[#111827]">
-            <div className="flex items-center gap-3 p-4 bg-[#1f2937] text-white shadow-md z-10">
+        <div className="flex flex-col h-screen bg-[#0b1419]">
+            <div className="flex items-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10">
                 {onClose && (
-                    <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden">
+                    <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden text-white hover:text-gray-300">
                         <ArrowLeft />
                     </Button>
                 )}
@@ -352,11 +353,11 @@ export default function ChatComponent({
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative">
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative bg-chat-background">
                 {mensagensAgrupadas.map((grupo) => (
                     <div key={grupo.data}>
                         <div className="sticky top-0 z-20 flex justify-center my-2">
-                            <span className="bg-gray-700/70 text-gray-300 text-xs px-3 py-1 rounded-full">{grupo.data}</span>
+                            <span className="bg-[#1f2937] text-white text-xs px-3 py-1 rounded-lg">{grupo.data}</span>
                         </div>
                         {grupo.mensagens.map((m) => {
                             const souEu = m.remetente === userId;
@@ -374,18 +375,18 @@ export default function ChatComponent({
                                     key={m.id}
                                     ref={(el) => { if (el) mensagemRefs.current.set(m.id, el); }}
                                     className={`flex ${souEu ? "justify-end" : "justify-start"}
-                    ${mensagemDestacada === m.id ? 'destaque-mensagem' : ''}`}
+                                        ${mensagemDestacada === m.id ? 'destaque-mensagem' : ''}`}
                                 >
                                     <div
-                                        className={`max-w-[75%] px-3 pt-2 pb-5 text-sm whitespace-pre-wrap break-words relative group
-                      ${souEu ? "rounded-2xl rounded-br-sm bg-transparent hover:bg-white/10 text-white" : "rounded-2xl rounded-bl-sm bg-transparent hover:bg-gray-700/50 text-white"}`}
+                                        className={`max-w-[75%] px-3 pt-2 pb-5 text-sm whitespace-pre-wrap break-words relative
+                                            ${souEu ? "rounded-l-2xl rounded-tr-2xl bg-[#005c4b] text-white self-end shadow-md" : "rounded-r-2xl rounded-tl-2xl bg-[#202c33] text-white self-start shadow-md"}`}
                                         onMouseDown={() => setMensagemSelecionada(m.id)}
                                         onTouchStart={() => setMensagemSelecionada(m.id)}
                                         onMouseLeave={() => setMensagemSelecionada(null)}
                                     >
                                         {m.resposta && (
                                             <div
-                                                className="mb-1 p-2 rounded-lg bg-white/20 text-xs border-l-4 border-white/50 cursor-pointer"
+                                                className="mb-1 p-2 rounded-lg bg-white/10 text-xs border-l-4 border-white/50 cursor-pointer"
                                                 onClick={() => m.resposta_id && rolarParaMensagemOriginal(m.resposta_id)}
                                             >
                                                 <span className="block font-semibold">Mensagem original:</span>
@@ -405,14 +406,14 @@ export default function ChatComponent({
                                                         enviarMensagem("texto");
                                                     }
                                                 }}
-                                                className="w-full text-black"
+                                                className="w-full text-black bg-white rounded-md p-2"
                                             />
                                         ) : tipo === "texto" ? (
                                             <span>{m.conteudo}</span>
                                         ) : tipo === "imagem" ? (
                                             <img
                                                 src={m.conteudo}
-                                                className="rounded-md max-w-[200px] cursor-pointer hover:opacity-80"
+                                                className="rounded-md max-w-[200px] cursor-pointer"
                                                 onClick={() => {
                                                     setImagemAmpliada(m.conteudo);
                                                     setZoomLevel(1);
@@ -424,11 +425,11 @@ export default function ChatComponent({
                                         ) : null}
 
                                         {Object.keys(reacoesAgrupadas || {}).length > 0 && (
-                                            <div className="flex gap-1 mt-1">
+                                            <div className="flex gap-1 absolute bottom-1 -left-2 transform -translate-x-full">
                                                 {Object.entries(reacoesAgrupadas || {}).map(([emoji, reacoes]) => (
                                                     <span
                                                         key={emoji}
-                                                        className="px-2 py-0.5 bg-gray-700 rounded-full text-sm cursor-pointer"
+                                                        className="px-1 py-0.5 bg-gray-700 rounded-full text-sm cursor-pointer"
                                                         onClick={() => handleReact(m, emoji)}
                                                     >
                                                         {emoji} {reacoes?.length > 1 ? reacoes.length : ''}
@@ -441,8 +442,7 @@ export default function ChatComponent({
 
                                         {mensagemSelecionada === m.id && (
                                             <div
-                                                className={`absolute top-1 z-10
-                            ${souEu ? "right-[100%] pr-2" : "left-[100%] pl-2"}`}
+                                                className={`absolute top-1 z-10 ${souEu ? "right-[100%] pr-2" : "left-[100%] pl-2"}`}
                                                 onMouseLeave={() => setMensagemSelecionada(null)}
                                             >
                                                 <MessageActions
@@ -505,9 +505,9 @@ export default function ChatComponent({
                 </div>
             )}
 
-            <div className="relative p-4 bg-[#1f2937] flex flex-col gap-2">
+            <div className="relative p-2 bg-[#202c33] flex flex-col gap-2">
                 {resposta && (
-                    <div className="p-2 bg-[#111827] border-l-4 border-green-500 flex justify-between items-center rounded">
+                    <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
                         <div className="text-xs text-gray-300">
                             <span className="block font-semibold">Respondendo:</span>
                             {resposta.tipo === "texto" && <span className="block truncate">{resposta.conteudo}</span>}
@@ -517,70 +517,85 @@ export default function ChatComponent({
                         <X onClick={() => setResposta(null)} className="w-4 h-4 cursor-pointer text-gray-400 hover:text-white" />
                     </div>
                 )}
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => (gravando ? toggleGravacao() : document.getElementById("anexo-input")?.click())}>
-                        <Paperclip className="h-5 w-5 text-gray-400 hover:text-white" />
-                        <input
-                            id="anexo-input"
-                            type="file"
-                            className="hidden"
-                            onChange={(e) => e.target.files?.[0] && enviarImagem(e.target.files[0])}
+
+                {mostrarModalEmojis && (
+                    <div className="absolute bottom-[calc(100%+8px)] left-0 w-full z-50">
+                        <EmojiPicker
+                            theme={Theme.DARK}
+                            onEmojiClick={(emojiData: any) => {
+                                setTexto((prev) => prev + emojiData.emoji);
+                            }}
+                            width="100%"
+                            height={300}
                         />
-                    </Button>
+                    </div>
+                )}
 
-                    <Input
-                        type="text"
-                        value={texto}
-                        onChange={(e) => setTexto(e.target.value)}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
-                                e.preventDefault();
-                                enviarMensagem("texto");
-                            }
-                        }}
-                        placeholder="Digite uma mensagem..."
-                        className="flex-1 bg-gray-800 border-none text-white"
-                    />
-
+                {/* Barra de input e botão de ação redesenhados */}
+                <div className="flex items-end gap-2">
+                    <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
+                        {/* Botão de Emoji */}
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
+                            className="text-gray-400 hover:text-white"
+                        >
+                            <Smile className="w-6 h-6" />
+                        </Button>
+                        {/* Campo de Input */}
+                        <Input
+                            type="text"
+                            value={texto}
+                            onChange={(e) => setTexto(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
+                                    e.preventDefault();
+                                    enviarMensagem("texto");
+                                }
+                            }}
+                            placeholder="Type a message"
+                            className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
+                            style={{ paddingTop: '8px', paddingBottom: '8px' }}
+                        />
+                        {/* Botões de Anexo e Câmera */}
+                        {!texto.trim() && (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => document.getElementById("anexo-input")?.click()}
+                                    className="text-gray-400 hover:text-white"
+                                >
+                                    <Paperclip className="h-6 w-6" />
+                                    <input
+                                        id="anexo-input"
+                                        type="file"
+                                        className="hidden"
+                                        onChange={(e) => e.target.files?.[0] && enviarImagem(e.target.files[0])}
+                                    />
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="text-gray-400 hover:text-white"
+                                >
+                                    <Camera className="h-6 w-6" />
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                    {/* Botão de Microfone ou Enviar */}
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
+                        className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
+                        onClick={texto.trim() ? () => enviarMensagem("texto") : toggleGravacao}
                     >
-                        <Smile className="w-5 h-5 text-white" />
-                    </Button>
-
-                    {mostrarModalEmojis && (
-                        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
-                            <div className="bg-[#1f2937] p-4 rounded-xl shadow-lg relative w-full h-full max-w-md max-h-[70%] md:max-h-[90%] flex flex-col items-center justify-center">
-                                <button
-                                    onClick={() => setMostrarModalEmojis(false)}
-                                    className="absolute top-2 right-2 p-1 text-gray-400 hover:text-white"
-                                >
-                                    <X className="w-5 h-5" />
-                                </button>
-                                <div className="flex-1 w-full flex items-center justify-center">
-                                    <EmojiPicker
-                                        theme={Theme.DARK}
-                                        onEmojiClick={(emojiData: any) => {
-
-                                            setTexto((prev) => prev + emojiData.emoji);
-                                            setMostrarModalEmojis(false);
-
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                    <Button variant="ghost" size="icon" onClick={texto.trim() ? () => enviarMensagem("texto") : toggleGravacao}>
                         {texto.trim() ? (
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-send-horizonal text-gray-400 hover:text-white">
-                                <path d="m3 3 3 9-3 9 19-9Z" />
-                                <path d="M6 12h16" />
-                            </svg>
+                            <SendHorizonal className="h-6 w-6 text-white" />
                         ) : (
-                            <Mic className={`h-5 w-5 ${gravando ? "text-red-500" : "text-gray-400 hover:text-white"}`} />
+                            <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
                         )}
                     </Button>
                 </div>

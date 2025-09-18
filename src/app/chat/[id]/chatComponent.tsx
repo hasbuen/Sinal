@@ -5,12 +5,11 @@ import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera } from "lucide-react";
+import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import MessageActions from "@/components/MessageActions";
 import useLongPress from "@/hooks/useLongPress";
 import EmojiPicker, { Theme } from "emoji-picker-react";
-import { Smile } from "lucide-react";
 import Image from "next/image";
 
 interface Mensagem {
@@ -19,11 +18,11 @@ interface Mensagem {
     destinatario: string;
     conteudo: string;
     criado_em: string;
-    tipo?: "texto" | "imagem" | "audio" | null;
+    tipo?: "texto" | "imagem" | "audio" | "anexo" | null;
     resposta_id?: string | null;
     resposta?: {
         conteudo: string;
-        tipo: "texto" | "imagem" | "audio" | null;
+        tipo: "texto" | "imagem" | "audio" | "anexo" | null;
     } | null;
     reacoes?: {
         id: string;
@@ -43,6 +42,13 @@ interface Usuario {
 interface MensagensAgrupadas {
     data: string;
     mensagens: Mensagem[];
+}
+
+interface Rascunho {
+    tipo: "texto" | "imagem" | "audio" | "anexo";
+    conteudo: string;
+    legenda?: string;
+    file?: File | Blob;
 }
 
 export default function ChatComponent({
@@ -68,11 +74,11 @@ export default function ChatComponent({
     const panStartRef = useRef<{ x: number; y: number } | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
+    // Corrigido: o tipo deve ser HTMLDivElement
     const fimDasMensagens = useRef<HTMLDivElement>(null);
     const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
-    const [imagemParaEnviar, setImagemParaEnviar] = useState<File | null>(null);
-    // Novo estado para a legenda da imagem
+    const [rascunhoParaEnviar, setRascunhoParaEnviar] = useState<Rascunho | null>(null);
     const [legenda, setLegenda] = useState("");
 
     useEffect(() => {
@@ -194,11 +200,25 @@ export default function ChatComponent({
         }
     }, [mensagemDestacada]);
 
+    // Modificando a função para aceitar 'anexo'
     const enviarMensagem = async (
-        tipo: "texto" | "imagem" | "audio" = "texto",
-        conteudo?: string
+        tipo: "texto" | "imagem" | "audio" | "anexo" = "texto",
+        conteudo?: string,
+        file?: File | Blob
     ) => {
-        if ((!texto.trim() && !conteudo) || !destinatarioId || !userId) return;
+        if (!destinatarioId || !userId) return;
+
+        let url = conteudo;
+        if (file) {
+            const filePath = `${tipo}s/${Date.now()}-${file instanceof File ? file.name : 'audio.webm'}`;
+            const { error } = await supabase.storage.from("uploads").upload(filePath, file);
+            if (error) {
+                console.error("Erro ao fazer upload:", error.message);
+                return;
+            }
+            const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
+            url = data?.publicUrl;
+        }
 
         if (editandoId) {
             await supabase
@@ -206,38 +226,29 @@ export default function ChatComponent({
                 .update({ conteudo: conteudo || texto })
                 .eq("id", editandoId);
             setEditandoId(null);
-        } else {
+        } else if (url) {
             await supabase.from("mensagens").insert({
                 remetente: userId,
                 destinatario: destinatarioId,
-                conteudo: conteudo || texto,
-                tipo: tipo ?? "texto",
+                conteudo: url,
+                tipo: tipo,
+                resposta_id: resposta?.id || null,
+            });
+        } else {
+             await supabase.from("mensagens").insert({
+                remetente: userId,
+                destinatario: destinatarioId,
+                conteudo: conteudo,
+                tipo: tipo,
                 resposta_id: resposta?.id || null,
             });
         }
 
         setTexto("");
         setResposta(null);
+        setRascunhoParaEnviar(null);
+        setLegenda("");
         fetchAndSyncMessages();
-    };
-
-    const enviarImagem = async (file: File, legenda?: string) => {
-        const filePath = `imagens/${Date.now()}-${file.name}`;
-        const { error } = await supabase.storage.from("uploads").upload(filePath, file);
-        if (error) return console.error(error.message);
-        const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
-
-        if (data?.publicUrl) {
-            // Se houver legenda, concatenar com a URL da imagem.
-            // Aqui usamos um separador `|SEPARATOR|` para que o backend saiba como separar a URL da legenda.
-            const conteudo = legenda ? `${data.publicUrl}|SEPARATOR|${legenda}` : data.publicUrl;
-            await supabase.from("mensagens").insert({
-                remetente: userId,
-                destinatario: destinatarioId,
-                conteudo: conteudo,
-                tipo: "imagem",
-            });
-        }
     };
 
     const toggleGravacao = async () => {
@@ -248,14 +259,13 @@ export default function ChatComponent({
             mediaRecorderRef.current.ondataavailable = (e) => {
                 if (e.data.size > 0) chunks.current.push(e.data);
             };
-            mediaRecorderRef.current.onstop = async () => {
-                const blob = new Blob(chunks.current, { type: "audio/webm" });
-                const file = new File([blob], `audio-${Date.now()}.webm`, { type: "audio/webm" });
-                const filePath = `audios/${file.name}`;
-                const { error } = await supabase.storage.from("uploads").upload(filePath, file);
-                if (error) return console.error(error.message);
-                const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
-                if (data?.publicUrl) enviarMensagem("audio", data.publicUrl);
+            mediaRecorderRef.current.onstop = () => {
+                const audioBlob = new Blob(chunks.current, { type: "audio/webm" });
+                setRascunhoParaEnviar({
+                    tipo: "audio",
+                    conteudo: URL.createObjectURL(audioBlob),
+                    file: audioBlob,
+                });
             };
             mediaRecorderRef.current.start();
             setGravando(true);
@@ -356,23 +366,61 @@ export default function ChatComponent({
         document.getElementById("camera-input")?.click();
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleAnexoClick = () => {
+        document.getElementById("anexo-input")?.click();
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, tipo: "imagem" | "anexo") => {
         if (e.target.files && e.target.files[0]) {
-            setImagemParaEnviar(e.target.files[0]);
+            setRascunhoParaEnviar({
+                tipo: tipo,
+                conteudo: URL.createObjectURL(e.target.files[0]),
+                file: e.target.files[0],
+            });
         }
     };
 
-    const handleSendImage = async () => {
-        if (imagemParaEnviar) {
-            await enviarImagem(imagemParaEnviar, legenda.trim());
-            setImagemParaEnviar(null);
-            setLegenda(""); // Limpa a legenda após o envio
+    const handleSendDraft = async () => {
+        if (!rascunhoParaEnviar) return;
+
+        let conteudoFinal = rascunhoParaEnviar.conteudo;
+        // Corrigido: Agora a lógica de legenda também se aplica a anexos e áudios se necessário
+        if (rascunhoParaEnviar.tipo !== "texto" && legenda.trim()) {
+            conteudoFinal = `${rascunhoParaEnviar.conteudo}|SEPARATOR|${legenda.trim()}`;
+        }
+        
+        await enviarMensagem(rascunhoParaEnviar.tipo, conteudoFinal, rascunhoParaEnviar.file);
+        setRascunhoParaEnviar(null);
+        setLegenda("");
+    };
+
+    const handleCancelDraft = () => {
+        setRascunhoParaEnviar(null);
+        setLegenda("");
+        setTexto("");
+    };
+
+    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const novoTexto = e.target.value;
+        setTexto(novoTexto);
+
+        if (novoTexto.trim()) {
+            setRascunhoParaEnviar({
+                tipo: "texto",
+                conteudo: novoTexto,
+            });
+        } else if (rascunhoParaEnviar?.tipo === "texto") {
+            setRascunhoParaEnviar(null);
         }
     };
 
-    const handleCancelImage = () => {
-        setImagemParaEnviar(null);
-        setLegenda(""); // Limpa a legenda ao cancelar
+    const onEmojiClick = (emojiData: any) => {
+        const novoTexto = texto + emojiData.emoji;
+        setTexto(novoTexto);
+        setRascunhoParaEnviar({
+            tipo: "texto",
+            conteudo: novoTexto,
+        });
     };
 
     return (
@@ -432,6 +480,7 @@ export default function ChatComponent({
                                                 {m.resposta.tipo === "texto" && <span className="block truncate">{m.resposta.conteudo}</span>}
                                                 {m.resposta.tipo === "imagem" && <span className="italic opacity-80">📷 Imagem</span>}
                                                 {m.resposta.tipo === "audio" && <span className="italic opacity-80">🎤 Áudio</span>}
+                                                {m.resposta.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
                                             </div>
                                         )}
 
@@ -466,6 +515,10 @@ export default function ChatComponent({
                                             </>
                                         ) : tipo === "audio" ? (
                                             <AudioPlayer src={m.conteudo} />
+                                        ) : tipo === "anexo" ? (
+                                            <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
+                                                📎 Anexo: {conteudoDaMensagem.split('/').pop()}
+                                            </a>
                                         ) : null}
 
                                         {Object.keys(reacoesAgrupadas || {}).length > 0 && (
@@ -557,6 +610,7 @@ export default function ChatComponent({
                             {resposta.tipo === "texto" && <span className="block truncate">{resposta.conteudo}</span>}
                             {resposta.tipo === "imagem" && <span className="italic opacity-80">📷 Imagem</span>}
                             {resposta.tipo === "audio" && <span className="italic opacity-80">🎤 Áudio</span>}
+                            {resposta.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
                         </div>
                         <X onClick={() => setResposta(null)} className="w-4 h-4 cursor-pointer text-gray-400 hover:text-white" />
                     </div>
@@ -566,65 +620,58 @@ export default function ChatComponent({
                     <div className="absolute bottom-[calc(100%+8px)] left-0 w-full z-50">
                         <EmojiPicker
                             theme={Theme.DARK}
-                            onEmojiClick={(emojiData: any) => {
-                                setTexto((prev) => prev + emojiData.emoji);
-                            }}
+                            onEmojiClick={onEmojiClick}
                             width="100%"
                             height={300}
                         />
                     </div>
                 )}
 
-                {/* Se há uma imagem para enviar, mostre a pré-visualização */}
-                {imagemParaEnviar ? (
+                {rascunhoParaEnviar ? (
                     <div className="flex items-end gap-2">
-                        <div className="flex-1 flex items-center bg-[#2a3942] rounded-full px-4 py-2">
+                        <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
                             <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={handleCancelImage}
+                                onClick={handleCancelDraft}
                                 className="text-gray-400 hover:text-white"
                             >
                                 <X className="w-6 h-6" />
                             </Button>
-                            <img
-                                src={URL.createObjectURL(imagemParaEnviar)}
-                                alt="Pré-visualização"
-                                className="h-8 w-8 rounded-md object-cover mr-2"
-                            />
+                            {rascunhoParaEnviar.tipo === "imagem" && (
+                                <img
+                                    src={rascunhoParaEnviar.conteudo}
+                                    alt="Pré-visualização"
+                                    className="h-8 w-8 rounded-md object-cover mr-2"
+                                />
+                            )}
+                            {rascunhoParaEnviar.tipo === "audio" && (
+                                <AudioPlayer src={rascunhoParaEnviar.conteudo} />
+                            )}
+                            {rascunhoParaEnviar.tipo === "anexo" && (
+                                <div className="h-8 w-8 rounded-md bg-gray-500 flex items-center justify-center mr-2">
+                                    <Paperclip className="h-4 w-4 text-white" />
+                                </div>
+                            )}
                             <Input
                                 type="text"
-                                value={legenda}
-                                onChange={(e) => setLegenda(e.target.value)}
-                                placeholder="Add a caption..."
-                                className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 px-2 py-0"
+                                value={rascunhoParaEnviar.tipo === "texto" ? rascunhoParaEnviar.conteudo : legenda}
+                                onChange={rascunhoParaEnviar.tipo === "texto" ? handleTextChange : (e) => setLegenda(e.target.value)}
+                                placeholder={rascunhoParaEnviar.tipo === "texto" ? "Type a message" : "Add a caption..."}
+                                className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 px-2 py-0 resize-none overflow-hidden h-auto"
+                                style={{ paddingTop: '8px', paddingBottom: '8px' }}
                             />
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => document.getElementById("anexo-input")?.click()}
-                                className="text-gray-400 hover:text-white"
-                            >
-                                <Paperclip className="h-6 w-6" />
-                                <input
-                                    id="anexo-input"
-                                    type="file"
-                                    className="hidden"
-                                    onChange={(e) => e.target.files?.[0] && setImagemParaEnviar(e.target.files[0])}
-                                />
-                            </Button>
                         </div>
                         <Button
                             variant="ghost"
                             size="icon"
                             className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
-                            onClick={handleSendImage}
+                            onClick={handleSendDraft}
                         >
                             <SendHorizonal className="h-6 w-6 text-white" />
                         </Button>
                     </div>
                 ) : (
-                    /* Caso contrário, mostre a barra de input normal */
                     <div className="flex items-end gap-2">
                         <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
                             <Button
@@ -638,11 +685,11 @@ export default function ChatComponent({
                             <Input
                                 type="text"
                                 value={texto}
-                                onChange={(e) => setTexto(e.target.value)}
+                                onChange={handleTextChange}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
                                         e.preventDefault();
-                                        enviarMensagem("texto");
+                                        enviarMensagem("texto", texto);
                                     }
                                 }}
                                 placeholder="Type a message"
@@ -654,7 +701,7 @@ export default function ChatComponent({
                                     <Button
                                         variant="ghost"
                                         size="icon"
-                                        onClick={() => document.getElementById("anexo-input")?.click()}
+                                        onClick={handleAnexoClick}
                                         className="text-gray-400 hover:text-white"
                                     >
                                         <Paperclip className="h-6 w-6" />
@@ -662,7 +709,7 @@ export default function ChatComponent({
                                             id="anexo-input"
                                             type="file"
                                             className="hidden"
-                                            onChange={(e) => e.target.files?.[0] && enviarImagem(e.target.files[0])}
+                                            onChange={(e) => handleFileChange(e, "anexo")}
                                         />
                                     </Button>
                                     <Button
@@ -678,7 +725,7 @@ export default function ChatComponent({
                                             accept="image/*"
                                             capture="environment"
                                             className="hidden"
-                                            onChange={handleFileChange}
+                                            onChange={(e) => handleFileChange(e, "imagem")}
                                         />
                                     </Button>
                                 </>
@@ -688,7 +735,7 @@ export default function ChatComponent({
                             variant="ghost"
                             size="icon"
                             className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
-                            onClick={texto.trim() ? () => enviarMensagem("texto") : toggleGravacao}
+                            onClick={texto.trim() ? () => enviarMensagem("texto", texto) : toggleGravacao}
                         >
                             {texto.trim() ? (
                                 <SendHorizonal className="h-6 w-6 text-white" />

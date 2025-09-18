@@ -54,10 +54,10 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
   };
 
   return (
-    <div className="flex items-center gap-3 bg-gradient-to-r from-[#6a00f4] to-[#00d4ff] text-white px-4 py-2 rounded-full shadow-lg w-full max-w-md">
+    <div className="flex items-center gap-2 p-1 rounded-full w-full bg-[#1f2937] text-white">
       {/* Botão Play/Pause */}
-      <button onClick={togglePlay} className="p-2 rounded-full bg-black/30 hover:bg-black/50">
-        {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+      <button onClick={togglePlay} className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200">
+        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
       </button>
 
       {/* Barra de progresso */}
@@ -72,21 +72,18 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
             setCurrentTime(Number(e.target.value));
           }
         }}
-        className="flex-1 accent-[#00ff87] cursor-pointer"
+        className="flex-1 h-1 accent-[#00ff87] cursor-pointer appearance-none rounded-full"
       />
 
       {/* Tempo */}
-      <span className="text-xs w-16 text-center">
-        {formatTime(currentTime)} / {formatTime(duration)}
+      <span className="text-[10px] w-12 text-center text-gray-400">
+        {formatTime(currentTime)}
       </span>
-
-      {/* Volume fixo (só ícone) */}
-      <Volume2 className="w-5 h-5 opacity-70" />
 
       {/* Velocidade */}
       <button
         onClick={toggleSpeed}
-        className="ml-2 px-2 py-1 rounded bg-black/30 hover:bg-black/50 text-xs font-bold"
+        className="px-2 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-colors duration-200 text-xs font-bold"
       >
         {speed}x
       </button>

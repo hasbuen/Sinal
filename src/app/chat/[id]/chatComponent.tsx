@@ -71,6 +71,9 @@ export default function ChatComponent({
     const fimDasMensagens = useRef<HTMLDivElement>(null);
     const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
+    const [imagemParaEnviar, setImagemParaEnviar] = useState<File | null>(null);
+    // Novo estado para a legenda da imagem
+    const [legenda, setLegenda] = useState("");
 
     useEffect(() => {
         mensagensRef.current = mensagens;
@@ -218,12 +221,23 @@ export default function ChatComponent({
         fetchAndSyncMessages();
     };
 
-    const enviarImagem = async (file: File) => {
+    const enviarImagem = async (file: File, legenda?: string) => {
         const filePath = `imagens/${Date.now()}-${file.name}`;
         const { error } = await supabase.storage.from("uploads").upload(filePath, file);
         if (error) return console.error(error.message);
         const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
-        if (data?.publicUrl) enviarMensagem("imagem", data.publicUrl);
+
+        if (data?.publicUrl) {
+            // Se houver legenda, concatenar com a URL da imagem.
+            // Aqui usamos um separador `|SEPARATOR|` para que o backend saiba como separar a URL da legenda.
+            const conteudo = legenda ? `${data.publicUrl}|SEPARATOR|${legenda}` : data.publicUrl;
+            await supabase.from("mensagens").insert({
+                remetente: userId,
+                destinatario: destinatarioId,
+                conteudo: conteudo,
+                tipo: "imagem",
+            });
+        }
     };
 
     const toggleGravacao = async () => {
@@ -338,6 +352,29 @@ export default function ChatComponent({
 
     const mensagensAgrupadas = agruparMensagensPorData(mensagens);
 
+    const handleCameraClick = () => {
+        document.getElementById("camera-input")?.click();
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            setImagemParaEnviar(e.target.files[0]);
+        }
+    };
+
+    const handleSendImage = async () => {
+        if (imagemParaEnviar) {
+            await enviarImagem(imagemParaEnviar, legenda.trim());
+            setImagemParaEnviar(null);
+            setLegenda(""); // Limpa a legenda após o envio
+        }
+    };
+
+    const handleCancelImage = () => {
+        setImagemParaEnviar(null);
+        setLegenda(""); // Limpa a legenda ao cancelar
+    };
+
     return (
         <div className="flex flex-col h-screen bg-[#0b1419]">
             <div className="flex items-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10">
@@ -369,6 +406,8 @@ export default function ChatComponent({
                                 acc[reacao.emoji].push(reacao);
                                 return acc;
                             }, {} as Record<string, typeof m.reacoes>);
+                            
+                            const [conteudoDaMensagem, legendaDaMensagem] = m.conteudo.split("|SEPARATOR|");
 
                             return (
                                 <div
@@ -411,15 +450,20 @@ export default function ChatComponent({
                                         ) : tipo === "texto" ? (
                                             <span>{m.conteudo}</span>
                                         ) : tipo === "imagem" ? (
-                                            <img
-                                                src={m.conteudo}
-                                                className="rounded-md max-w-[200px] cursor-pointer"
-                                                onClick={() => {
-                                                    setImagemAmpliada(m.conteudo);
-                                                    setZoomLevel(1);
-                                                    setPanOffset({ x: 0, y: 0 });
-                                                }}
-                                            />
+                                            <>
+                                                <img
+                                                    src={conteudoDaMensagem}
+                                                    className="rounded-md max-w-[200px] cursor-pointer"
+                                                    onClick={() => {
+                                                        setImagemAmpliada(conteudoDaMensagem);
+                                                        setZoomLevel(1);
+                                                        setPanOffset({ x: 0, y: 0 });
+                                                    }}
+                                                />
+                                                {legendaDaMensagem && (
+                                                    <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
+                                                )}
+                                            </>
                                         ) : tipo === "audio" ? (
                                             <AudioPlayer src={m.conteudo} />
                                         ) : null}
@@ -531,74 +575,129 @@ export default function ChatComponent({
                     </div>
                 )}
 
-                {/* Barra de input e botão de ação redesenhados */}
-                <div className="flex items-end gap-2">
-                    <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
-                        {/* Botão de Emoji */}
+                {/* Se há uma imagem para enviar, mostre a pré-visualização */}
+                {imagemParaEnviar ? (
+                    <div className="flex items-end gap-2">
+                        <div className="flex-1 flex items-center bg-[#2a3942] rounded-full px-4 py-2">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleCancelImage}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <X className="w-6 h-6" />
+                            </Button>
+                            <img
+                                src={URL.createObjectURL(imagemParaEnviar)}
+                                alt="Pré-visualização"
+                                className="h-8 w-8 rounded-md object-cover mr-2"
+                            />
+                            <Input
+                                type="text"
+                                value={legenda}
+                                onChange={(e) => setLegenda(e.target.value)}
+                                placeholder="Add a caption..."
+                                className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 px-2 py-0"
+                            />
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => document.getElementById("anexo-input")?.click()}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <Paperclip className="h-6 w-6" />
+                                <input
+                                    id="anexo-input"
+                                    type="file"
+                                    className="hidden"
+                                    onChange={(e) => e.target.files?.[0] && setImagemParaEnviar(e.target.files[0])}
+                                />
+                            </Button>
+                        </div>
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
-                            className="text-gray-400 hover:text-white"
+                            className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
+                            onClick={handleSendImage}
                         >
-                            <Smile className="w-6 h-6" />
-                        </Button>
-                        {/* Campo de Input */}
-                        <Input
-                            type="text"
-                            value={texto}
-                            onChange={(e) => setTexto(e.target.value)}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
-                                    e.preventDefault();
-                                    enviarMensagem("texto");
-                                }
-                            }}
-                            placeholder="Type a message"
-                            className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
-                            style={{ paddingTop: '8px', paddingBottom: '8px' }}
-                        />
-                        {/* Botões de Anexo e Câmera */}
-                        {!texto.trim() && (
-                            <>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => document.getElementById("anexo-input")?.click()}
-                                    className="text-gray-400 hover:text-white"
-                                >
-                                    <Paperclip className="h-6 w-6" />
-                                    <input
-                                        id="anexo-input"
-                                        type="file"
-                                        className="hidden"
-                                        onChange={(e) => e.target.files?.[0] && enviarImagem(e.target.files[0])}
-                                    />
-                                </Button>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="text-gray-400 hover:text-white"
-                                >
-                                    <Camera className="h-6 w-6" />
-                                </Button>
-                            </>
-                        )}
-                    </div>
-                    {/* Botão de Microfone ou Enviar */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
-                        onClick={texto.trim() ? () => enviarMensagem("texto") : toggleGravacao}
-                    >
-                        {texto.trim() ? (
                             <SendHorizonal className="h-6 w-6 text-white" />
-                        ) : (
-                            <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
-                        )}
-                    </Button>
-                </div>
+                        </Button>
+                    </div>
+                ) : (
+                    /* Caso contrário, mostre a barra de input normal */
+                    <div className="flex items-end gap-2">
+                        <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <Smile className="w-6 h-6" />
+                            </Button>
+                            <Input
+                                type="text"
+                                value={texto}
+                                onChange={(e) => setTexto(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey && texto.trim()) {
+                                        e.preventDefault();
+                                        enviarMensagem("texto");
+                                    }
+                                }}
+                                placeholder="Type a message"
+                                className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
+                                style={{ paddingTop: '8px', paddingBottom: '8px' }}
+                            />
+                            {!texto.trim() && (
+                                <>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={() => document.getElementById("anexo-input")?.click()}
+                                        className="text-gray-400 hover:text-white"
+                                    >
+                                        <Paperclip className="h-6 w-6" />
+                                        <input
+                                            id="anexo-input"
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => e.target.files?.[0] && enviarImagem(e.target.files[0])}
+                                        />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-gray-400 hover:text-white"
+                                        onClick={handleCameraClick}
+                                    >
+                                        <Camera className="h-6 w-6" />
+                                        <input
+                                            id="camera-input"
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="hidden"
+                                            onChange={handleFileChange}
+                                        />
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
+                            onClick={texto.trim() ? () => enviarMensagem("texto") : toggleGravacao}
+                        >
+                            {texto.trim() ? (
+                                <SendHorizonal className="h-6 w-6 text-white" />
+                            ) : (
+                                <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
+                            )}
+                        </Button>
+                    </div>
+                )}
             </div>
         </div>
     );

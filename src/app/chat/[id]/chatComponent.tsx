@@ -2,7 +2,6 @@
 
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState, useRef } from "react";
-import { useParams } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile } from "lucide-react";
@@ -10,7 +9,6 @@ import AudioPlayer from "@/components/AudioPlayer";
 import MessageActions from "@/components/MessageActions";
 import useLongPress from "@/hooks/useLongPress";
 import EmojiPicker, { Theme } from "emoji-picker-react";
-import Image from "next/image";
 
 interface Mensagem {
     id: string;
@@ -45,8 +43,9 @@ interface MensagensAgrupadas {
 }
 
 interface Rascunho {
-    tipo: "imagem" | "audio" | "anexo";
+    tipo: "texto" | "imagem" | "audio" | "anexo";
     conteudo: string;
+    legenda?: string;
     file?: File | Blob;
 }
 
@@ -402,6 +401,7 @@ export default function ChatComponent({
         setRascunhoParaEnviar(null);
         setLegenda("");
         setTexto("");
+        setMostrarModalEmojis(false);
     };
 
     const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -602,8 +602,32 @@ export default function ChatComponent({
                     </Button>
                 </div>
             )}
+            
+            <div className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? 'transform-none' : 'transform translate-y-full'}`}>
+                {mostrarModalEmojis && (
+                    <div className="w-full bg-[#1f2937] rounded-lg p-2 flex flex-col">
+                        <div className="flex justify-between items-center mb-2">
+                            <span className="text-white text-lg font-semibold">Emojis</span>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setMostrarModalEmojis(false)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <X className="w-5 h-5" />
+                            </Button>
+                        </div>
+                        <EmojiPicker
+                            theme={Theme.DARK}
+                            onEmojiClick={onEmojiClick}
+                            width="100%"
+                            height={300}
+                        />
+                    </div>
+                )}
+            </div>
 
-            <div className="relative p-2 bg-[#202c33] flex flex-col gap-2">
+            <div className="flex flex-col gap-2 p-2 bg-[#202c33] transition-transform duration-300 ease-in-out">
                 {/* Prévia de Resposta e Rascunho de Mídia */}
                 {(resposta || rascunhoParaEnviar) && (
                     <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
@@ -648,17 +672,7 @@ export default function ChatComponent({
                     </div>
                 )}
                 
-                {mostrarModalEmojis && (
-                    <div className="absolute bottom-[calc(100%+8px)] left-0 w-full z-50">
-                        <EmojiPicker
-                            theme={Theme.DARK}
-                            onEmojiClick={onEmojiClick}
-                            width="100%"
-                            height={300}
-                        />
-                    </div>
-                )}
-
+                {/* Área de Input de Mensagem */}
                 <div className="flex items-end gap-2">
                     <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
                         <Button

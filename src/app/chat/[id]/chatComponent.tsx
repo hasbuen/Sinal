@@ -739,9 +739,18 @@ export default function ChatComponent({
                             )}
                             {rascunhoParaEnviar && (
                                 <div className="flex items-center gap-2">
-                                    {rascunhoParaEnviar.tipo === "imagem" && <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />}
+                                    {rascunhoParaEnviar.tipo === "imagem" && (
+                                        <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
+                                    )}
                                     {rascunhoParaEnviar.tipo === "audio" && <AudioPlayer src={rascunhoParaEnviar.conteudo} />}
-                                    {rascunhoParaEnviar.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
+                                    {rascunhoParaEnviar.tipo === "anexo" &&
+                                        ((rascunhoParaEnviar.file && rascunhoParaEnviar.file.type && rascunhoParaEnviar.file.type.startsWith('image/')) ||
+                                        (rascunhoParaEnviar.file && rascunhoParaEnviar.file instanceof File && /\.(png|jpe?g|gif|webp)$/i.test(rascunhoParaEnviar.file.name))) ? (
+                                            <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
+                                        ) : (
+                                            <span className="italic opacity-80">📎 Anexo</span>
+                                        )
+                                    }
                                 </div>
                             )}
                         </div>

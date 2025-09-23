@@ -63,39 +63,6 @@ export default function ChatComponent({
     const [destinatario, setDestinatario] = useState<Usuario | null>(null);
     const [gravando, setGravando] = useState(false);
     const [statusOutroUsuario, setStatusOutroUsuario] = useState<string | null>(null);
-
-    // Buscar status do outro usuário em tempo real
-    useEffect(() => {
-        if (!destinatarioId || !userId) return;
-        const canal = supabase
-            .channel('status-chat-' + destinatarioId + '-' + userId)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'status_chat',
-                filter: `usuario_id=eq.${destinatarioId}&destinatario_id=eq.${userId}`
-            }, (payload: any) => {
-                console.log("Evento realtime recebido:", payload);
-                if (payload.eventType === 'DELETE') {
-                    setStatusOutroUsuario(null);
-                } else {
-                    setStatusOutroUsuario(payload?.new?.status || null);
-                }
-            })
-            .subscribe();
-        // Buscar status inicial
-        (async () => {
-            const { data } = await supabase
-                .from('status_chat')
-                .select('status')
-                .eq('usuario_id', destinatarioId)
-                .eq('destinatario_id', userId)
-                .single();
-            setStatusOutroUsuario(data?.status || null);
-        })();
-        return () => { supabase.removeChannel(canal); };
-    }, [destinatarioId, userId]);
-
     const [resposta, setResposta] = useState<Mensagem | null>(null);
     const [editandoId, setEditandoId] = useState<string | null>(null);
     const [imagemAmpliada, setImagemAmpliada] = useState<string | null>(null);
@@ -111,47 +78,9 @@ export default function ChatComponent({
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
     const [rascunhoParaEnviar, setRascunhoParaEnviar] = useState<Rascunho | null>(null);
     const [legenda, setLegenda] = useState("");
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Atualiza status do usuário (digitando, gravando, ou null)
-    // Atualiza status do usuário (digitando, gravando)
-    const atualizarStatus = async (status: string | null) => {
-        if (!userId) return;
-        if (status) {
-            await supabase.from("status_chat").upsert({
-                usuario_id: userId,
-                destinatario_id: destinatarioId,
-                status: status,
-                atualizado_em: new Date().toISOString(),
-            }, { onConflict: "usuario_id,destinatario_id" });
-        }
-    };
-    // Remove status do usuário (deleta registro na tabela)
-    const removerStatus = async () => {
-        if (!userId) return;
-        const { error } = await supabase.from("status_chat")
-            .delete()
-            .eq("usuario_id", userId)
-            .eq("destinatario_id", destinatarioId);
-        if (error) {
-            console.error("Erro ao remover status:", error.message);
-        }
-    };
-
-    useEffect(() => {
-        mensagensRef.current = mensagens;
-    }, [mensagens]);
-
-    const marcarMensagensComoLidas = async () => {
-        if (!userId || !destinatarioId) return;
-
-        await supabase
-            .from("mensagens")
-            .update({ lida: true })
-            .eq("remetente", destinatarioId)
-            .eq("destinatario", userId)
-            .eq("lida", false);
-    };
-
+    // Hook para obter o ID do usuário logado
     useEffect(() => {
         const fetchUser = async () => {
             const { data } = await supabase.auth.getUser();
@@ -160,6 +89,7 @@ export default function ChatComponent({
         fetchUser();
     }, []);
 
+    // Hook para carregar os dados do destinatário
     useEffect(() => {
         if (!destinatarioId) return;
         const carregarUsuario = async () => {
@@ -173,9 +103,131 @@ export default function ChatComponent({
         carregarUsuario();
     }, [destinatarioId]);
 
+    // Hook para sincronizar o estado das mensagens
+    useEffect(() => {
+        mensagensRef.current = mensagens;
+    }, [mensagens]);
+
+    // Hook para rolar para o final das mensagens
+    useEffect(() => {
+        fimDasMensagens.current?.scrollIntoView({ behavior: "smooth" });
+    }, [mensagens]);
+
+    // Hook para remover destaque da mensagem
+    useEffect(() => {
+        if (mensagemDestacada) {
+            const timer = setTimeout(() => {
+                setMensagemDestacada(null);
+            }, 1500);
+            return () => clearTimeout(timer);
+        }
+    }, [mensagemDestacada]);
+
+    // ----------------------------------------------------
+    // Lógica de tempo real para status
+    // ----------------------------------------------------
+    useEffect(() => {
+        if (!destinatarioId || !userId) return;
+        
+        // Remover canais antigos para evitar duplicação de listeners
+        supabase.getChannels().forEach((ch: any) => {
+            if (ch.topic && ch.topic.includes('status-chat-')) {
+                supabase.removeChannel(ch);
+            }
+        });
+
+        const canal = supabase
+            .channel('status-chat-' + destinatarioId + '-' + userId)
+            .on('postgres_changes', {
+                event: '*',
+                schema: 'public',
+                table: 'status_chat',
+                filter: `usuario_id=eq.${destinatarioId}&destinatario_id=eq.${userId}`
+            }, (payload: any) => {
+                console.log("Evento realtime recebido:", payload);
+                if (payload.eventType === 'DELETE') {
+                    setStatusOutroUsuario(null);
+                } else if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+                    setStatusOutroUsuario(payload?.new?.status || null);
+                }
+            })
+            .subscribe();
+
+        const fetchStatusInicial = async () => {
+            const { data } = await supabase
+                .from('status_chat')
+                .select('status')
+                .eq('usuario_id', destinatarioId)
+                .eq('destinatario_id', userId)
+                .single();
+            setStatusOutroUsuario(data?.status || null);
+        };
+        fetchStatusInicial();
+
+        return () => {
+            supabase.removeChannel(canal);
+        };
+    }, [destinatarioId, userId]);
+
+    const atualizarStatus = async (status: string | null) => {
+        if (!userId) return;
+        if (status) {
+            await supabase.from("status_chat").upsert({
+                usuario_id: userId,
+                destinatario_id: destinatarioId,
+                status: status,
+                atualizado_em: new Date().toISOString(),
+            }, { onConflict: "usuario_id,destinatario_id" });
+        }
+    };
+    
+    const removerStatus = async () => {
+        if (!userId) return;
+        await supabase.from("status_chat")
+            .delete()
+            .eq("usuario_id", userId)
+            .eq("destinatario_id", destinatarioId);
+    };
+
+    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const novoTexto = e.target.value;
+        setTexto(novoTexto);
+
+        // Se o usuário está digitando, atualiza o status
+        if (novoTexto.length > 0) {
+            atualizarStatus("digitando");
+            
+            // Limpa o timer anterior para evitar que o status seja removido enquanto o usuário ainda digita
+            if (typingTimeoutRef.current) {
+                clearTimeout(typingTimeoutRef.current);
+            }
+
+            // Define um novo timer para remover o status após 2 segundos de inatividade
+            typingTimeoutRef.current = setTimeout(() => {
+                removerStatus();
+            }, 2000);
+
+        } else {
+            // Se a caixa de texto está vazia, remove o status imediatamente
+            removerStatus();
+        }
+    };
+
+    // ----------------------------------------------------
+    // Lógica de mensagens
+    // ----------------------------------------------------
+    const marcarMensagensComoLidas = async () => {
+        if (!userId || !destinatarioId) return;
+        await supabase
+            .from("mensagens")
+            .update({ lida: true })
+            .eq("remetente", destinatarioId)
+            .eq("destinatario", userId)
+            .eq("lida", false);
+    };
+
     const fetchAndSyncMessages = async () => {
         if (!destinatarioId || !userId) return;
-
         const { data, error } = await supabase
             .from("mensagens")
             .select(
@@ -197,64 +249,45 @@ export default function ChatComponent({
                 (m.remetente === userId && m.destinatario === destinatarioId) ||
                 (m.remetente === destinatarioId && m.destinatario === userId)
         );
+        
+        const novasMensagens = mensagensDoChat.filter(
+            (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
+        );
+        const reacoesAtualizadas = mensagensDoChat.filter(
+            (m) => {
+                const mensagemAntiga = mensagensRef.current.find((existing) => existing.id === m.id);
+                return (
+                    mensagemAntiga &&
+                    JSON.stringify(m.reacoes) !== JSON.stringify(mensagemAntiga.reacoes)
+                );
+            }
+        );
 
-        const isSameChat = mensagensRef.current.some(m => mensagensDoChat.some(nm => nm.id === m.id));
-
-        if (!isSameChat || mensagensRef.current.length === 0) {
-            setMensagens(mensagensDoChat);
-        } else {
-            const novasMensagens = mensagensDoChat.filter(
-                (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
-            );
-
-            const reacoesAtualizadas = mensagensDoChat.filter(
-                (m) => {
-                    const mensagemAntiga = mensagensRef.current.find((existing) => existing.id === m.id);
-                    return (
-                        mensagemAntiga &&
-                        JSON.stringify(m.reacoes) !== JSON.stringify(mensagemAntiga.reacoes)
-                    );
+        if (novasMensagens.length > 0) {
+            setMensagens((prev) => [...prev, ...novasMensagens]);
+            novasMensagens.forEach((msg) => {
+                if (msg.remetente !== userId) {
+                    marcarMensagensComoLidas();
                 }
-            );
-
-            if (novasMensagens.length > 0) {
-                setMensagens((prev) => [...prev, ...novasMensagens]);
-                novasMensagens.forEach((msg) => {
-                    if (msg.remetente !== userId) {
-                        marcarMensagensComoLidas();
-                    }
-                });
-            }
-
-            if (reacoesAtualizadas.length > 0) {
-                setMensagens((prev) => prev.map((msg) => {
-                    const reacaoAtualizada = reacoesAtualizadas.find((m) => m.id === msg.id);
-                    return reacaoAtualizada ? { ...msg, reacoes: reacaoAtualizada.reacoes } : msg;
-                }));
-            }
+            });
+        }
+        if (reacoesAtualizadas.length > 0) {
+            setMensagens((prev) => prev.map((msg) => {
+                const reacaoAtualizada = reacoesAtualizadas.find((m) => m.id === msg.id);
+                return reacaoAtualizada ? { ...msg, reacoes: reacaoAtualizada.reacoes } : msg;
+            }));
         }
     };
 
     useEffect(() => {
         fetchAndSyncMessages();
         const intervalId = setInterval(fetchAndSyncMessages, 2000);
-
         return () => clearInterval(intervalId);
     }, [destinatarioId, userId]);
-
-    useEffect(() => {
-        fimDasMensagens.current?.scrollIntoView({ behavior: "smooth" });
-    }, [mensagens]);
-
-    useEffect(() => {
-        if (mensagemDestacada) {
-            const timer = setTimeout(() => {
-                setMensagemDestacada(null);
-            }, 1500);
-
-            return () => clearTimeout(timer);
-        }
-    }, [mensagemDestacada]);
+    
+    // ----------------------------------------------------
+    // Funções de manipulação
+    // ----------------------------------------------------
 
     const enviarMensagem = async (
         tipo: "texto" | "imagem" | "audio" | "anexo" = "texto",
@@ -262,7 +295,6 @@ export default function ChatComponent({
         file?: File | Blob
     ) => {
         if (!destinatarioId || !userId) return;
-
         let conteudoParaSalvar = conteudo;
 
         if (file) {
@@ -274,16 +306,8 @@ export default function ChatComponent({
             }
             const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
             const url = data?.publicUrl;
-
             if (url) {
-                if (conteudo && conteudo.includes("|SEPARATOR|")) {
-                    const [, legendaExistente] = conteudo.split("|SEPARATOR|");
-                    conteudoParaSalvar = `${url}|SEPARATOR|${legendaExistente}`;
-                } else if (conteudo) {
-                    conteudoParaSalvar = `${url}|SEPARATOR|${conteudo}`;
-                } else {
-                    conteudoParaSalvar = url;
-                }
+                conteudoParaSalvar = conteudo ? `${url}|SEPARATOR|${conteudo}` : url;
             } else {
                 console.error("URL do arquivo não encontrada.");
                 return;
@@ -305,7 +329,6 @@ export default function ChatComponent({
                 resposta_id: resposta?.id || null,
             });
         }
-
         setTexto("");
         setResposta(null);
         setRascunhoParaEnviar(null);
@@ -377,13 +400,11 @@ export default function ChatComponent({
 
     const handleReact = async (mensagem: Mensagem, emoji: string) => {
         if (!userId) return;
-
         const reacaoExistente = mensagem.reacoes?.find(r => r.remetente === userId && r.emoji === emoji);
-
         if (reacaoExistente) {
             await supabase.from("mensagens_reacoes").delete().eq("id", reacaoExistente.id);
         } else {
-            await supabase.from("mensagens_reacoes").insert({
+            await supabase.from ( "mensagens_reacoes").insert({
                 mensagem_id: mensagem.id,
                 remetente: userId,
                 emoji: emoji,
@@ -407,7 +428,6 @@ export default function ChatComponent({
     const agruparMensagensPorData = (mensagens: Mensagem[]) => {
         const grupos: MensagensAgrupadas[] = [];
         let ultimoGrupo: MensagensAgrupadas | null = null;
-
         mensagens.forEach(mensagem => {
             const dataMensagem = new Date(mensagem.criado_em);
             const dataFormatada = dataMensagem.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
@@ -415,9 +435,7 @@ export default function ChatComponent({
             const ontem = new Date();
             ontem.setDate(ontem.getDate() - 1);
             const ontemFormatado = ontem.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-
             const rotuloData = dataFormatada === hoje ? "Hoje" : dataFormatada === ontemFormatado ? "Ontem" : dataFormatada;
-
             if (!ultimoGrupo || ultimoGrupo.data !== rotuloData) {
                 ultimoGrupo = {
                     data: rotuloData,
@@ -453,7 +471,6 @@ export default function ChatComponent({
 
     const handleSendDraft = async () => {
         if (!rascunhoParaEnviar) return;
-
         await enviarMensagem(rascunhoParaEnviar.tipo, legenda.trim(), rascunhoParaEnviar.file);
         setRascunhoParaEnviar(null);
         setLegenda("");
@@ -465,18 +482,9 @@ export default function ChatComponent({
         setLegenda("");
         setTexto("");
         setMostrarModalEmojis(false);
+        removerStatus();
     };
-
-    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const novoTexto = e.target.value;
-        setTexto(novoTexto);
-        if (novoTexto.length > 0) {
-            atualizarStatus("digitando");
-        } else {
-            removerStatus();
-        }
-    };
-
+    
     const onEmojiClick = (emojiData: any) => {
         const novoTexto = texto + emojiData.emoji;
         setTexto(novoTexto);
@@ -501,7 +509,6 @@ export default function ChatComponent({
                     </p>
                 </div>
             </div>
-
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative bg-chat-background">
                 {mensagensAgrupadas.map((grupo) => (
                     <div key={grupo.data}>
@@ -518,8 +525,7 @@ export default function ChatComponent({
                                 acc[reacao.emoji].push(reacao);
                                 return acc;
                             }, {} as Record<string, typeof m.reacoes>);
-
-                            const [conteudoDaMensagem, legendaDaMensagem] = m.conteudo.split("|SEPARATOR|");
+                            const [conteudoDaMensagem, legendaDaMensagem] = m.conteudo?.split("|SEPARATOR|") || ["", ""];
 
                             return (
                                 <div
@@ -547,7 +553,6 @@ export default function ChatComponent({
                                                 {m.resposta.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
                                             </div>
                                         )}
-
                                         {editandoId === m.id ? (
                                             <Input
                                                 value={texto}
@@ -585,16 +590,40 @@ export default function ChatComponent({
                                                 )}
                                             </>
                                         ) : tipo === "anexo" ? (
-                                            <>
-                                                <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
-                                                    📎 Anexo: {conteudoDaMensagem.split('/').pop()}
-                                                </a>
-                                                {legendaDaMensagem && (
-                                                    <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
-                                                )}
-                                            </>
+                                            (() => {
+                                                const isImage = /\.(png|jpe?g|gif|webp)$/i.test(conteudoDaMensagem);
+                                                if (isImage) {
+                                                    return (
+                                                        <>
+                                                            <img
+                                                                src={conteudoDaMensagem}
+                                                                alt="Anexo imagem"
+                                                                className="rounded-md max-w-[200px] cursor-pointer"
+                                                                onClick={() => {
+                                                                    setImagemAmpliada(conteudoDaMensagem);
+                                                                    setZoomLevel(1);
+                                                                    setPanOffset({ x: 0, y: 0 });
+                                                                }}
+                                                            />
+                                                            {legendaDaMensagem && (
+                                                                <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
+                                                            )}
+                                                        </>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <>
+                                                            <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
+                                                                📎 Anexo: {conteudoDaMensagem.split('/').pop()}
+                                                            </a>
+                                                            {legendaDaMensagem && (
+                                                                <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
+                                                            )}
+                                                        </>
+                                                    );
+                                                }
+                                            })()
                                         ) : null}
-
                                         {Object.keys(reacoesAgrupadas || {}).length > 0 && (
                                             <div className="flex gap-1 absolute bottom-1 -left-2 transform -translate-x-full">
                                                 {Object.entries(reacoesAgrupadas || {}).map(([emoji, reacoes]) => (
@@ -608,9 +637,7 @@ export default function ChatComponent({
                                                 ))}
                                             </div>
                                         )}
-
                                         <span className="absolute bottom-1 right-2 text-[10px] opacity-70">{formatarHora(m.criado_em)}</span>
-
                                         {mensagemSelecionada === m.id && (
                                             <div
                                                 className={`absolute top-1 z-10 ${souEu ? "right-[100%] pr-2" : "left-[100%] pl-2"}`}
@@ -645,7 +672,6 @@ export default function ChatComponent({
                 ))}
                 <div ref={fimDasMensagens} />
             </div>
-
             {imagemAmpliada && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[100] p-4 touch-none"
@@ -675,7 +701,6 @@ export default function ChatComponent({
                     </Button>
                 </div>
             )}
-
             <div className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? 'transform-none' : 'transform translate-y-full'}`}>
                 {mostrarModalEmojis && (
                     <div className="w-full bg-[#1f2937] rounded-lg p-2 flex flex-col">
@@ -699,9 +724,7 @@ export default function ChatComponent({
                     </div>
                 )}
             </div>
-
             <div className="flex flex-col gap-2 p-2 bg-[#202c33] transition-transform duration-300 ease-in-out">
-                {/* Prévia de Resposta e Rascunho de Mídia */}
                 {(resposta || rascunhoParaEnviar) && (
                     <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
                         <div className="text-xs text-gray-300 flex-1">
@@ -744,8 +767,6 @@ export default function ChatComponent({
                         )}
                     </div>
                 )}
-
-                {/* Área de Input de Mensagem */}
                 <div className="flex items-end gap-2">
                     <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
                         <Button

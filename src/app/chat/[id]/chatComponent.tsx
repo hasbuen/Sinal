@@ -509,7 +509,7 @@ export default function ChatComponent({
                     </p>
                 </div>
             </div>
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 relative bg-chat-background">
+            <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3 relative bg-chat-background">
                 {mensagensAgrupadas.map((grupo) => (
                     <div key={grupo.data}>
                         <div className="sticky top-0 z-20 flex justify-center my-2">
@@ -590,39 +590,14 @@ export default function ChatComponent({
                                                 )}
                                             </>
                                         ) : tipo === "anexo" ? (
-                                            (() => {
-                                                const isImage = /\.(png|jpe?g|gif|webp)$/i.test(conteudoDaMensagem);
-                                                if (isImage) {
-                                                    return (
-                                                        <>
-                                                            <img
-                                                                src={conteudoDaMensagem}
-                                                                alt="Anexo imagem"
-                                                                className="rounded-md max-w-[200px] cursor-pointer"
-                                                                onClick={() => {
-                                                                    setImagemAmpliada(conteudoDaMensagem);
-                                                                    setZoomLevel(1);
-                                                                    setPanOffset({ x: 0, y: 0 });
-                                                                }}
-                                                            />
-                                                            {legendaDaMensagem && (
-                                                                <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
-                                                            )}
-                                                        </>
-                                                    );
-                                                } else {
-                                                    return (
-                                                        <>
-                                                            <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
-                                                                📎 Anexo: {conteudoDaMensagem.split('/').pop()}
-                                                            </a>
-                                                            {legendaDaMensagem && (
-                                                                <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
-                                                            )}
-                                                        </>
-                                                    );
-                                                }
-                                            })()
+                                            <>
+                                                <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
+                                                    📎 Anexo: {conteudoDaMensagem.split('/').pop()}
+                                                </a>
+                                                {legendaDaMensagem && (
+                                                    <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
+                                                )}
+                                            </>
                                         ) : null}
                                         {Object.keys(reacoesAgrupadas || {}).length > 0 && (
                                             <div className="flex gap-1 absolute bottom-1 -left-2 transform -translate-x-full">
@@ -674,7 +649,7 @@ export default function ChatComponent({
             </div>
             {imagemAmpliada && (
                 <div
-                    className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[100] p-4 touch-none"
+                    className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[100] p-8 touch-none"
                     onClick={() => setImagemAmpliada(null)}
                     onMouseUp={handleMouseUp}
                     onMouseMove={handleMouseMove}
@@ -724,7 +699,7 @@ export default function ChatComponent({
                     </div>
                 )}
             </div>
-            <div className="flex flex-col gap-2 p-2 bg-[#202c33] transition-transform duration-300 ease-in-out">
+            <div className="flex flex-col gap-2 p-4 bg-[#202c33] transition-transform duration-300 ease-in-out">
                 {(resposta || rascunhoParaEnviar) && (
                     <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
                         <div className="text-xs text-gray-300 flex-1">
@@ -739,18 +714,22 @@ export default function ChatComponent({
                             )}
                             {rascunhoParaEnviar && (
                                 <div className="flex items-center gap-2">
+                                    {/* Se for imagem, mostra prévia. Se for anexo, mostra nome e miniatura se possível */}
                                     {rascunhoParaEnviar.tipo === "imagem" && (
                                         <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
                                     )}
-                                    {rascunhoParaEnviar.tipo === "audio" && <AudioPlayer src={rascunhoParaEnviar.conteudo} />}
-                                    {rascunhoParaEnviar.tipo === "anexo" &&
-                                        ((rascunhoParaEnviar.file && rascunhoParaEnviar.file.type && rascunhoParaEnviar.file.type.startsWith('image/')) ||
-                                        (rascunhoParaEnviar.file && rascunhoParaEnviar.file instanceof File && /\.(png|jpe?g|gif|webp)$/i.test(rascunhoParaEnviar.file.name))) ? (
-                                            <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
-                                        ) : (
-                                            <span className="italic opacity-80">📎 Anexo</span>
-                                        )
-                                    }
+                                    {rascunhoParaEnviar.tipo === "audio" && (
+                                        <AudioPlayer src={rascunhoParaEnviar.conteudo} />
+                                    )}
+                                    {rascunhoParaEnviar.tipo === "anexo" && rascunhoParaEnviar.file && (
+                                        <>
+                                            {rascunhoParaEnviar.file.type.startsWith('image/') ? (
+                                                <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
+                                            ) : (
+                                                <span className="italic opacity-80 flex items-center gap-1">📎 {rascunhoParaEnviar.file.name}</span>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -776,7 +755,7 @@ export default function ChatComponent({
                         )}
                     </div>
                 )}
-                <div className="flex items-end gap-2">
+                <div className="flex items-end gap-4">
                     <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
                         <Button
                             variant="ghost"

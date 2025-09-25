@@ -202,9 +202,10 @@ export default function Dashboard() {
   }
 
   const usuariosFiltrados = usuarios.filter((u) => {
-    const nomeCorresponde = u.nome
-      .toLowerCase()
-      .includes(termoBusca.toLowerCase());
+    const nomeCorresponde = (u.nome || "")
+            .toLowerCase()
+            .includes(termoBusca.toLowerCase());
+            
     const statusCorresponde =
       filtroStatus === "todos" || u.status === filtroStatus;
     return nomeCorresponde && statusCorresponde;

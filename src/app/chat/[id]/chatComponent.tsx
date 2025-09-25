@@ -9,6 +9,7 @@ import AudioPlayer from "@/components/AudioPlayer";
 import useLongPress from "@/hooks/useLongPress";
 import EmojiBoard from "@/components/EmojisCustom";
 import MessageActions from "@/components/MessageActions";
+import { toast } from 'sonner'; // Importa o toast da Sonner
 
 interface Mensagem {
     id: string;
@@ -56,6 +57,8 @@ const sanitizeFilename = (filename: string): string => {
     cleaned = cleaned.replace(/^-+|-+$/g, "");
     return cleaned;
 };
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 export default function ChatComponent({
     destinatarioId,
@@ -434,7 +437,7 @@ export default function ChatComponent({
         if (panStartRef.current) {
             const newPanOffset = {
                 x: e.clientX - panStartRef.current.x,
-                y: e.clientY - panStartRef.current.y,
+                y: e.clientY - panOffset.y,
             };
             setPanOffset(newPanOffset);
         }
@@ -507,6 +510,14 @@ export default function ChatComponent({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files && e.target.files.length > 0) {
             const file = e.target.files[0];
+
+            if (file.size > MAX_FILE_SIZE) {
+                toast.error("O arquivo é muito grande. O limite é de 50 MB.");
+                // Limpa o input para permitir que o mesmo arquivo seja selecionado novamente após a tentativa
+                e.target.value = ""; 
+                return;
+            }
+
             fileRef.current = file;
 
             if (file.type.startsWith("image/")) {
@@ -529,22 +540,37 @@ export default function ChatComponent({
         }
     };
 
-    // NOVO: Adicione esta função para lidar com o evento de 'paste'
     const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
         const items = e.clipboardData?.items;
         if (items) {
             for (const item of items) {
-                if (item.type.startsWith('image/')) {
-                    e.preventDefault(); // Impede a ação padrão de colar o texto
+                if (item.kind === 'file') {
                     const file = item.getAsFile();
                     if (file) {
+                        if (file.size > MAX_FILE_SIZE) {
+                             toast.error("O arquivo é muito grande. O limite é de 50 MB.");
+                            e.preventDefault(); // Impede a ação padrão de colar
+                            return;
+                        }
+
+                        e.preventDefault();
                         fileRef.current = file;
-                        setImagePreviewUrl(URL.createObjectURL(file));
-                        setRascunhoParaEnviar({
-                            tipo: "imagem",
-                            conteudo: `imagem-colada-${Date.now()}.png`,
-                            file: file,
-                        });
+
+                        if (file.type.startsWith('image/')) {
+                            setImagePreviewUrl(URL.createObjectURL(file));
+                            setRascunhoParaEnviar({
+                                tipo: "imagem",
+                                conteudo: file.name || `imagem-colada-${Date.now()}.png`,
+                                file: file,
+                            });
+                        } else {
+                            setImagePreviewUrl(null);
+                            setRascunhoParaEnviar({
+                                tipo: "anexo",
+                                conteudo: file.name || `arquivo-colado-${Date.now()}.${file.name.split('.').pop() || 'dat'}`,
+                                file: file,
+                            });
+                        }
                         setLegenda("");
                         return;
                     }

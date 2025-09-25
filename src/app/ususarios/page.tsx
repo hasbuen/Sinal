@@ -45,7 +45,7 @@ export default function PaginaUsuarios() {
     buscarUsuarios();
 
     const canal = supabase
-      .channel("tempo-real:perfis")
+      .channel("realtime:perfis")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "perfis" },

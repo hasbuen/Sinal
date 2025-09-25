@@ -1,14 +1,14 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile } from "lucide-react";
+import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
-import MessageActions from "@/components/MessageActions";
 import useLongPress from "@/hooks/useLongPress";
-import EmojiPicker, { Theme } from "emoji-picker-react";
+import EmojiBoard from "@/components/EmojisCustom";
+import MessageActions from "@/components/MessageActions";
 
 interface Mensagem {
     id: string;
@@ -49,6 +49,14 @@ interface Rascunho {
     file?: File | Blob;
 }
 
+const sanitizeFilename = (filename: string): string => {
+    let cleaned = filename.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    cleaned = cleaned.replace(/[^a-zA-Z0-9.]/g, "-");
+    cleaned = cleaned.replace(/--+/g, "-");
+    cleaned = cleaned.replace(/^-+|-+$/g, "");
+    return cleaned;
+};
+
 export default function ChatComponent({
     destinatarioId,
     onClose,
@@ -68,6 +76,25 @@ export default function ChatComponent({
     const [imagemAmpliada, setImagemAmpliada] = useState<string | null>(null);
     const [mensagemSelecionada, setMensagemSelecionada] = useState<string | null>(null);
     const [mensagemDestacada, setMensagemDestacada] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const fileRef = useRef<File | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
+
+    const lastTapRef = useRef<number | null>(null);
+    const lastTapXY = useRef<{ x: number, y: number } | null>(null);
+    const ignoreOutsideClick = useRef(false);
+
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            if (ignoreOutsideClick.current) return;
+            if (mensagemSelecionada && !document.elementFromPoint(e.clientX, e.clientY)?.closest('.menu-suspenso-chat')) {
+                setMensagemSelecionada(null);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [mensagemSelecionada]);
     const [zoomLevel, setZoomLevel] = useState(1);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const panStartRef = useRef<{ x: number; y: number } | null>(null);
@@ -76,11 +103,37 @@ export default function ChatComponent({
     const fimDasMensagens = useRef<HTMLDivElement>(null);
     const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
+    const emojiModalRef = useRef<HTMLDivElement>(null);
+    const dragStartY = useRef<number | null>(null);
+
+    useEffect(() => {
+        if (!mostrarModalEmojis) return;
+        function handleClickOutside(event: MouseEvent) {
+            if (emojiModalRef.current && !emojiModalRef.current.contains(event.target as Node)) {
+                setMostrarModalEmojis(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [mostrarModalEmojis]);
+
+    const handleDragStart = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
+        dragStartY.current = clientY;
+    }, []);
+
+    const handleDragEnd = useCallback((e: React.TouchEvent | React.MouseEvent) => {
+        if (dragStartY.current === null) return;
+        const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
+        if (clientY - dragStartY.current > 60) {
+            setMostrarModalEmojis(false);
+        }
+        dragStartY.current = null;
+    }, []);
     const [rascunhoParaEnviar, setRascunhoParaEnviar] = useState<Rascunho | null>(null);
     const [legenda, setLegenda] = useState("");
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Hook para obter o ID do usuário logado
     useEffect(() => {
         const fetchUser = async () => {
             const { data } = await supabase.auth.getUser();
@@ -89,7 +142,6 @@ export default function ChatComponent({
         fetchUser();
     }, []);
 
-    // Hook para carregar os dados do destinatário
     useEffect(() => {
         if (!destinatarioId) return;
         const carregarUsuario = async () => {
@@ -103,17 +155,14 @@ export default function ChatComponent({
         carregarUsuario();
     }, [destinatarioId]);
 
-    // Hook para sincronizar o estado das mensagens
     useEffect(() => {
         mensagensRef.current = mensagens;
     }, [mensagens]);
 
-    // Hook para rolar para o final das mensagens
     useEffect(() => {
         fimDasMensagens.current?.scrollIntoView({ behavior: "smooth" });
     }, [mensagens]);
 
-    // Hook para remover destaque da mensagem
     useEffect(() => {
         if (mensagemDestacada) {
             const timer = setTimeout(() => {
@@ -123,13 +172,9 @@ export default function ChatComponent({
         }
     }, [mensagemDestacada]);
 
-    // ----------------------------------------------------
-    // Lógica de tempo real para status
-    // ----------------------------------------------------
     useEffect(() => {
         if (!destinatarioId || !userId) return;
-        
-        // Remover canais antigos para evitar duplicação de listeners
+
         supabase.getChannels().forEach((ch: any) => {
             if (ch.topic && ch.topic.includes('status-chat-')) {
                 supabase.removeChannel(ch);
@@ -180,7 +225,7 @@ export default function ChatComponent({
             }, { onConflict: "usuario_id,destinatario_id" });
         }
     };
-    
+
     const removerStatus = async () => {
         if (!userId) return;
         await supabase.from("status_chat")
@@ -193,29 +238,19 @@ export default function ChatComponent({
         const novoTexto = e.target.value;
         setTexto(novoTexto);
 
-        // Se o usuário está digitando, atualiza o status
         if (novoTexto.length > 0) {
             atualizarStatus("digitando");
-            
-            // Limpa o timer anterior para evitar que o status seja removido enquanto o usuário ainda digita
             if (typingTimeoutRef.current) {
                 clearTimeout(typingTimeoutRef.current);
             }
-
-            // Define um novo timer para remover o status após 2 segundos de inatividade
             typingTimeoutRef.current = setTimeout(() => {
                 removerStatus();
             }, 2000);
-
         } else {
-            // Se a caixa de texto está vazia, remove o status imediatamente
             removerStatus();
         }
     };
 
-    // ----------------------------------------------------
-    // Lógica de mensagens
-    // ----------------------------------------------------
     const marcarMensagensComoLidas = async () => {
         if (!userId || !destinatarioId) return;
         await supabase
@@ -249,7 +284,7 @@ export default function ChatComponent({
                 (m.remetente === userId && m.destinatario === destinatarioId) ||
                 (m.remetente === destinatarioId && m.destinatario === userId)
         );
-        
+
         const novasMensagens = mensagensDoChat.filter(
             (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
         );
@@ -284,10 +319,6 @@ export default function ChatComponent({
         const intervalId = setInterval(fetchAndSyncMessages, 2000);
         return () => clearInterval(intervalId);
     }, [destinatarioId, userId]);
-    
-    // ----------------------------------------------------
-    // Funções de manipulação
-    // ----------------------------------------------------
 
     const enviarMensagem = async (
         tipo: "texto" | "imagem" | "audio" | "anexo" = "texto",
@@ -295,46 +326,62 @@ export default function ChatComponent({
         file?: File | Blob
     ) => {
         if (!destinatarioId || !userId) return;
+
+        setIsUploading(true);
         let conteudoParaSalvar = conteudo;
 
-        if (file) {
-            const filePath = `${tipo}s/${Date.now()}-${file instanceof File ? file.name : 'audio.webm'}`;
-            const { error } = await supabase.storage.from("uploads").upload(filePath, file);
-            if (error) {
-                console.error("Erro ao fazer upload:", error.message);
-                return;
-            }
-            const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
-            const url = data?.publicUrl;
-            if (url) {
-                conteudoParaSalvar = conteudo ? `${url}|SEPARATOR|${conteudo}` : url;
-            } else {
-                console.error("URL do arquivo não encontrada.");
-                return;
-            }
-        }
+        try {
+            if (file) {
+                const sanitizedFilename = sanitizeFilename(file instanceof File ? file.name : 'audio.webm');
+                const filePath = `${tipo}s/${Date.now()}-${sanitizedFilename}`;
 
-        if (editandoId) {
-            await supabase
-                .from("mensagens")
-                .update({ conteudo: conteudoParaSalvar || texto })
-                .eq("id", editandoId);
-            setEditandoId(null);
-        } else {
-            await supabase.from("mensagens").insert({
-                remetente: userId,
-                destinatario: destinatarioId,
-                conteudo: conteudoParaSalvar,
-                tipo: tipo,
-                resposta_id: resposta?.id || null,
-            });
+                const { error } = await supabase.storage.from("uploads").upload(filePath, file, {
+                    contentType: file instanceof File ? file.type : 'audio/webm'
+                });
+                if (error) {
+                    console.error("Erro ao fazer upload:", error.message);
+                    throw error;
+                }
+                const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
+                const url = data?.publicUrl;
+                if (url) {
+                    conteudoParaSalvar = conteudo ? `${url}|SEPARATOR|${conteudo}` : url;
+                } else {
+                    console.error("URL do arquivo não encontrada.");
+                    throw new Error("URL do arquivo não encontrada.");
+                }
+            }
+
+            if (editandoId) {
+                await supabase
+                    .from("mensagens")
+                    .update({ conteudo: conteudoParaSalvar || texto })
+                    .eq("id", editandoId);
+                setEditandoId(null);
+            } else {
+                await supabase.from("mensagens").insert({
+                    remetente: userId,
+                    destinatario: destinatarioId,
+                    conteudo: conteudoParaSalvar,
+                    tipo: tipo,
+                    resposta_id: resposta?.id || null,
+                });
+            }
+        } catch (error) {
+            console.error("Erro ao enviar mensagem:", error);
+        } finally {
+            setIsUploading(false);
+            setTexto("");
+            setResposta(null);
+            setRascunhoParaEnviar(null);
+            setLegenda("");
+            if (imagePreviewUrl) {
+                URL.revokeObjectURL(imagePreviewUrl);
+                setImagePreviewUrl(null);
+            }
+            fileRef.current = null;
+            removerStatus();
         }
-        setTexto("");
-        setResposta(null);
-        setRascunhoParaEnviar(null);
-        setLegenda("");
-        fetchAndSyncMessages();
-        removerStatus();
     };
 
     const toggleGravacao = async () => {
@@ -372,7 +419,6 @@ export default function ChatComponent({
         new Date(dataISO).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
     const handleWheel = (e: React.WheelEvent<HTMLImageElement>) => {
-        e.preventDefault();
         const newZoomLevel = Math.max(0.5, Math.min(3, zoomLevel + e.deltaY * -0.01));
         setZoomLevel(newZoomLevel);
     };
@@ -404,7 +450,7 @@ export default function ChatComponent({
         if (reacaoExistente) {
             await supabase.from("mensagens_reacoes").delete().eq("id", reacaoExistente.id);
         } else {
-            await supabase.from ( "mensagens_reacoes").insert({
+            await supabase.from("mensagens_reacoes").insert({
                 mensagem_id: mensagem.id,
                 remetente: userId,
                 emoji: emoji,
@@ -458,14 +504,52 @@ export default function ChatComponent({
         document.getElementById("anexo-input")?.click();
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, tipo: "imagem" | "anexo") => {
-        if (e.target.files && e.target.files[0]) {
-            setRascunhoParaEnviar({
-                tipo: tipo,
-                conteudo: URL.createObjectURL(e.target.files[0]),
-                file: e.target.files[0],
-            });
-            setLegenda("");
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files.length > 0) {
+            const file = e.target.files[0];
+            fileRef.current = file;
+
+            if (file.type.startsWith("image/")) {
+                setImagePreviewUrl(URL.createObjectURL(file));
+                setRascunhoParaEnviar({
+                    tipo: "imagem",
+                    conteudo: file.name,
+                    file: file,
+                });
+                setLegenda("");
+            } else {
+                setImagePreviewUrl(null);
+                setRascunhoParaEnviar({
+                    tipo: "anexo",
+                    conteudo: file.name,
+                    file: file,
+                });
+                setLegenda("");
+            }
+        }
+    };
+
+    // NOVO: Adicione esta função para lidar com o evento de 'paste'
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        const items = e.clipboardData?.items;
+        if (items) {
+            for (const item of items) {
+                if (item.type.startsWith('image/')) {
+                    e.preventDefault(); // Impede a ação padrão de colar o texto
+                    const file = item.getAsFile();
+                    if (file) {
+                        fileRef.current = file;
+                        setImagePreviewUrl(URL.createObjectURL(file));
+                        setRascunhoParaEnviar({
+                            tipo: "imagem",
+                            conteudo: `imagem-colada-${Date.now()}.png`,
+                            file: file,
+                        });
+                        setLegenda("");
+                        return;
+                    }
+                }
+            }
         }
     };
 
@@ -482,9 +566,14 @@ export default function ChatComponent({
         setLegenda("");
         setTexto("");
         setMostrarModalEmojis(false);
+        if (imagePreviewUrl) {
+            URL.revokeObjectURL(imagePreviewUrl);
+            setImagePreviewUrl(null);
+        }
+        fileRef.current = null;
         removerStatus();
     };
-    
+
     const onEmojiClick = (emojiData: any) => {
         const novoTexto = texto + emojiData.emoji;
         setTexto(novoTexto);
@@ -493,6 +582,9 @@ export default function ChatComponent({
 
     return (
         <div className="flex flex-col h-screen bg-[#0b1419]">
+            {isUploading && (
+                <div className="fixed top-0 left-0 w-full h-1 bg-green-500 z-50 animate-pulse" />
+            )}
             <div className="flex items-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10">
                 {onClose && (
                     <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden text-white hover:text-gray-300">
@@ -527,6 +619,9 @@ export default function ChatComponent({
                             }, {} as Record<string, typeof m.reacoes>);
                             const [conteudoDaMensagem, legendaDaMensagem] = m.conteudo?.split("|SEPARATOR|") || ["", ""];
 
+                            const nomeArquivo = conteudoDaMensagem.split('/').pop()?.split('?')[0];
+                            const extensao = nomeArquivo?.split('.').pop()?.toLowerCase();
+
                             return (
                                 <div
                                     key={m.id}
@@ -537,9 +632,30 @@ export default function ChatComponent({
                                     <div
                                         className={`max-w-[75%] px-3 pt-2 pb-5 text-sm whitespace-pre-wrap break-words relative
                                             ${souEu ? "rounded-l-2xl rounded-tr-2xl bg-[#005c4b] text-white self-end shadow-md" : "rounded-r-2xl rounded-tl-2xl bg-[#202c33] text-white self-start shadow-md"}`}
-                                        onMouseDown={() => setMensagemSelecionada(m.id)}
-                                        onTouchStart={() => setMensagemSelecionada(m.id)}
-                                        onMouseLeave={() => setMensagemSelecionada(null)}
+                                        onDoubleClick={() => setMensagemSelecionada(m.id)}
+                                        onTouchStart={(e) => {
+                                            e.stopPropagation();
+                                            const now = Date.now();
+                                            const touch = e.touches[0];
+                                            const x = touch.clientX;
+                                            const y = touch.clientY;
+                                            if (
+                                                lastTapRef.current &&
+                                                now - lastTapRef.current < 350 &&
+                                                lastTapXY.current &&
+                                                Math.abs(lastTapXY.current.x - x) < 30 &&
+                                                Math.abs(lastTapXY.current.y - y) < 30
+                                            ) {
+                                                setMensagemSelecionada(m.id);
+                                                ignoreOutsideClick.current = true;
+                                                setTimeout(() => { ignoreOutsideClick.current = false; }, 120);
+                                                lastTapRef.current = null;
+                                                lastTapXY.current = null;
+                                            } else {
+                                                lastTapRef.current = now;
+                                                lastTapXY.current = { x, y };
+                                            }
+                                        }}
                                     >
                                         {m.resposta && (
                                             <div
@@ -591,9 +707,24 @@ export default function ChatComponent({
                                             </>
                                         ) : tipo === "anexo" ? (
                                             <>
-                                                <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
-                                                    📎 Anexo: {conteudoDaMensagem.split('/').pop()}
-                                                </a>
+                                                {['pdf', 'doc', 'docx', 'xls', 'xlsx'].includes(extensao || '') ? (
+                                                    <a
+                                                        href={conteudoDaMensagem}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex items-center justify-center gap-2 p-2 rounded-md bg-[#00a884] text-white hover:bg-[#008f72] transition-colors duration-200"
+                                                        download
+                                                    >
+                                                        {extensao === 'pdf' && <FileText className="h-4 w-4" />}
+                                                        {['doc', 'docx'].includes(extensao || '') && <FileText className="h-4 w-4" />}
+                                                        {['xls', 'xlsx'].includes(extensao || '') && <FileSpreadsheet className="h-4 w-4" />}
+                                                        <span>BAIXAR {extensao?.toUpperCase()}</span>
+                                                    </a>
+                                                ) : (
+                                                    <a href={conteudoDaMensagem} target="_blank" rel="noopener noreferrer" className="text-white underline">
+                                                        📎 Anexo: {nomeArquivo}
+                                                    </a>
+                                                )}
                                                 {legendaDaMensagem && (
                                                     <span className="block mt-2 text-xs opacity-90">{legendaDaMensagem}</span>
                                                 )}
@@ -615,8 +746,7 @@ export default function ChatComponent({
                                         <span className="absolute bottom-1 right-2 text-[10px] opacity-70">{formatarHora(m.criado_em)}</span>
                                         {mensagemSelecionada === m.id && (
                                             <div
-                                                className={`absolute top-1 z-10 ${souEu ? "right-[100%] pr-2" : "left-[100%] pl-2"}`}
-                                                onMouseLeave={() => setMensagemSelecionada(null)}
+                                                className={`absolute top-1 z-30 ${souEu ? "right-[100%] pr-2" : "left-[100%] pl-2"}`}
                                             >
                                                 <MessageActions
                                                     souEu={souEu}
@@ -678,23 +808,25 @@ export default function ChatComponent({
             )}
             <div className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? 'transform-none' : 'transform translate-y-full'}`}>
                 {mostrarModalEmojis && (
-                    <div className="w-full bg-[#1f2937] rounded-lg p-2 flex flex-col">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-white text-lg font-semibold">Emojis</span>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setMostrarModalEmojis(false)}
-                                className="text-gray-400 hover:text-white"
-                            >
-                                <X className="w-5 h-5" />
-                            </Button>
-                        </div>
-                        <EmojiPicker
-                            theme={Theme.DARK}
-                            onEmojiClick={onEmojiClick}
-                            width="100%"
-                            height={300}
+                    <div
+                        ref={emojiModalRef}
+                        className="mx-auto w-full max-w-md bg-[#1f2937] rounded-lg p-6 flex flex-col touch-none select-none"
+                        onMouseDown={handleDragStart}
+                        onMouseUp={handleDragEnd}
+                        onTouchStart={handleDragStart}
+                        onTouchEnd={handleDragEnd}
+                    >
+                        <EmojiBoard
+                            onEmojiClick={(emoji) => {
+                                if (emoji) {
+                                    if (rascunhoParaEnviar) {
+                                        setLegenda((prev) => prev + emoji);
+                                    } else {
+                                        setTexto((prev) => prev + emoji);
+                                    }
+                                }
+                                setMostrarModalEmojis(false);
+                            }}
                         />
                     </div>
                 )}
@@ -714,21 +846,12 @@ export default function ChatComponent({
                             )}
                             {rascunhoParaEnviar && (
                                 <div className="flex items-center gap-2">
-                                    {/* Se for imagem, mostra prévia. Se for anexo, mostra nome e miniatura se possível */}
-                                    {rascunhoParaEnviar.tipo === "imagem" && (
-                                        <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
-                                    )}
-                                    {rascunhoParaEnviar.tipo === "audio" && (
-                                        <AudioPlayer src={rascunhoParaEnviar.conteudo} />
-                                    )}
-                                    {rascunhoParaEnviar.tipo === "anexo" && rascunhoParaEnviar.file && (
-                                        <>
-                                            {rascunhoParaEnviar.file.type.startsWith('image/') ? (
-                                                <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
-                                            ) : (
-                                                <span className="italic opacity-80 flex items-center gap-1">📎 {rascunhoParaEnviar.file.name}</span>
-                                            )}
-                                        </>
+                                    {rascunhoParaEnviar.tipo === "imagem" && <img src={imagePreviewUrl || ''} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />}
+                                    {rascunhoParaEnviar.tipo === "audio" && <AudioPlayer src={rascunhoParaEnviar.conteudo} />}
+                                    {rascunhoParaEnviar.tipo === "anexo" && (
+                                        <span className="italic opacity-80 flex items-center gap-2">
+                                            <Paperclip className="h-4 w-4" /> {rascunhoParaEnviar.conteudo}
+                                        </span>
                                     )}
                                 </div>
                             )}
@@ -766,6 +889,7 @@ export default function ChatComponent({
                             <Smile className="w-6 h-6" />
                         </Button>
                         <Input
+                            ref={inputRef}
                             type="text"
                             value={rascunhoParaEnviar ? legenda : texto}
                             onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
@@ -779,6 +903,7 @@ export default function ChatComponent({
                                     }
                                 }
                             }}
+                            onPaste={handlePaste}
                             placeholder={rascunhoParaEnviar ? "Adicione uma legenda..." : "Digite uma mensagem"}
                             className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
                             style={{ paddingTop: '8px', paddingBottom: '8px' }}
@@ -796,7 +921,7 @@ export default function ChatComponent({
                                         id="anexo-input"
                                         type="file"
                                         className="hidden"
-                                        onChange={(e) => handleFileChange(e, "anexo")}
+                                        onChange={handleFileChange}
                                     />
                                 </Button>
                                 <Button
@@ -812,7 +937,7 @@ export default function ChatComponent({
                                         accept="image/*"
                                         capture="environment"
                                         className="hidden"
-                                        onChange={(e) => handleFileChange(e, "imagem")}
+                                        onChange={handleFileChange}
                                     />
                                 </Button>
                             </>

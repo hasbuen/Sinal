@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Smile, MoreHorizontal, Reply, Edit2, Trash2 } from "lucide-react";
-import EmojiPicker, { Theme } from "emoji-picker-react";
+import EmojiBoard from "@/components/EmojisCustom";
 
 const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
 
@@ -26,6 +26,8 @@ export default function MessageActions({
   const [mostrarRapidos, setMostrarRapidos] = useState(false);
   const [mostrarMenu, setMostrarMenu] = useState(false);
   const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
+  // Proteção para evitar fechar imediatamente após abrir
+  const ignoreOutsideClick = useRef(false);
 
   const rapidosTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -63,17 +65,46 @@ export default function MessageActions({
     return () => { document.body.style.overflow = ""; };
   }, [mostrarModalEmojis]);
 
+  // Fecha menus ao clicar fora
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent | TouchEvent) {
+      if (ignoreOutsideClick.current) return;
+      const target = e.target as HTMLElement;
+      if (
+        !target.closest('.menu-suspenso-chat') &&
+        !target.closest('.menu-rapidos-chat') &&
+        !target.closest('.menu-opcoes-chat') &&
+        !target.closest('.menu-modal-emojis-chat')
+      ) {
+        setMostrarRapidos(false);
+        setMostrarMenu(false);
+        setMostrarModalEmojis(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside, true);
+    document.addEventListener('touchstart', handleClickOutside, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside, true);
+      document.removeEventListener('touchstart', handleClickOutside, true);
+    };
+  }, []);
+
   return (
-    <div className="flex items-center gap-2 bg-[#1f2937] px-2 py-1 rounded-xl shadow-md relative">
+  <div className="flex items-center gap-2 bg-[#1f2937] px-2 py-1 rounded-xl shadow-md relative menu-suspenso-chat">
       {/* Container para emojis rápidos */}
       <div
-        className="relative"
+        className="relative menu-rapidos-chat"
         onMouseEnter={handleRapidosMouseEnter}
         onMouseLeave={handleRapidosMouseLeave}
       >
         <button
           className="p-1 hover:bg-gray-600 rounded-full transition"
-          onClick={() => setMostrarRapidos((prev) => !prev)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMostrarRapidos((prev) => !prev);
+            ignoreOutsideClick.current = true;
+            setTimeout(() => { ignoreOutsideClick.current = false; }, 120);
+          }}
         >
           <Smile className="w-4 h-4 text-white" />
         </button>
@@ -82,14 +113,15 @@ export default function MessageActions({
             className={`absolute z-20 flex gap-1 p-1 rounded-md shadow-lg bg-gray-800
               max-w-[240px] max-h-[50px] overflow-hidden
               ${souEu ? "right-0" : "left-0"}
-              top-[-50px]`}
+              top-[-50px] menu-rapidos-chat`}
           >
             {emojisRapidos.map((emoji) => (
               <button
                 key={emoji}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   onReact(emoji);
-                  setMostrarRapidos(false);
+                  // Não fecha automaticamente
                 }}
                 className="text-lg hover:scale-125 transition"
               >
@@ -102,23 +134,31 @@ export default function MessageActions({
 
       {/* Container para o menu de opções */}
       <div
-        className="relative"
+        className="relative menu-opcoes-chat"
         onMouseEnter={handleMenuMouseEnter}
         onMouseLeave={handleMenuMouseLeave}
       >
         <button
           className="p-1 hover:bg-gray-600 rounded-full transition"
-          onClick={() => setMostrarMenu((prev) => !prev)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setMostrarMenu((prev) => !prev);
+            ignoreOutsideClick.current = true;
+            setTimeout(() => { ignoreOutsideClick.current = false; }, 120);
+          }}
         >
           <MoreHorizontal className="w-4 h-4 text-white" />
         </button>
 
         {mostrarMenu && (
-          <div className="absolute bottom-full right-0 mb-2 flex flex-col bg-[#111827] p-2 rounded-2xl shadow-lg z-50 min-w-[140px] text-white">
+          <div className="absolute bottom-full right-0 mb-2 flex flex-col bg-[#111827] p-2 rounded-2xl shadow-lg z-50 min-w-[140px] text-white menu-opcoes-chat">
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 onReply(mensagem);
                 setMostrarMenu(false);
+                setMostrarRapidos(false);
+                setMostrarModalEmojis(false);
               }}
               className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
             >
@@ -128,18 +168,24 @@ export default function MessageActions({
             {souEu && (
               <>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onEdit();
                     setMostrarMenu(false);
+                    setMostrarRapidos(false);
+                    setMostrarModalEmojis(false);
                   }}
                   className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
                 >
                   <Edit2 className="w-4 h-4 text-white" /> Editar
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onDelete();
                     setMostrarMenu(false);
+                    setMostrarRapidos(false);
+                    setMostrarModalEmojis(false);
                   }}
                   className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
                 >
@@ -149,9 +195,11 @@ export default function MessageActions({
             )}
 
             <button
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 setMostrarModalEmojis(true);
                 setMostrarMenu(false);
+                setMostrarRapidos(false);
               }}
               className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
             >
@@ -163,14 +211,15 @@ export default function MessageActions({
 
       {/* Picker de Emojis */}
       {mostrarModalEmojis && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="fixed inset-0 z-50 flex items-center justify-center menu-modal-emojis-chat">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMostrarModalEmojis(false)} />
           <div className="relative p-4 bg-[#0b1220] rounded-xl shadow-lg max-w-[90vw] max-h-[80vh] overflow-auto">
-            <EmojiPicker
-              theme={Theme.DARK}
-              onEmojiClick={(emojiData: any) => {
-                onReact(emojiData.emoji);
+            <EmojiBoard
+              onEmojiClick={(emoji) => {
+                onReact(emoji);
                 setMostrarModalEmojis(false);
+                setMostrarMenu(false);
+                setMostrarRapidos(false);
               }}
             />
           </div>

@@ -221,6 +221,7 @@ export default function MessageActions({
                 setMostrarMenu(false);
                 setMostrarRapidos(false);
               }}
+              onClose={() => setMostrarModalEmojis(false)} 
             />
           </div>
         </div>

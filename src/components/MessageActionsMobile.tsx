@@ -9,8 +9,11 @@ interface MessageActionsMobileProps {
   onEdit: () => void;
   onDelete: () => void;
   onClose: () => void;
-  onOpenEmojiPicker: () => void; 
+  onOpenEmojiPicker: () => void;
+  onReact?: (emoji: string) => void;
 }
+
+const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
 
 export default function MessageActionsMobile({
   souEu,
@@ -19,6 +22,7 @@ export default function MessageActionsMobile({
   onDelete,
   onClose,
   onOpenEmojiPicker,
+  onReact,
 }: MessageActionsMobileProps) {
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center">
@@ -33,6 +37,21 @@ export default function MessageActionsMobile({
         <h2 className="text-lg font-semibold text-white mb-4 text-center">
           Opções
         </h2>
+
+        <div className="flex justify-center gap-3 mb-4">
+          {emojisRapidos.map((emoji) => (
+            <button
+              key={emoji}
+              onClick={() => {
+                onReact?.(emoji);
+                onClose();
+              }}
+              className="text-2xl hover:scale-125 transition-transform"
+            >
+              {emoji}
+            </button>
+          ))}
+        </div>
 
         <div className="flex flex-col gap-2 text-white">
           <button
@@ -69,10 +88,13 @@ export default function MessageActionsMobile({
           )}
 
           <button
-            onClick={onOpenEmojiPicker}
+            onClick={() => {
+              onOpenEmojiPicker();
+              onClose();
+            }}
             className="w-full text-left p-2 hover:bg-gray-600 rounded flex items-center gap-2"
           >
-            <Smile className="w-5 h-5 text-white" /> Emojis
+            <Smile className="w-5 h-5 text-white" /> Mais Emojis
           </button>
         </div>
       </div>

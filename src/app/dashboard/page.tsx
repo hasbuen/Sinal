@@ -205,7 +205,6 @@ export default function Dashboard() {
     const nomeCorresponde = (u.nome || "")
             .toLowerCase()
             .includes(termoBusca.toLowerCase());
-            
     const statusCorresponde =
       filtroStatus === "todos" || u.status === filtroStatus;
     return nomeCorresponde && statusCorresponde;

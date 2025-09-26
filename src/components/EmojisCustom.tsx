@@ -348,25 +348,37 @@ interface EmojiItem {
 
 interface EmojiBoardProps {
   onEmojiClick: (emoji: string) => void;
+  onClose: () => void; // ✅ adicionamos aqui
 }
 
-const EmojiBoard: React.FC<EmojiBoardProps> = ({ onEmojiClick }) => {
-
+const EmojiBoard: React.FC<EmojiBoardProps> = ({ onEmojiClick, onClose }) => {
   const [categoria, setCategoria] = useState(EMOJI_CATEGORIES[0].name);
   const [busca, setBusca] = useState("");
 
-  // Busca por nome ou emoji
-  const emojisFiltrados = EMOJI_CATEGORIES.find(cat => cat.name === categoria)?.emojis.filter(e =>
-    e.label.toLowerCase().includes(busca.toLowerCase()) || e.emoji.includes(busca)
-  ) || [];
+  const emojisFiltrados =
+    EMOJI_CATEGORIES.find((cat) => cat.name === categoria)?.emojis.filter(
+      (e) =>
+        e.label.toLowerCase().includes(busca.toLowerCase()) ||
+        e.emoji.includes(busca)
+    ) || [];
 
   return (
-  <div className="bg-[#1f2937] rounded-lg p-2 w-full flex flex-col">
-      <div className="flex gap-2 mb-2">
-        {EMOJI_CATEGORIES.map(cat => (
+    <div className="bg-[#1f2937] rounded-lg p-2 w-full flex flex-col relative">
+      {/* Botão Fechar */}
+      <button
+        className="absolute top-2 right-2 text-white"
+        onClick={onClose}
+      >
+        ❌
+      </button>
+
+      <div className="flex gap-2 mb-2 overflow-x-auto">
+        {EMOJI_CATEGORIES.map((cat) => (
           <button
             key={cat.name}
-            className={`text-xl p-1 rounded focus:outline-none ${categoria === cat.name ? 'bg-[#b9fbc0]' : ''}`}
+            className={`text-xl p-1 rounded focus:outline-none ${
+              categoria === cat.name ? "bg-[#b9fbc0]" : ""
+            }`}
             onClick={() => setCategoria(cat.name)}
             type="button"
             title={cat.name}
@@ -375,30 +387,35 @@ const EmojiBoard: React.FC<EmojiBoardProps> = ({ onEmojiClick }) => {
           </button>
         ))}
       </div>
+
       <input
         type="text"
         placeholder="Buscar emoji..."
         value={busca}
-        onChange={e => setBusca(e.target.value)}
+        onChange={(e) => setBusca(e.target.value)}
         className="w-full mb-2 p-1 rounded bg-[#23272f] text-white placeholder:text-gray-400 focus:outline-none"
       />
-  <div className="flex gap-2 overflow-x-auto pb-2">
-    <div className="flex flex-row">
-        {emojisFiltrados.map((item, idx) => (
-          <button
-            key={item.emoji + idx}
-            className="text-2xl rounded p-1 focus:outline-none transition-colors hover:bg-[#b9fbc0] min-w-[40px] min-h-[40px]"
-            onClick={() => onEmojiClick(item.emoji)}
-            type="button"
-            title={item.label}
-          >
-            {item.emoji}
-          </button>
-        ))}
-        {emojisFiltrados.length === 0 && (
-          <span className="text-center text-gray-400">Nenhum emoji encontrado</span>
-        )}
-    </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        <div className="flex flex-row flex-wrap gap-2">
+          {emojisFiltrados.length > 0 ? (
+            emojisFiltrados.map((item, idx) => (
+              <button
+                key={item.emoji + idx}
+                className="text-2xl rounded p-1 focus:outline-none transition-colors hover:bg-[#b9fbc0] min-w-[40px] min-h-[40px]"
+                onClick={() => onEmojiClick(item.emoji)}
+                type="button"
+                title={item.label}
+              >
+                {item.emoji}
+              </button>
+            ))
+          ) : (
+            <span className="text-center text-gray-400 w-full">
+              Nenhum emoji encontrado
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );

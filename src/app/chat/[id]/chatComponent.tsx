@@ -1,14 +1,12 @@
 "use client";
 
 import { supabase } from "@/lib/supabase";
-import { useEffect, useState, useRef, useCallback, ChangeEvent, KeyboardEvent } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
-import useLongPress from "@/hooks/useLongPress";
 import EmojiBoard from "@/components/EmojisCustom";
-import MessageActions from "@/components/MessageActions";
 import Conversa from "./conversa/Conversa";
 import Compartilhamento from "./compartilhamento/Compartilhamento";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -38,11 +36,6 @@ interface Usuario {
     nome: string;
     foto_url: string | null;
     status: string;
-}
-
-interface MensagensAgrupadas {
-    data: string;
-    mensagens: Mensagem[];
 }
 
 interface Rascunho {
@@ -81,55 +74,22 @@ export default function ChatComponent({
     const [mensagemDestacada, setMensagemDestacada] = useState<string | null>(null);
     const [abaAtiva, setAbaAtiva] = useState("chat");
 
-    const lastTapRef = useRef<number | null>(null);
-    const lastTapXY = useRef<{ x: number, y: number } | null>(null);
-    const ignoreOutsideClick = useRef(false);
-    useEffect(() => {
-        function handleClickOutside(e: MouseEvent) {
-            if (ignoreOutsideClick.current) return;
-            if (mensagemSelecionada && !document.elementFromPoint(e.clientX, e.clientY)?.closest('.menu-suspenso-chat')) {
-                setMensagemSelecionada(null);
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [mensagemSelecionada]);
+    const fimDasMensagens = useRef<HTMLDivElement>(null);
+    const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+    const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
+    const emojiModalRef = useRef<HTMLDivElement>(null);
+    const dragStartY = useRef<number | null>(null);
+    const [rascunhoParaEnviar, setRascunhoParaEnviar] = useState<Rascunho | null>(null);
+    const [legenda, setLegenda] = useState("");
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [arquivos, setArquivos] = useState<Mensagem[]>([]);
+
     const [zoomLevel, setZoomLevel] = useState(1);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const panStartRef = useRef<{ x: number; y: number } | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
-    const fimDasMensagens = useRef<HTMLDivElement>(null);
-    const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-    const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
-    const emojiModalRef = useRef<HTMLDivElement>(null);
-    const dragStartY = useRef<number | null>(null);
-    useEffect(() => {
-        if (!mostrarModalEmojis) return;
-        function handleClickOutside(event: MouseEvent) {
-            if (emojiModalRef.current && !emojiModalRef.current.contains(event.target as Node)) {
-                setMostrarModalEmojis(false);
-            }
-        }
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [mostrarModalEmojis]);
-    const handleDragStart = useCallback((e: React.TouchEvent | React.MouseEvent) => {
-        const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
-        dragStartY.current = clientY;
-    }, []);
-    const handleDragEnd = useCallback((e: React.TouchEvent | React.MouseEvent) => {
-        if (dragStartY.current === null) return;
-        const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
-        if (clientY - dragStartY.current > 60) {
-            setMostrarModalEmojis(false);
-        }
-        dragStartY.current = null;
-    }, []);
-    const [rascunhoParaEnviar, setRascunhoParaEnviar] = useState<Rascunho | null>(null);
-    const [legenda, setLegenda] = useState("");
-    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const [arquivos, setArquivos] = useState<Mensagem[]>([]);
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -157,10 +117,6 @@ export default function ChatComponent({
     }, [mensagens]);
 
     useEffect(() => {
-        fimDasMensagens.current?.scrollIntoView({ behavior: "smooth" });
-    }, [mensagens]);
-
-    useEffect(() => {
         if (mensagemDestacada) {
             const timer = setTimeout(() => {
                 setMensagemDestacada(null);
@@ -172,31 +128,35 @@ export default function ChatComponent({
     useEffect(() => {
         if (!destinatarioId || !userId) return;
         supabase.getChannels().forEach((ch: any) => {
-            if (ch.topic && ch.topic.includes('status-chat-')) {
+            if (ch.topic && ch.topic.includes("status-chat-")) {
                 supabase.removeChannel(ch);
             }
         });
         const canal = supabase
-            .channel('status-chat-' + destinatarioId + '-' + userId)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
-                table: 'status_chat',
-                filter: `usuario_id=eq.${destinatarioId}&destinatario_id=eq.${userId}`
-            }, (payload: any) => {
-                if (payload.eventType === 'DELETE') {
-                    setStatusOutroUsuario(null);
-                } else if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                    setStatusOutroUsuario(payload?.new?.status || null);
+            .channel("status-chat-" + destinatarioId + "-" + userId)
+            .on(
+                "postgres_changes",
+                {
+                    event: "*",
+                    schema: "public",
+                    table: "status_chat",
+                    filter: `usuario_id=eq.${destinatarioId}&destinatario_id=eq.${userId}`,
+                },
+                (payload: any) => {
+                    if (payload.eventType === "DELETE") {
+                        setStatusOutroUsuario(null);
+                    } else if (payload.eventType === "INSERT" || payload.eventType === "UPDATE") {
+                        setStatusOutroUsuario(payload?.new?.status || null);
+                    }
                 }
-            })
+            )
             .subscribe();
         const fetchStatusInicial = async () => {
             const { data } = await supabase
-                .from('status_chat')
-                .select('status')
-                .eq('usuario_id', destinatarioId)
-                .eq('destinatario_id', userId)
+                .from("status_chat")
+                .select("status")
+                .eq("usuario_id", destinatarioId)
+                .eq("destinatario_id", userId)
                 .single();
             setStatusOutroUsuario(data?.status || null);
         };
@@ -209,18 +169,22 @@ export default function ChatComponent({
     const atualizarStatus = async (status: string | null) => {
         if (!userId) return;
         if (status) {
-            await supabase.from("status_chat").upsert({
-                usuario_id: userId,
-                destinatario_id: destinatarioId,
-                status: status,
-                atualizado_em: new Date().toISOString(),
-            }, { onConflict: "usuario_id,destinatario_id" });
+            await supabase.from("status_chat").upsert(
+                {
+                    usuario_id: userId,
+                    destinatario_id: destinatarioId,
+                    status: status,
+                    atualizado_em: new Date().toISOString(),
+                },
+                { onConflict: "usuario_id,destinatario_id" }
+            );
         }
     };
 
     const removerStatus = async () => {
         if (!userId) return;
-        await supabase.from("status_chat")
+        await supabase
+            .from("status_chat")
             .delete()
             .eq("usuario_id", userId)
             .eq("destinatario_id", destinatarioId);
@@ -277,7 +241,7 @@ export default function ChatComponent({
         );
 
         setMensagens(mensagensDoChat);
-        setArquivos(mensagensDoChat.filter(m => m.tipo !== 'texto'));
+        setArquivos(mensagensDoChat.filter((m) => m.tipo !== "texto"));
 
         const novasMensagens = mensagensDoChat.filter(
             (m) => !mensagensRef.current.some((existing) => existing.id === m.id)
@@ -295,31 +259,34 @@ export default function ChatComponent({
         return () => clearInterval(intervalId);
     }, [destinatarioId, userId]);
 
-    const handlePaste = useCallback((e: ClipboardEvent) => {
-        if (abaAtiva !== "chat") return;
-        const items = e.clipboardData?.items;
-        if (!items) return;
+    const handlePaste = useCallback(
+        (e: ClipboardEvent) => {
+            if (abaAtiva !== "chat") return;
+            const items = e.clipboardData?.items;
+            if (!items) return;
 
-        for (const item of items) {
-            if (item.kind === 'file') {
-                const file = item.getAsFile();
-                if (file) {
-                    const isImage = file.type.startsWith('image/');
-                    setRascunhoParaEnviar({
-                        tipo: isImage ? "imagem" : "anexo",
-                        conteudo: URL.createObjectURL(file),
-                        file: file,
-                        legenda: ""
-                    });
+            for (const item of items) {
+                if (item.kind === "file") {
+                    const file = item.getAsFile();
+                    if (file) {
+                        const isImage = file.type.startsWith("image/");
+                        setRascunhoParaEnviar({
+                            tipo: isImage ? "imagem" : "anexo",
+                            conteudo: URL.createObjectURL(file),
+                            file: file,
+                            legenda: "",
+                        });
+                    }
                 }
             }
-        }
-    }, [abaAtiva]);
+        },
+        [abaAtiva]
+    );
 
     useEffect(() => {
-        document.addEventListener('paste', handlePaste);
+        document.addEventListener("paste", handlePaste);
         return () => {
-            document.removeEventListener('paste', handlePaste);
+            document.removeEventListener("paste", handlePaste);
         };
     }, [handlePaste]);
 
@@ -332,11 +299,13 @@ export default function ChatComponent({
         let conteudoParaSalvar = conteudo;
 
         if (file) {
-            const sanitizedFilename = sanitizeFilename(file instanceof File ? file.name : 'audio.webm');
+            const sanitizedFilename = sanitizeFilename(
+                file instanceof File ? file.name : "audio.webm"
+            );
             const filePath = `${tipo}s/${Date.now()}-${sanitizedFilename}`;
 
             const { error } = await supabase.storage.from("uploads").upload(filePath, file, {
-                contentType: file instanceof File ? file.type : 'audio/webm'
+                contentType: file instanceof File ? file.type : "audio/webm",
             });
             if (error) {
                 console.error("Erro ao fazer upload:", error.message);
@@ -345,7 +314,9 @@ export default function ChatComponent({
             const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
             const url = data?.publicUrl;
             if (url) {
-                conteudoParaSalvar = conteudo ? `${url}|SEPARATOR|${conteudo}` : url;
+                conteudoParaSalvar = conteudo
+                    ? `${url}|SEPARATOR|${conteudo}`
+                    : url;
             } else {
                 console.error("URL do arquivo não encontrada.");
                 return;
@@ -391,7 +362,7 @@ export default function ChatComponent({
                         conteudo: URL.createObjectURL(audioBlob),
                         file: audioBlob,
                     });
-                    stream.getTracks().forEach(track => track.stop());
+                    stream.getTracks().forEach((track) => track.stop());
                 };
                 mediaRecorderRef.current.start();
                 setGravando(true);
@@ -417,7 +388,7 @@ export default function ChatComponent({
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, tipo: "imagem" | "anexo") => {
         if (e.target.files && e.target.files[0]) {
             const file = e.target.files[0];
-            const isImage = file.type.startsWith('image/');
+            const isImage = file.type.startsWith("image/");
             setRascunhoParaEnviar({
                 tipo: isImage ? "imagem" : "anexo",
                 conteudo: URL.createObjectURL(file),
@@ -443,40 +414,62 @@ export default function ChatComponent({
         removerStatus();
     };
 
-    const onEmojiClick = (emojiData: any) => {
-        const novoTexto = texto + emojiData.emoji;
-        setTexto(novoTexto);
-        atualizarStatus("digitando");
-    };
-
     return (
         <div className="flex flex-col h-screen bg-[#0b1419]">
-            {/* Cabeçalho fixo no topo */}
+            {/* Cabeçalho */}
             <div className="flex items-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10 sticky top-0">
                 {onClose && (
-                    <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden text-white hover:text-gray-300">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onClose}
+                        className="md:hidden text-white hover:text-gray-300"
+                    >
                         <ArrowLeft />
                     </Button>
                 )}
-                {destinatario?.foto_url && <img src={destinatario.foto_url} alt={destinatario.nome} className="w-10 h-10 rounded-full object-cover" />}
+                {destinatario?.foto_url && (
+                    <img
+                        src={destinatario.foto_url}
+                        alt={destinatario.nome}
+                        className="w-10 h-10 rounded-full object-cover"
+                    />
+                )}
                 <div>
                     <h2 className="text-lg font-semibold">{destinatario?.nome}</h2>
                     <p className="text-xs opacity-70">
-                        {statusOutroUsuario === 'digitando' && <span className="text-green-400 animate-pulse">Digitando...</span>}
-                        {statusOutroUsuario === 'gravando' && <span className="text-green-400 animate-pulse flex items-center gap-1"><Mic className="inline w-4 h-4 text-green-400" /> Gravando áudio</span>}
+                        {statusOutroUsuario === "digitando" && (
+                            <span className="text-green-400 animate-pulse">
+                                Digitando...
+                            </span>
+                        )}
+                        {statusOutroUsuario === "gravando" && (
+                            <span className="text-green-400 animate-pulse flex items-center gap-1">
+                                <Mic className="inline w-4 h-4 text-green-400" /> Gravando
+                                áudio
+                            </span>
+                        )}
                         {!statusOutroUsuario && destinatario?.status}
                     </p>
                 </div>
             </div>
 
-            {/* Tabs e conteúdo que rolam */}
-            <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="flex-1 flex flex-col overflow-hidden">
-                <TabsList className="grid w-full grid-cols-2 bg-[#202c33] text-white rounded-none border-b border-gray-600">
-                    <TabsTrigger value="chat" className="data-[state=active]:bg-[#1f3724]">Conversa</TabsTrigger>
-                    <TabsTrigger value="arquivos" className="data-[state=active]:bg-[#1f2937]">Arquivos</TabsTrigger>
+            {/* Tabs */}
+            <Tabs
+                value={abaAtiva}
+                onValueChange={setAbaAtiva}
+                className="flex-1 flex flex-col overflow-hidden"
+            >
+                <TabsList className="grid w-full grid-cols-2 bg-[#43546b] text-white rounded-none border-b border-gray-600">
+                    <TabsTrigger value="chat">Conversa</TabsTrigger>
+                    <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
                 </TabsList>
-                <TabsContent value="chat" className="flex-1 flex flex-col overflow-hidden">
+                <TabsContent
+                    value="chat"
+                    className="flex-1 flex flex-col overflow-hidden"
+                >
                     <Conversa
+                        key={destinatarioId}
                         mensagens={mensagens}
                         userId={userId}
                         setResposta={setResposta}
@@ -489,11 +482,15 @@ export default function ChatComponent({
                         mensagemSelecionada={mensagemSelecionada}
                         mensagemDestacada={mensagemDestacada}
                         setMensagemDestacada={setMensagemDestacada}
+                        setMostrarModalEmojis={setMostrarModalEmojis}
                         fimDasMensagens={fimDasMensagens}
                         mensagemRefs={mensagemRefs}
                     />
                 </TabsContent>
-                <TabsContent value="arquivos" className="flex-1 flex flex-col overflow-hidden">
+                <TabsContent
+                    value="arquivos"
+                    className="flex-1 flex flex-col overflow-hidden"
+                >
                     <Compartilhamento
                         arquivos={arquivos}
                         setImagemAmpliada={setImagemAmpliada}
@@ -503,61 +500,36 @@ export default function ChatComponent({
                 </TabsContent>
             </Tabs>
 
-            {imagemAmpliada && (
-                <div
-                    className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-[100] p-8 touch-none"
-                    onClick={() => setImagemAmpliada(null)}
-                    onMouseUp={() => panStartRef.current = null}
-                    onMouseMove={(e) => {
-                        if (panStartRef.current) {
-                            const newPanOffset = {
-                                x: e.clientX - panStartRef.current.x,
-                                y: e.clientY - panStartRef.current.y,
-                            };
-                            setPanOffset(newPanOffset);
-                        }
-                    }}
-                >
-                    <img
-                        src={imagemAmpliada}
-                        alt="Imagem ampliada"
-                        className="cursor-move max-w-full max-h-full"
-                        style={{
-                            transform: `scale(${zoomLevel}) translate(${panOffset.x}px, ${panOffset.y}px)`,
-                            transition: panStartRef.current ? 'none' : 'transform 0.1s ease-out'
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        onWheel={(e) => {
-                            const newZoomLevel = Math.max(0.5, Math.min(3, zoomLevel + e.deltaY * -0.01));
-                            setZoomLevel(newZoomLevel);
-                        }}
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            if (zoomLevel > 1) {
-                                panStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
-                            }
-                        }}
-                    />
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="absolute top-4 right-4 text-white hover:bg-white/20"
-                        onClick={() => setImagemAmpliada(null)}
-                    >
-                        <X className="w-6 h-6" />
-                    </Button>
-                </div>
-            )}
-
-            <div className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? 'transform-none' : 'transform translate-y-full'}`}>
+            {/* Modal de Emojis */}
+            <div
+                className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${
+                    mostrarModalEmojis ? "transform-none" : "transform translate-y-full"
+                }`}
+            >
                 {mostrarModalEmojis && (
                     <div
                         ref={emojiModalRef}
                         className="mx-auto w-full max-w-md bg-[#1f2937] rounded-lg p-6 flex flex-col touch-none select-none"
-                        onMouseDown={handleDragStart}
-                        onMouseUp={handleDragEnd}
-                        onTouchStart={handleDragStart}
-                        onTouchEnd={handleDragEnd}
+                        onMouseDown={(e) => (dragStartY.current = e.clientY)}
+                        onMouseUp={(e) => {
+                            if (
+                                dragStartY.current !== null &&
+                                e.clientY - dragStartY.current > 60
+                            ) {
+                                setMostrarModalEmojis(false);
+                            }
+                            dragStartY.current = null;
+                        }}
+                        onTouchStart={(e) => (dragStartY.current = e.touches[0].clientY)}
+                        onTouchEnd={(e) => {
+                            if (
+                                dragStartY.current !== null &&
+                                e.changedTouches[0].clientY - dragStartY.current > 60
+                            ) {
+                                setMostrarModalEmojis(false);
+                            }
+                            dragStartY.current = null;
+                        }}
                     >
                         <EmojiBoard
                             onEmojiClick={(emoji) => {
@@ -570,10 +542,13 @@ export default function ChatComponent({
                                 }
                                 setMostrarModalEmojis(false);
                             }}
+                            onClose={() => setMostrarModalEmojis(false)} 
                         />
                     </div>
                 )}
             </div>
+
+            {/* Input */}
             <div className="flex flex-col gap-2 p-4 bg-[#202c33] transition-transform duration-300 ease-in-out">
                 {(resposta || rascunhoParaEnviar) && (
                     <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
@@ -581,35 +556,43 @@ export default function ChatComponent({
                             {resposta && (
                                 <div className="mb-2">
                                     <span className="block font-semibold">Respondendo:</span>
-                                    {resposta.tipo === "texto" && <span className="block truncate">{resposta.conteudo}</span>}
-                                    {resposta.tipo === "imagem" && <span className="italic opacity-80">📷 Imagem</span>}
-                                    {resposta.tipo === "audio" && <span className="italic opacity-80">🎤 Áudio</span>}
-                                    {resposta.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
+                                    {resposta.tipo === "texto" && (
+                                        <span className="block truncate">{resposta.conteudo}</span>
+                                    )}
+                                    {resposta.tipo === "imagem" && (
+                                        <span className="italic opacity-80">📷 Imagem</span>
+                                    )}
+                                    {resposta.tipo === "audio" && (
+                                        <span className="italic opacity-80">🎤 Áudio</span>
+                                    )}
+                                    {resposta.tipo === "anexo" && (
+                                        <span className="italic opacity-80">📎 Anexo</span>
+                                    )}
                                 </div>
                             )}
                             {rascunhoParaEnviar && (
                                 <div className="flex items-center gap-2">
-                                    {rascunhoParaEnviar.tipo === "imagem" && <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />}
-                                    {rascunhoParaEnviar.tipo === "audio" && <AudioPlayer src={rascunhoParaEnviar.conteudo} />}
-                                    {rascunhoParaEnviar.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
+                                    {rascunhoParaEnviar.tipo === "imagem" && (
+                                        <img
+                                            src={rascunhoParaEnviar.conteudo}
+                                            alt="Prévia"
+                                            className="w-20 h-20 rounded-md object-cover"
+                                        />
+                                    )}
+                                    {rascunhoParaEnviar.tipo === "audio" && (
+                                        <AudioPlayer src={rascunhoParaEnviar.conteudo} />
+                                    )}
+                                    {rascunhoParaEnviar.tipo === "anexo" && (
+                                        <span className="italic opacity-80">📎 Anexo</span>
+                                    )}
                                 </div>
                             )}
                         </div>
-                        {rascunhoParaEnviar && (
+                        {(rascunhoParaEnviar || resposta) && (
                             <Button
                                 variant="ghost"
                                 size="icon"
                                 onClick={handleCancelDraft}
-                                className="text-gray-400 hover:text-white"
-                            >
-                                <X className="w-6 h-6" />
-                            </Button>
-                        )}
-                        {resposta && !rascunhoParaEnviar && (
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => setResposta(null)}
                                 className="text-gray-400 hover:text-white"
                             >
                                 <X className="w-6 h-6" />
@@ -630,7 +613,11 @@ export default function ChatComponent({
                         <Input
                             type="text"
                             value={rascunhoParaEnviar ? legenda : texto}
-                            onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
+                            onChange={
+                                rascunhoParaEnviar
+                                    ? (e) => setLegenda(e.target.value)
+                                    : handleTextChange
+                            }
                             onKeyDown={(e) => {
                                 if (e.key === "Enter" && !e.shiftKey) {
                                     e.preventDefault();
@@ -641,9 +628,13 @@ export default function ChatComponent({
                                     }
                                 }
                             }}
-                            placeholder={rascunhoParaEnviar ? "Adicione uma legenda..." : "Digite uma mensagem"}
+                            placeholder={
+                                rascunhoParaEnviar
+                                    ? "Adicione uma legenda..."
+                                    : "Digite uma mensagem"
+                            }
                             className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
-                            style={{ paddingTop: '8px', paddingBottom: '8px' }}
+                            style={{ paddingTop: "8px", paddingBottom: "8px" }}
                         />
                         {!rascunhoParaEnviar && !texto.trim() && (
                             <>
@@ -684,12 +675,22 @@ export default function ChatComponent({
                         variant="ghost"
                         size="icon"
                         className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
-                        onClick={rascunhoParaEnviar ? handleSendDraft : (texto.trim() ? () => enviarMensagem("texto", texto) : toggleGravacao)}
+                        onClick={
+                            rascunhoParaEnviar
+                                ? handleSendDraft
+                                : texto.trim()
+                                ? () => enviarMensagem("texto", texto)
+                                : toggleGravacao
+                        }
                     >
-                        {(texto.trim() || rascunhoParaEnviar) ? (
+                        {texto.trim() || rascunhoParaEnviar ? (
                             <SendHorizonal className="h-6 w-6 text-white" />
                         ) : (
-                            <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
+                            <Mic
+                                className={`h-6 w-6 ${
+                                    gravando ? "text-red-500" : "text-white"
+                                }`}
+                            />
                         )}
                     </Button>
                 </div>

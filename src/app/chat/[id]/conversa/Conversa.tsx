@@ -133,6 +133,54 @@ export default function Conversa({
         }
     };
 
+    // --- CORREÇÃO TS2783: DEFINIÇÃO DAS PROPS DO MessageItem ---
+
+    // 1. Defina a função que o MensagemItem espera (pode ser vazia aqui, já que a lógica é interna)
+    const handleMouseLeaveLocal = (e: React.MouseEvent<HTMLDivElement>) => {
+        // Esta função está aqui para satisfazer o contrato (interface) do MensagemItem.
+    };
+
+    // 2. Defina o objeto someProps.
+    // Ele deve ser um objeto vazio '{}' se você não tiver props para passar ao <div> base.
+    const propsDoElementoBase = {};
+const rolarParaOFinal = (comAnimacao = false) => {
+    const el = chatContainerRef.current;
+    if (el) {
+        el.scrollTo({
+            top: el.scrollHeight,
+            behavior: comAnimacao ? 'smooth' : 'auto', // Use 'smooth' para animação
+        });
+    }
+};
+
+useEffect(() => {
+    const el = chatContainerRef.current;
+    
+    // Calcula se o usuário está próximo do final
+    const estaProximoDoFinal = el 
+        ? el.scrollHeight - el.scrollTop - el.clientHeight < 300 // 300px de margem
+        : false;
+
+    // Se a lista de mensagens mudou E o usuário estava próximo do final, role.
+    if (mensagens.length > 0 && estaProximoDoFinal) {
+        // Usa um pequeno timeout para garantir que o DOM foi atualizado
+        const timeout = setTimeout(() => {
+            rolarParaOFinal(true); // Rola com animação
+        }, 50);
+
+        return () => clearTimeout(timeout);
+    }
+    
+    // Rola para o final na primeira carga (se as mensagens acabaram de ser carregadas)
+    if (!el || mensagens.length === 0) return;
+    
+    // Lógica para rolagem inicial (apenas na primeira renderização se não houver rolagem)
+    if (el.scrollTop === 0 && el.scrollHeight > el.clientHeight) {
+        rolarParaOFinal(false); // Rola sem animação na primeira carga
+    }
+    
+}, [mensagens.length]);
+
     return (
         <div
             ref={chatContainerRef}
@@ -165,6 +213,13 @@ export default function Conversa({
                             userId={userId}
                             handleReact={handleReact}
                             formatarHora={formatarHora}
+                            
+                            // 3. PASSA AS PROPS CORRETAS E LIMPAS
+                            handleMouseLeave={handleMouseLeaveLocal}
+                            someProps={propsDoElementoBase}
+                            // longPressProps: se o 'useLongPress' estiver no MessageItem, passe {} ou remova
+                            // Aqui mantemos undefined se for a única opção, mas o ideal é passar {}
+                            longPressProps={{}} 
                         />
                     ))}
                 </div>
@@ -182,7 +237,6 @@ export default function Conversa({
                                 setMostrarModalEmojis(false);
                                 setMensagemSelecionada(null);
                             }}
-                            onClose={() => setMostrarModalEmojis(false)}
                         />
                     </div>
                 </div>

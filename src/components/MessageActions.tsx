@@ -110,10 +110,8 @@ export default function MessageActions({
         </button>
         {mostrarRapidos && (
           <div
-            className={`absolute z-20 flex gap-1 p-1 rounded-md shadow-lg bg-gray-800
-              max-w-[240px] max-h-[50px] overflow-hidden
-              ${souEu ? "right-0" : "left-0"}
-              top-[-50px] menu-rapidos-chat`}
+            className="absolute z-20 flex gap-1 p-1 rounded-md shadow-lg bg-gray-800 max-w-[240px] max-h-[50px] overflow-hidden
+             bottom-full transform -translate-x-1/2 mb-2 menu"
           >
             {emojisRapidos.map((emoji) => (
               <button
@@ -221,7 +219,6 @@ export default function MessageActions({
                 setMostrarMenu(false);
                 setMostrarRapidos(false);
               }}
-              onClose={() => setMostrarModalEmojis(false)} 
             />
           </div>
         </div>

@@ -460,16 +460,16 @@ export default function ChatComponent({
                 onValueChange={setAbaAtiva}
                 className="flex-1 flex flex-col overflow-hidden"
             >
-                <TabsList className="grid w-full grid-cols-2 bg-[#43546b] text-white rounded-none border-b border-gray-600">
-                    <TabsTrigger value="chat">Conversa</TabsTrigger>
-                    <TabsTrigger value="arquivos">Arquivos</TabsTrigger>
+                 <TabsList className="grid w-full grid-cols-2 bg-[#202c33] text-white border-none">
+                    <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Conversa</TabsTrigger>
+                    <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Arquivos</TabsTrigger>
                 </TabsList>
                 <TabsContent
                     value="chat"
                     className="flex-1 flex flex-col overflow-hidden"
                 >
                     <Conversa
-                        key={destinatarioId}
+                    key={destinatarioId}
                         mensagens={mensagens}
                         userId={userId}
                         setResposta={setResposta}
@@ -542,7 +542,6 @@ export default function ChatComponent({
                                 }
                                 setMostrarModalEmojis(false);
                             }}
-                            onClose={() => setMostrarModalEmojis(false)} 
                         />
                     </div>
                 )}

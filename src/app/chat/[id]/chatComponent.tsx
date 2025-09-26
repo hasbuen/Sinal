@@ -460,13 +460,13 @@ export default function ChatComponent({
                 onValueChange={setAbaAtiva}
                 className="flex-1 flex flex-col overflow-hidden"
             >
-                 <TabsList className="grid w-full grid-cols-2 bg-[#202c33] text-white border-none">
+                 <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
                     <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Conversa</TabsTrigger>
                     <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Arquivos</TabsTrigger>
                 </TabsList>
                 <TabsContent
                     value="chat"
-                    className="flex-1 flex flex-col overflow-hidden"
+                    className="flex-1 flex flex-col bg-transparent overflow-hidden"
                 >
                     <Conversa
                     key={destinatarioId}

@@ -119,7 +119,6 @@ export default function MessageActions({
                 onClick={(e) => {
                   e.stopPropagation();
                   onReact(emoji);
-                  // Não fecha automaticamente
                 }}
                 className="text-lg hover:scale-125 transition"
               >

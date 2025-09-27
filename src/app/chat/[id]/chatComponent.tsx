@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile } from "lucide-react";
+import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import EmojiBoard from "@/components/EmojisCustom";
 import Conversa from "./conversa/Conversa";
@@ -411,6 +411,7 @@ export default function ChatComponent({
         setLegenda("");
         setTexto("");
         setMostrarModalEmojis(false);
+        setResposta(null);
         removerStatus();
     };
 
@@ -460,7 +461,7 @@ export default function ChatComponent({
                 onValueChange={setAbaAtiva}
                 className="flex-1 flex flex-col overflow-hidden"
             >
-                 <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
+                <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
                     <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Conversa</TabsTrigger>
                     <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Arquivos</TabsTrigger>
                 </TabsList>
@@ -469,7 +470,7 @@ export default function ChatComponent({
                     className="flex-1 flex flex-col bg-transparent overflow-hidden"
                 >
                     <Conversa
-                    key={destinatarioId}
+                        key={destinatarioId}
                         mensagens={mensagens}
                         userId={userId}
                         setResposta={setResposta}
@@ -502,9 +503,8 @@ export default function ChatComponent({
 
             {/* Modal de Emojis */}
             <div
-                className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${
-                    mostrarModalEmojis ? "transform-none" : "transform translate-y-full"
-                }`}
+                className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? "transform-none" : "transform translate-y-full"
+                    }`}
             >
                 {mostrarModalEmojis && (
                     <div
@@ -553,19 +553,70 @@ export default function ChatComponent({
                     <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
                         <div className="text-xs text-gray-300 flex-1">
                             {resposta && (
-                                <div className="mb-2">
-                                    <span className="block font-semibold">Respondendo:</span>
+                                <div className="mb-1">
+                                    {/* Exibe o remetente (ajuste conforme a sua estrutura de dados de "resposta") */}
+                                    <span className="block font-semibold">
+                                        {/* Se 'resposta' contiver o nome, use-o, senão, use 'destinatario' como no seu código */}
+                                        <b>{destinatario?.nome}</b> <i>enviou</i>:
+                                    </span>
+
+                                    {/* PRÉVIA: Tipo "texto" */}
                                     {resposta.tipo === "texto" && (
-                                        <span className="block truncate">{resposta.conteudo}</span>
+                                        <span className="text-xs text-gray-300 break-words break-all">
+                                            {resposta.conteudo}
+                                        </span>
                                     )}
-                                    {resposta.tipo === "imagem" && (
-                                        <span className="italic opacity-80">📷 Imagem</span>
-                                    )}
+
+                                    {/* PRÉVIA: Tipo "imagem" (Miniatura) */}
+                                    {resposta.tipo === "imagem" && (() => {
+                                        // Divide a string no separador
+                                        const partes = resposta.conteudo.split('|SEPARATOR|');
+                                        // A URL é sempre o primeiro elemento
+                                        const urlImagem = partes[0] || '';
+                                        // A legenda (se existir) é o segundo elemento
+                                        const legendaImagem = partes[1] ? partes[1].trim() : '';
+
+                                        return (
+                                            <div className="flex items-center space-x-2">
+                                                <img
+                                                    src={urlImagem}
+                                                    alt="Prévia da Imagem"
+                                                    className="w-8 h-8 object-cover rounded flex-shrink-0" // flex-shrink-0 para não achatar
+                                                />
+                                                <span className="text-xs italic text-gray-400 break-words break-all min-w-0">
+                                                    {/* Mostra a legenda, ou 'Imagem' se não houver legenda */}
+                                                    {legendaImagem || 'Imagem'}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
+
+                                    {/* PRÉVIA: Tipo "audio" (Player Simples) */}
                                     {resposta.tipo === "audio" && (
-                                        <span className="italic opacity-80">🎤 Áudio</span>
+                                        <div className="w-full max-w-[200px] h-6">
+                                            {/* Use um player de áudio simplificado ou o seu componente AudioPlayer */}
+                                            <AudioPlayer
+                                                src={resposta.conteudo}
+
+                                            />
+                                        </div>
                                     )}
+
+                                    {/* PRÉVIA: Tipo "anexo" (Ícone e Nome do Arquivo) */}
                                     {resposta.tipo === "anexo" && (
-                                        <span className="italic opacity-80">📎 Anexo</span>
+                                        <div className="flex items-center space-x-1 text-gray-400">
+                                            {/* Ícone condicional para anexo (depende dos imports do seu arquivo) */}
+                                            {resposta.conteudo.includes(".pdf") ? (
+                                                <FileText className="w-4 h-4 flex-shrink-0" />
+                                            ) : resposta.conteudo.includes(".xlsx") ? (
+                                                <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
+                                            ) : (
+                                                <Paperclip className="w-4 h-4 flex-shrink-0" />
+                                            )}
+                                            <span className="text-xs break-words break-all truncate">
+                                                {resposta.conteudo.split("/").pop()} {/* Exibe o nome do arquivo */}
+                                            </span>
+                                        </div>
                                     )}
                                 </div>
                             )}
@@ -678,17 +729,16 @@ export default function ChatComponent({
                             rascunhoParaEnviar
                                 ? handleSendDraft
                                 : texto.trim()
-                                ? () => enviarMensagem("texto", texto)
-                                : toggleGravacao
+                                    ? () => enviarMensagem("texto", texto)
+                                    : toggleGravacao
                         }
                     >
                         {texto.trim() || rascunhoParaEnviar ? (
                             <SendHorizonal className="h-6 w-6 text-white" />
                         ) : (
                             <Mic
-                                className={`h-6 w-6 ${
-                                    gravando ? "text-red-500" : "text-white"
-                                }`}
+                                className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"
+                                    }`}
                             />
                         )}
                     </Button>

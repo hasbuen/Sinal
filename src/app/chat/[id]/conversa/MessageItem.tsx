@@ -53,7 +53,6 @@ interface MessageItemProps extends React.HTMLAttributes<HTMLDivElement> {
 export default function MensagemItem({
     mensagem,
     souEu,
-    mensagemSelecionada,
     setMensagemSelecionada,
     setResposta,
     setEditandoId,
@@ -62,9 +61,6 @@ export default function MensagemItem({
     setZoomLevel,
     setPanOffset,
     setMensagemDestacada,
-    mensagemRefs,
-    mensagemDestacada,
-    userId,
     handleReact,
     formatarHora,
     handleMouseLeave: handleMouseLeaveProp,
@@ -141,7 +137,9 @@ export default function MensagemItem({
                             onClick={() => setMensagemDestacada(mensagem.resposta_id || null)}
                         >
                             <span className="block font-semibold">Mensagem original:</span>
-                            {mensagem.resposta.tipo === "texto" && <span className="block truncate">{mensagem.resposta.conteudo}</span>}
+                            {mensagem.resposta.tipo === "texto" && (
+                                <span className="block break-words break-all">{mensagem.resposta.conteudo}</span>
+                            )}
                             {mensagem.resposta.tipo === "imagem" && <span className="italic opacity-80">📷 Imagem</span>}
                             {mensagem.resposta.tipo === "audio" && <span className="italic opacity-80">🎤 Áudio</span>}
                             {mensagem.resposta.tipo === "anexo" && <span className="italic opacity-80">📎 Anexo</span>}
@@ -200,7 +198,7 @@ export default function MensagemItem({
                             onClick={(e) => e.stopPropagation()}
                             onTouchEnd={(e) => {
                                 e.stopPropagation();
-                                setMostrarMenu(false); 
+                                setMostrarMenu(false);
                             }}
                         >
                             <MessageActions
@@ -216,27 +214,27 @@ export default function MensagemItem({
 
                     {/* Reações */}
                     {Object.keys(reacoesAgrupadas).length > 0 && (
-    <div
-        className={`mt-1 flex items-center space-x-1 
+                        <div
+                            className={`mt-1 flex items-center space-x-1 
             ${souEu ? "self-end mr-1" : "self-start ml-1"} 
         `}
-    >
-        <div 
-            className={`flex w-full 
+                        >
+                            <div
+                                className={`flex w-full 
                 ${souEu ? "justify-end" : "justify-start"}`}
-        >
-            {Object.entries(reacoesAgrupadas).map(([emoji, reacoes]) => (
-                <span
-                    key={emoji}
-                    className="px-1 py-0.5 bg-[#1f1e1e] rounded-full text-xs cursor-pointer shadow-sm ml-1" 
-                    onClick={(e) => { e.stopPropagation(); handleReact(mensagem, emoji); }}
-                >
-                    {emoji} {reacoes?.length > 1 ? reacoes.length : ""}
-                </span>
-            ))}
-        </div>
-    </div>
-)}
+                            >
+                                {Object.entries(reacoesAgrupadas).map(([emoji, reacoes]) => (
+                                    <span
+                                        key={emoji}
+                                        className="px-1 py-0.5 bg-[#1f1e1e] rounded-full text-xs cursor-pointer shadow-sm ml-1"
+                                        onClick={(e) => { e.stopPropagation(); handleReact(mensagem, emoji); }}
+                                    >
+                                        {emoji} {reacoes?.length > 1 ? reacoes.length : ""}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                 </div>
             </div>

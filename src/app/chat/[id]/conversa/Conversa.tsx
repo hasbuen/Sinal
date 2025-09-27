@@ -75,11 +75,9 @@ export default function Conversa({
     const jaRolouParaFinal = useRef(false);
 
     useEffect(() => {
-        // Rola para o final apenas na primeira vez que as mensagens são carregadas
-        // e se o scroll ainda não foi feito.
         if (!jaRolouParaFinal.current && chatContainerRef.current && mensagens.length > 0) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-            jaRolouParaFinal.current = true; // Marca que o scroll já foi feito
+            jaRolouParaFinal.current = true; 
         }
     }, [mensagens]);
 
@@ -133,9 +131,6 @@ export default function Conversa({
         }
     };
 
-    // --- CORREÇÃO TS2783: DEFINIÇÃO DAS PROPS DO MessageItem ---
-
-    // 1. Defina a função que o MensagemItem espera (pode ser vazia aqui, já que a lógica é interna)
     const handleMouseLeaveLocal = (e: React.MouseEvent<HTMLDivElement>) => {
         // Esta função está aqui para satisfazer o contrato (interface) do MensagemItem.
     };

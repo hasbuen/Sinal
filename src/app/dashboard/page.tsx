@@ -185,20 +185,36 @@ export default function Dashboard() {
   if (!carregado) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
-        <motion.p
-          className="text-center text-white text-lg font-medium"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{
-            duration: 0.8,
-            repeat: Infinity,
-            repeatType: "reverse",
-            ease: "easeInOut",
-          }}
-        >
-          Carregando...
-        </motion.p>
-      </div>
+            
+            {/* ❗ ALTERAÇÃO AQUI: Envolve a imagem em motion.div ou move as props para motion.img */}
+            <motion.img
+                src="/icons/icon-transparent.png"
+                className="w-10 h-10"
+                alt="Ícone de Carregamento"
+                
+                // Animações
+                initial={{ opacity: 0, rotate: 0 }}
+                animate={{ 
+                    opacity: 1, 
+                    rotate: 360 // ❗ Adiciona a rotação de 0 a 360 graus
+                }}
+                transition={{
+                    // As transições afetam ambas as propriedades (opacity e rotate)
+                    duration: 1.5, // Aumentei a duração para deixar a rotação mais suave
+                    repeat: Infinity,
+                    repeatType: "loop", // Use 'loop' para a rotação e 'reverse' para a opacidade
+                    ease: "linear", // Use 'linear' para a rotação ser constante
+                    
+                    // Se você quiser que o opacity tenha repeatType: "reverse", 
+                    // precisaria usar a prop 'transition' como um objeto para cada propriedade, 
+                    // mas para simplificar, usaremos as mesmas transições para ambos:
+                    // transition={{ opacity: { repeatType: "reverse", duration: 0.8 }, rotate: { ease: "linear", duration: 1.5 } }}
+                }}
+            />
+            
+            {/* O bloco <motion.p> não é mais necessário, pois a imagem já é um componente motion */}
+            
+        </div>
     );
   }
 

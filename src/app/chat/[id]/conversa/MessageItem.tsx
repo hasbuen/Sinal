@@ -206,7 +206,17 @@ export default function MensagemItem({
                                 mensagem={mensagem}
                                 onReply={() => { setResposta(mensagem); setMensagemSelecionada(null); setMostrarMenu(false); }}
                                 onEdit={() => { if (souEu) { setEditandoId(mensagem.id); setTexto(mensagem.conteudo); setMensagemSelecionada(null); setMostrarMenu(false); } }}
-                                onDelete={() => { if (souEu) { supabase.from("mensagens").delete().eq("id", mensagem.id); setMensagemSelecionada(null); setMostrarMenu(false); } }}
+                                onDelete={() => {
+                                    if (souEu) {
+                                        // 1. Executa a exclusão no Supabase
+                                        supabase.from("mensagens").delete().eq("id", mensagem.id);
+                                        // 2. Fecha o menu de seleção
+                                        setMensagemSelecionada(null);
+
+                                        // 3. Fecha o menu de ações (se estiver aberto por hover/touch)
+                                        setMostrarMenu(false); // Adicionado
+                                    }
+                                }}
                                 onReact={(emoji: string) => { handleReact(mensagem, emoji); setMensagemSelecionada(null); setMostrarMenu(false); }}
                             />
                         </div>

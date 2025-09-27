@@ -9,6 +9,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ChatComponent from "../chat/[id]/chatComponent";
+import { Search } from "lucide-react";
 
 const myLoader = ({ src, width, quality }: ImageLoaderProps) => {
   return `${src}?w=${width}&q=${quality || 75}`;
@@ -145,7 +146,7 @@ export default function Dashboard() {
       if (perfil) {
         setNome(perfil.nome);
         setFotoUrl(perfil.foto_url);
-        
+
         // CORREÇÃO: Atualiza o status do banco de dados para "online"
         await supabase
           .from("perfis")
@@ -203,8 +204,8 @@ export default function Dashboard() {
 
   const usuariosFiltrados = usuarios.filter((u) => {
     const nomeCorresponde = (u.nome || "")
-            .toLowerCase()
-            .includes(termoBusca.toLowerCase());
+      .toLowerCase()
+      .includes(termoBusca.toLowerCase());
     const statusCorresponde =
       filtroStatus === "todos" || u.status === filtroStatus;
     return nomeCorresponde && statusCorresponde;
@@ -262,13 +263,20 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        <Input
-          type="text"
-          placeholder="Buscar por nome..."
-          value={termoBusca}
-          onChange={(e) => setTermoBusca(e.target.value)}
-          className="bg-gray-800 text-white placeholder-gray-400 border-none"
-        />
+        <div className="relative flex items-center w-full">
+
+          <Search className="absolute left-3 h-5 w-5 text-gray-400 pointer-events-none" />
+
+
+          <Input
+            type="text"
+            placeholder="Buscar usuários..."
+            value={termoBusca}
+            onChange={(e) => setTermoBusca(e.target.value)}
+
+            className="bg-gray-800 text-white placeholder-gray-400 border-none pl-10 focus:ring-0 focus:outline-none"
+          />
+        </div>
 
         <div className="flex justify-between text-sm text-gray-400">
           <Button

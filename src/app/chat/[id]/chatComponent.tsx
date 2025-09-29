@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet, TableOfContents } from "lucide-react";
+import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet, MessageCircleMore, TableOfContents } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import EmojiBoard from "@/components/EmojisCustom";
 import Conversa from "./conversa/Conversa";
@@ -463,7 +463,7 @@ export default function ChatComponent({
                 className="flex-1 flex flex-col overflow-hidden"
             >
                 <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
-                    <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Conversa</TabsTrigger>
+                    <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]"><MessageCircleMore/>Conversa</TabsTrigger>
                     <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-transparent"><TableOfContents/> Arquivos</TabsTrigger>
                 </TabsList>
                 <TabsContent value="chat" className="flex-1 flex flex-col bg-transparent overflow-hidden">

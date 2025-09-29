@@ -90,7 +90,7 @@ export default function MessageActions({
   }, []);
 
   return (
-  <div className="flex items-center gap-2 bg-emerald-600 px-2 py-1 rounded-xl shadow-md relative menu-suspenso-chat">
+    <div className="flex items-center gap-2 bg-emerald-600 px-2 py-1 rounded-xl shadow-md relative menu-suspenso-chat">
       {/* Container para emojis rápidos */}
       <div
         className="relative menu-rapidos-chat"
@@ -150,19 +150,19 @@ export default function MessageActions({
         {mostrarMenu && (
           <div className="absolute bottom-full right-0 mb-2 flex flex-col bg-[#111827]/70 p-2 rounded-2xl shadow-lg z-50 min-w-[140px] text-white menu-opcoes-chat">
             <button
-  onClick={(e) => {
-    e.stopPropagation();
-    setMostrarModalEmojis(true);
-    setMostrarMenu(false);
-    setMostrarRapidos(false);
-  }}
-  className="group text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
->
-  <Smile className="w-4 h-4 text-emerald-300 transition-colors duration-500 ease-in-out group-hover:text-green-200" />
-  <div className="transition-colors duration-500 ease-in-out group-hover:text-green-200">
-    +Emojis
-  </div>
-</button>
+              onClick={(e) => {
+                e.stopPropagation();
+                setMostrarModalEmojis(true);
+                setMostrarMenu(false);
+                setMostrarRapidos(false);
+              }}
+              className="group text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
+            >
+              <Smile className="w-4 h-4 text-emerald-300 transition-colors duration-500 ease-in-out group-hover:text-green-200" />
+              <div className="transition-colors duration-500 ease-in-out group-hover:text-green-200">
+                +Emojis
+              </div>
+            </button>
 
             <div className="border-t border-emerald-700 my-1" />
             <button
@@ -200,9 +200,10 @@ export default function MessageActions({
                     setMostrarRapidos(false);
                     setMostrarModalEmojis(false);
                   }}
-                  className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
+                  className="text-left p-1 hover:bg-red-600/50 transition-colors duration-500 rounded flex items-center gap-1"
                 >
-                  <Trash2 className="w-4 h-4 text-red-500" /> Apagar
+                  <Trash2 className="w-4 h-4 text-red-500 transition-colors duration-500 ease-in-out group-hover:text-red-300" />
+                  <div className="transition-colors duration-500 ease-in-out group-hover:text-red-300">Apagar</div>
                 </button>
               </>
             )}

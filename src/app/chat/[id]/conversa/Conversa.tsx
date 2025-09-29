@@ -52,7 +52,7 @@ interface ConversaProps {
     setMostrarModalEmojis: React.Dispatch<React.SetStateAction<boolean>>;
     fimDasMensagens: RefObject<HTMLDivElement | null>;
     mensagemRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
-    setRascunhoParaEnviar: React.Dispatch<React.SetStateAction<Rascunho | null>>; 
+    setRascunhoParaEnviar: React.Dispatch<React.SetStateAction<Rascunho | null>>;
 }
 
 export default function Conversa({
@@ -70,7 +70,7 @@ export default function Conversa({
     setMensagemDestacada,
     fimDasMensagens,
     mensagemRefs,
-    setRascunhoParaEnviar, 
+    setRascunhoParaEnviar,
 }: ConversaProps) {
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
 
@@ -80,7 +80,7 @@ export default function Conversa({
     useEffect(() => {
         if (!jaRolouParaFinal.current && chatContainerRef.current && mensagens.length > 0) {
             chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-            jaRolouParaFinal.current = true; 
+            jaRolouParaFinal.current = true;
         }
     }, [mensagens]);
 
@@ -135,49 +135,47 @@ export default function Conversa({
     };
 
     const handleMouseLeaveLocal = (e: React.MouseEvent<HTMLDivElement>) => {
-        // Esta função está aqui para satisfazer o contrato (interface) do MensagemItem.
     };
 
-    // 2. Defina o objeto someProps.
-    // Ele deve ser um objeto vazio '{}' se você não tiver props para passar ao <div> base.
+
     const propsDoElementoBase = {};
-const rolarParaOFinal = (comAnimacao = false) => {
-    const el = chatContainerRef.current;
-    if (el) {
-        el.scrollTo({
-            top: el.scrollHeight,
-            behavior: comAnimacao ? 'smooth' : 'auto', // Use 'smooth' para animação
-        });
-    }
-};
+    const rolarParaOFinal = (comAnimacao = false) => {
+        const el = chatContainerRef.current;
+        if (el) {
+            el.scrollTo({
+                top: el.scrollHeight,
+                behavior: comAnimacao ? 'smooth' : 'auto',
+            });
+        }
+    };
 
-useEffect(() => {
-    const el = chatContainerRef.current;
-    
-    // Calcula se o usuário está próximo do final
-    const estaProximoDoFinal = el 
-        ? el.scrollHeight - el.scrollTop - el.clientHeight < 300 // 300px de margem
-        : false;
+    useEffect(() => {
+        const el = chatContainerRef.current;
 
-    // Se a lista de mensagens mudou E o usuário estava próximo do final, role.
-    if (mensagens.length > 0 && estaProximoDoFinal) {
-        // Usa um pequeno timeout para garantir que o DOM foi atualizado
-        const timeout = setTimeout(() => {
-            rolarParaOFinal(true); // Rola com animação
-        }, 50);
+        // Calcula se o usuário está próximo do final
+        const estaProximoDoFinal = el
+            ? el.scrollHeight - el.scrollTop - el.clientHeight < 300 // 300px de margem
+            : false;
 
-        return () => clearTimeout(timeout);
-    }
-    
-    // Rola para o final na primeira carga (se as mensagens acabaram de ser carregadas)
-    if (!el || mensagens.length === 0) return;
-    
-    // Lógica para rolagem inicial (apenas na primeira renderização se não houver rolagem)
-    if (el.scrollTop === 0 && el.scrollHeight > el.clientHeight) {
-        rolarParaOFinal(false); // Rola sem animação na primeira carga
-    }
-    
-}, [mensagens.length]);
+        // Se a lista de mensagens mudou E o usuário estava próximo do final, role.
+        if (mensagens.length > 0 && estaProximoDoFinal) {
+            // Usa um pequeno timeout para garantir que o DOM foi atualizado
+            const timeout = setTimeout(() => {
+                rolarParaOFinal(true); // Rola com animação
+            }, 50);
+
+            return () => clearTimeout(timeout);
+        }
+
+        // Rola para o final na primeira carga (se as mensagens acabaram de ser carregadas)
+        if (!el || mensagens.length === 0) return;
+
+        // Lógica para rolagem inicial (apenas na primeira renderização se não houver rolagem)
+        if (el.scrollTop === 0 && el.scrollHeight > el.clientHeight) {
+            rolarParaOFinal(false); // Rola sem animação na primeira carga
+        }
+
+    }, [mensagens.length]);
 
     return (
         <div
@@ -185,7 +183,16 @@ useEffect(() => {
             onScroll={handleScroll}
             onMouseUp={handleMouseUp}
             onTouchEnd={handleMouseUp}
-            className="flex-1 overflow-y-auto px-5 py-3 space-y-3 relative bg-chat-background"
+            className="flex-1 overflow-y-auto px-5 py-3 space-y-3 relative"
+            style={{
+                backgroundImage: 'url("assets/wallpaper.jpg")',
+                backgroundRepeat: 'repeat',
+                // NOVO: Define o tamanho da imagem replicada. Ajuste este valor!
+                backgroundSize: '250px',
+
+                backgroundAttachment: 'fixed', // Mantém o fundo fixo
+                backgroundPosition: 'center',
+            }}
         >
             {mensagensAgrupadas.map((grupo) => (
                 <div key={grupo.data}>
@@ -211,10 +218,10 @@ useEffect(() => {
                             userId={userId}
                             handleReact={handleReact}
                             formatarHora={formatarHora}
-                            setRascunhoParaEnviar={setRascunhoParaEnviar} 
+                            setRascunhoParaEnviar={setRascunhoParaEnviar}
                             handleMouseLeave={handleMouseLeaveLocal}
                             someProps={propsDoElementoBase}
-                            longPressProps={{}} 
+                            longPressProps={{}}
                         />
                     ))}
                 </div>
@@ -223,7 +230,7 @@ useEffect(() => {
             <div ref={fimDasMensagens} />
 
             {mostrarModalEmojis && (
-                <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/50">
+                <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/50\">
                     <div className="bg-[#1f2937] rounded-lg p-4 max-w-md w-full">
                         <EmojiCustom
                             onEmojiClick={(emoji) => {

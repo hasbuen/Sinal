@@ -224,7 +224,7 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           <Image
             loader={myLoader}
-            src={fotoUrl || "/assets/avatar.png"}
+            src={fotoUrl || "/icons/icon-transparent.png"}
             alt={nome}
             width={48}
             height={48}

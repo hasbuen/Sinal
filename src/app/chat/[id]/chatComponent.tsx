@@ -412,300 +412,307 @@ export default function ChatComponent({
     };
 
     return (
-    <div className="flex flex-col h-screen bg-[#0b1419]">
-        {/* Cabeçalho */}
-        <div className="flex itens-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10 sticky top-0">
-            {onClose && (
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={onClose}
-                    className="md:hidden text-white hover:text-gray-300"
-                >
-                    <ArrowLeft />
-                </Button>
-            )}
-            {destinatario?.foto_url && (
-                <img
-                    src={destinatario.foto_url}
-                    alt={destinatario.nome}
-                    className="w-10 h-10 rounded-full object-cover"
-                />
-            )}
-            <div>
-                <h2 className="text-lg font-semibold">{destinatario?.nome}</h2>
-                <p className="text-xs opacity-70">
-                    {statusOutroUsuario === "digitando" && (
-                        <span className="text-green-400 animate-pulse">Digitando...</span>
-                    )}
-                    {statusOutroUsuario === "gravando" && (
-                        <span className="text-green-400 animate-pulse flex items-center gap-1">
-                            <Mic className="inline w-4 h-4 text-green-400" /> Gravando áudio
-                        </span>
-                    )}
-                    {!statusOutroUsuario && destinatario?.status}
-                </p>
-            </div>
-        </div>
+        <div className="flex flex-col h-screen" style={{
+                backgroundImage: 'url("assets/wallpaper.jpg")',
+                backgroundRepeat: 'repeat',
+                // NOVO: Define o tamanho da imagem replicada. Ajuste este valor!
+                backgroundSize: '250px',
 
-        {/* Tabs */}
-        <Tabs
-            value={abaAtiva}
-            onValueChange={setAbaAtiva}
-            className="flex-1 flex flex-col overflow-hidden"
-        >
-            <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
-                <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Conversa</TabsTrigger>
-                <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Arquivos</TabsTrigger>
-            </TabsList>
-            <TabsContent value="chat" className="flex-1 flex flex-col bg-transparent overflow-hidden">
-                <Conversa
-                    key={destinatarioId}
-                    mensagens={mensagens}
-                    userId={userId}
-                    setResposta={setResposta}
-                    setMensagemSelecionada={setMensagemSelecionada}
-                    setEditandoId={setEditandoId}
-                    setTexto={setTexto}
-                    setImagemAmpliada={setImagemAmpliada}
-                    setZoomLevel={setZoomLevel}
-                    setPanOffset={setPanOffset}
-                    mensagemSelecionada={mensagemSelecionada}
-                    mensagemDestacada={mensagemDestacada}
-                    setMensagemDestacada={setMensagemDestacada}
-                    setMostrarModalEmojis={setMostrarModalEmojis}
-                    fimDasMensagens={fimDasMensagens}
-                    mensagemRefs={mensagemRefs}
-                    setRascunhoParaEnviar={setRascunhoParaEnviar}
-                />
-            </TabsContent>
-            <TabsContent value="arquivos" className="flex-1 flex flex-col overflow-hidden">
-                <Compartilhamento
-                    arquivos={arquivos}
-                    setImagemAmpliada={setImagemAmpliada}
-                    setZoomLevel={setZoomLevel}
-                    setPanOffset={setPanOffset}
-                />
-            </TabsContent>
-        </Tabs>
-
-        {/* Modal de Emojis */}
-        <div className={`p-2 bg-[#202c33] transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? "transform-none" : "transform translate-y-full"}`}>
-            {mostrarModalEmojis && (
-                <div
-                    ref={emojiModalRef}
-                    className="mx-auto w-full max-w-md bg-[#1f2937] rounded-lg p-6 flex flex-col touch-none select-none"
-                    onMouseDown={(e) => (dragStartY.current = e.clientY)}
-                    onMouseUp={(e) => {
-                        if (dragStartY.current !== null && e.clientY - dragStartY.current > 60) {
-                            setMostrarModalEmojis(false);
-                        }
-                        dragStartY.current = null;
-                    }}
-                    onTouchStart={(e) => (dragStartY.current = e.touches[0].clientY)}
-                    onTouchEnd={(e) => {
-                        if (dragStartY.current !== null && e.changedTouches[0].clientY - dragStartY.current > 60) {
-                            setMostrarModalEmojis(false);
-                        }
-                        dragStartY.current = null;
-                    }}
-                >
-                    <EmojiBoard
-                        onEmojiClick={(emoji) => {
-                            if (emoji) {
-                                if (rascunhoParaEnviar) {
-                                    setLegenda((prev) => prev + emoji);
-                                } else {
-                                    setTexto((prev) => prev + emoji);
-                                }
-                            }
-                            setMostrarModalEmojis(false);
-                        }}
-                    />
-                </div>
-            )}
-        </div>
-
-        {/* Input */}
-        <div className="flex flex-col gap-2 p-4 bg-[#202c33] transition-transform duration-300 ease-in-out">
-            {(resposta || rascunhoParaEnviar) && (
-                <div className="p-2 bg-[#1f2937] border-l-4 border-green-500 flex justify-between items-center rounded-md">
-                    <div className="text-xs text-gray-300 flex-1">
-                        {editandoId && (
-                            <span className="text-xs text-white mb-1 block">✏️ Você está editando...</span>
-                        )}
-
-                        {/* Prévia de resposta */}
-                        {resposta && (
-                            <div className="mb-1">
-                                <span className="block font-semibold">
-                                    <b>{destinatario?.nome}</b> <i>enviou</i>:
-                                </span>
-                                {resposta.tipo === "texto" && (
-                                    <span className="text-xs text-gray-300 break-words break-all">
-                                        {resposta.conteudo}
-                                    </span>
-                                )}
-                                {resposta.tipo === "imagem" && (() => {
-                                    const partes = resposta.conteudo.split("|SEPARATOR|");
-                                    const urlImagem = partes[0] || "";
-                                    const legendaImagem = partes[1] ? partes[1].trim() : "";
-                                    return (
-                                        <div className="flex items-center space-x-2">
-                                            <img src={urlImagem} alt="Prévia da Imagem" className="w-8 h-8 object-cover rounded flex-shrink-0" />
-                                            <span className="text-xs italic text-gray-400 break-words break-all min-w-0">
-                                                {legendaImagem || "Imagem"}
-                                            </span>
-                                        </div>
-                                    );
-                                })()}
-                                {resposta.tipo === "audio" && (
-                                    <div className="w-full max-w-[200px] h-6">
-                                        <AudioPlayer src={resposta.conteudo} />
-                                    </div>
-                                )}
-                                {resposta.tipo === "anexo" && (
-                                    <div className="flex items-center space-x-1 text-gray-400">
-                                        {resposta.conteudo.includes(".pdf") ? (
-                                            <FileText className="w-4 h-4 flex-shrink-0" />
-                                        ) : resposta.conteudo.includes(".xlsx") ? (
-                                            <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
-                                        ) : (
-                                            <Paperclip className="w-4 h-4 flex-shrink-0" />
-                                        )}
-                                        <span className="text-xs break-words break-all truncate">
-                                            {resposta.conteudo.split("/").pop()}
-                                        </span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Prévia de rascunho */}
-                        {rascunhoParaEnviar && (
-                            <div className="flex items-center gap-2">
-                                {rascunhoParaEnviar.tipo === "imagem" && (
-                                    <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
-                                )}
-                                {rascunhoParaEnviar.tipo === "audio" && (
-                                    <AudioPlayer src={rascunhoParaEnviar.conteudo} />
-                                )}
-                                {rascunhoParaEnviar.tipo === "anexo" && (
-                                    <span className="italic opacity-80">📎 Anexo</span>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    {(rascunhoParaEnviar || resposta) && (
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={handleCancelDraft}
-                            className="text-gray-400 hover:text-white"
-                        >
-                            <X className="w-6 h-6" />
-                        </Button>
-                    )}
-                </div>
-            )}
-
-            <div className="flex items-end gap-4">
-                <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
+                backgroundAttachment: 'fixed', // Mantém o fundo fixo
+                backgroundPosition: 'center',
+            }}>
+            {/* Cabeçalho */}
+            <div className="flex itens-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10 sticky top-0">
+                {onClose && (
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
-                        className="text-gray-400 hover:text-white"
+                        onClick={onClose}
+                        className="md:hidden text-white hover:text-gray-300"
                     >
-                        <Smile className="w-6 h-6" />
+                        <ArrowLeft />
                     </Button>
-
-                    <Input
-                        type="text"
-                        value={rascunhoParaEnviar ? legenda : texto}
-                        onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
-                        onKeyDown={(e) => {
-                            if (e.key === "Enter" && !e.shiftKey) {
-                                e.preventDefault();
-                                if (rascunhoParaEnviar) {
-                                    handleSendDraft();
-                                } else if (texto.trim()) {
-                                    enviarMensagem("texto", texto);
-                                }
-                            }
-                        }}
-                        placeholder={rascunhoParaEnviar ? "Adicione uma legenda..." : "Digite uma mensagem"}
-                        className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
-                        style={{ paddingTop: "8px", paddingBottom: "8px" }}
+                )}
+                {destinatario?.foto_url && (
+                    <img
+                        src={destinatario.foto_url}
+                        alt={destinatario.nome}
+                        className="w-10 h-10 rounded-full object-cover"
                     />
-
-                    {/* Botões de mídia → aparecem no envio novo ou edição de mídia */}
-                    {((!rascunhoParaEnviar && !texto.trim()) ||
-                      (rascunhoParaEnviar && rascunhoParaEnviar.tipo !== "texto")) && (
-                        <>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={handleAnexoClick}
-                                className="text-gray-400 hover:text-white"
-                            >
-                                <Paperclip className="h-6 w-6" />
-                                <input
-                                    id="anexo-input"
-                                    type="file"
-                                    className="hidden"
-                                    onChange={(e) => handleFileChange(e, "anexo")}
-                                />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-gray-400 hover:text-white"
-                                onClick={handleCameraClick}
-                            >
-                                <Camera className="h-6 w-6" />
-                                <input
-                                    id="camera-input"
-                                    type="file"
-                                    accept="image/*"
-                                    capture="environment"
-                                    className="hidden"
-                                    onChange={(e) => handleFileChange(e, "imagem")}
-                                />
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="icon"
-                                className="text-gray-400 hover:text-white"
-                                onClick={toggleGravacao}
-                            >
-                                <Mic className="h-6 w-6" />
-                            </Button>
-                        </>
-                    )}
+                )}
+                <div>
+                    <h2 className="text-lg font-semibold">{destinatario?.nome}</h2>
+                    <p className="text-xs opacity-70">
+                        {statusOutroUsuario === "digitando" && (
+                            <span className="text-green-400 animate-pulse">Digitando...</span>
+                        )}
+                        {statusOutroUsuario === "gravando" && (
+                            <span className="text-green-400 animate-pulse flex items-center gap-1">
+                                <Mic className="inline w-4 h-4 text-green-400" /> Gravando áudio
+                            </span>
+                        )}
+                        {!statusOutroUsuario && destinatario?.status}
+                    </p>
                 </div>
+            </div>
 
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
-                    onClick={
-                        rascunhoParaEnviar
-                            ? handleSendDraft
-                            : texto.trim()
-                                ? () => enviarMensagem("texto", texto)
-                                : toggleGravacao
-                    }
-                >
-                    {texto.trim() || rascunhoParaEnviar ? (
-                        <SendHorizonal className="h-6 w-6 text-white" />
-                    ) : (
-                        <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
-                    )}
-                </Button>
+            {/* Tabs */}
+            <Tabs
+                value={abaAtiva}
+                onValueChange={setAbaAtiva}
+                className="flex-1 flex flex-col overflow-hidden"
+            >
+                <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
+                    <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Conversa</TabsTrigger>
+                    <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]">Arquivos</TabsTrigger>
+                </TabsList>
+                <TabsContent value="chat" className="flex-1 flex flex-col bg-transparent overflow-hidden">
+                    <Conversa
+                        key={destinatarioId}
+                        mensagens={mensagens}
+                        userId={userId}
+                        setResposta={setResposta}
+                        setMensagemSelecionada={setMensagemSelecionada}
+                        setEditandoId={setEditandoId}
+                        setTexto={setTexto}
+                        setImagemAmpliada={setImagemAmpliada}
+                        setZoomLevel={setZoomLevel}
+                        setPanOffset={setPanOffset}
+                        mensagemSelecionada={mensagemSelecionada}
+                        mensagemDestacada={mensagemDestacada}
+                        setMensagemDestacada={setMensagemDestacada}
+                        setMostrarModalEmojis={setMostrarModalEmojis}
+                        fimDasMensagens={fimDasMensagens}
+                        mensagemRefs={mensagemRefs}
+                        setRascunhoParaEnviar={setRascunhoParaEnviar}
+                    />
+                </TabsContent>
+                <TabsContent value="arquivos" className="flex-1 flex flex-col overflow-hidden">
+                    <Compartilhamento
+                        arquivos={arquivos}
+                        setImagemAmpliada={setImagemAmpliada}
+                        setZoomLevel={setZoomLevel}
+                        setPanOffset={setPanOffset}
+                    />
+                </TabsContent>
+            </Tabs>
+
+            {/* Modal de Emojis */}
+            <div className={`p-2 bg-transparent transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? "transform-none" : "transform translate-y-full"}`}>
+                {mostrarModalEmojis && (
+                    <div
+                        ref={emojiModalRef}
+                        className="mx-auto w-full max-w-md bg-[#1f2937] rounded-lg p-6 flex flex-col touch-none select-none"
+                        onMouseDown={(e) => (dragStartY.current = e.clientY)}
+                        onMouseUp={(e) => {
+                            if (dragStartY.current !== null && e.clientY - dragStartY.current > 60) {
+                                setMostrarModalEmojis(false);
+                            }
+                            dragStartY.current = null;
+                        }}
+                        onTouchStart={(e) => (dragStartY.current = e.touches[0].clientY)}
+                        onTouchEnd={(e) => {
+                            if (dragStartY.current !== null && e.changedTouches[0].clientY - dragStartY.current > 60) {
+                                setMostrarModalEmojis(false);
+                            }
+                            dragStartY.current = null;
+                        }}
+                    >
+                        <EmojiBoard
+                            onEmojiClick={(emoji) => {
+                                if (emoji) {
+                                    if (rascunhoParaEnviar) {
+                                        setLegenda((prev) => prev + emoji);
+                                    } else {
+                                        setTexto((prev) => prev + emoji);
+                                    }
+                                }
+                                setMostrarModalEmojis(false);
+                            }}
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* Input */}
+            <div className="flex flex-col gap-2 p-4 bg-transparent transition-transform duration-300 ease-in-out">
+                {(resposta || rascunhoParaEnviar) && (
+                    <div className="p-2 bg-transparent border-l-4 border-green-500 flex justify-between items-center rounded-md">
+                        <div className="text-xs text-gray-300 flex-1">
+                            {editandoId && (
+                                <span className="text-xs text-white mb-1 block">✏️ Você está editando...</span>
+                            )}
+
+                            {/* Prévia de resposta */}
+                            {resposta && (
+                                <div className="mb-1">
+                                    <span className="block font-semibold">
+                                        <b>{destinatario?.nome}</b> <i>enviou</i>:
+                                    </span>
+                                    {resposta.tipo === "texto" && (
+                                        <span className="text-xs text-gray-300 break-words break-all">
+                                            {resposta.conteudo}
+                                        </span>
+                                    )}
+                                    {resposta.tipo === "imagem" && (() => {
+                                        const partes = resposta.conteudo.split("|SEPARATOR|");
+                                        const urlImagem = partes[0] || "";
+                                        const legendaImagem = partes[1] ? partes[1].trim() : "";
+                                        return (
+                                            <div className="flex items-center space-x-2">
+                                                <img src={urlImagem} alt="Prévia da Imagem" className="w-8 h-8 object-cover rounded flex-shrink-0" />
+                                                <span className="text-xs italic text-gray-400 break-words break-all min-w-0">
+                                                    {legendaImagem || "Imagem"}
+                                                </span>
+                                            </div>
+                                        );
+                                    })()}
+                                    {resposta.tipo === "audio" && (
+                                        <div className="w-full max-w-[200px] h-6">
+                                            <AudioPlayer src={resposta.conteudo} />
+                                        </div>
+                                    )}
+                                    {resposta.tipo === "anexo" && (
+                                        <div className="flex items-center space-x-1 text-gray-400">
+                                            {resposta.conteudo.includes(".pdf") ? (
+                                                <FileText className="w-4 h-4 flex-shrink-0" />
+                                            ) : resposta.conteudo.includes(".xlsx") ? (
+                                                <FileSpreadsheet className="w-4 h-4 flex-shrink-0" />
+                                            ) : (
+                                                <Paperclip className="w-4 h-4 flex-shrink-0" />
+                                            )}
+                                            <span className="text-xs break-words break-all truncate">
+                                                {resposta.conteudo.split("/").pop()}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Prévia de rascunho */}
+                            {rascunhoParaEnviar && (
+                                <div className="flex items-center gap-2">
+                                    {rascunhoParaEnviar.tipo === "imagem" && (
+                                        <img src={rascunhoParaEnviar.conteudo} alt="Prévia" className="w-20 h-20 rounded-md object-cover" />
+                                    )}
+                                    {rascunhoParaEnviar.tipo === "audio" && (
+                                        <AudioPlayer src={rascunhoParaEnviar.conteudo} />
+                                    )}
+                                    {rascunhoParaEnviar.tipo === "anexo" && (
+                                        <span className="italic opacity-80">📎 Anexo</span>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {(rascunhoParaEnviar || resposta) && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={handleCancelDraft}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <X className="w-6 h-6" />
+                            </Button>
+                        )}
+                    </div>
+                )}
+
+                <div className="flex items-end gap-4" style={{
+                    backgroundImage: 'url("assets/wallpaper.jpg")',
+                    backgroundRepeat: 'repeat',
+                    // NOVO: Define o tamanho da imagem replicada. Ajuste este valor!
+                    backgroundSize: '250px',
+
+                    backgroundAttachment: 'fixed', // Mantém o fundo fixo
+                    backgroundPosition: 'center',
+                }}>
+                    <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
+                            className="text-gray-400 hover:text-white"
+                        >
+                            <Smile className="w-6 h-6" />
+                        </Button>
+
+                        <Input
+                            type="text"
+                            value={rascunhoParaEnviar ? legenda : texto}
+                            onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter" && !e.shiftKey) {
+                                    e.preventDefault();
+                                    if (rascunhoParaEnviar) {
+                                        handleSendDraft();
+                                    } else if (texto.trim()) {
+                                        enviarMensagem("texto", texto);
+                                    }
+                                }
+                            }}
+                            placeholder={rascunhoParaEnviar ? "Adicione uma legenda..." : "Digite uma mensagem"}
+                            className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
+                            style={{ paddingTop: "8px", paddingBottom: "8px" }}
+                        />
+
+                        {((!rascunhoParaEnviar && !texto.trim()) ||
+                            (rascunhoParaEnviar && rascunhoParaEnviar.tipo !== "texto")) && (
+                                <>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        onClick={handleAnexoClick}
+                                        className="text-gray-400 hover:text-white"
+                                    >
+                                        <Paperclip className="h-6 w-6" />
+                                        <input
+                                            id="anexo-input"
+                                            type="file"
+                                            className="hidden"
+                                            onChange={(e) => handleFileChange(e, "anexo")}
+                                        />
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="text-gray-400 hover:text-white"
+                                        onClick={handleCameraClick}
+                                    >
+                                        <Camera className="h-6 w-6" />
+                                        <input
+                                            id="camera-input"
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            className="hidden"
+                                            onChange={(e) => handleFileChange(e, "imagem")}
+                                        />
+                                    </Button>
+                                </>
+                            )}
+                    </div>
+
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="bg-[#00a884] rounded-full w-12 h-12 p-3 hover:bg-[#008f72] transition-colors duration-200"
+                        onClick={
+                            rascunhoParaEnviar
+                                ? handleSendDraft
+                                : texto.trim()
+                                    ? () => enviarMensagem("texto", texto)
+                                    : toggleGravacao
+                        }
+                    >
+                        {texto.trim() || rascunhoParaEnviar ? (
+                            <SendHorizonal className="h-6 w-6 text-white" />
+                        ) : (
+                            <Mic className={`h-6 w-6 ${gravando ? "text-red-500" : "text-white"}`} />
+                        )}
+                    </Button>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
 
 }

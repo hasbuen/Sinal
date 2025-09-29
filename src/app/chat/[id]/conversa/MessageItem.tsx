@@ -6,6 +6,7 @@ import AudioPlayer from "@/components/AudioPlayer";
 import MessageActions from "@/components/MessageActions";
 import useLongPress from "@/hooks/useLongPress";
 import { supabase } from "@/lib/supabase";
+import { Rascunho } from "@/types/rascunho";
 
 interface Mensagem {
     id: string;
@@ -33,7 +34,7 @@ interface MessageItemProps extends React.HTMLAttributes<HTMLDivElement> {
     mensagemSelecionada: string | null;
     setMensagemSelecionada: (id: string | null) => void;
     setResposta: (mensagem: Mensagem) => void;
-    setEditandoId: (id: string | null) => void;
+    setEditandoId: (id: string | null) => void; // ADICIONADO
     setTexto: (texto: string) => void;
     setImagemAmpliada: (url: string | null) => void;
     setZoomLevel: (level: number) => void;
@@ -46,8 +47,8 @@ interface MessageItemProps extends React.HTMLAttributes<HTMLDivElement> {
     formatarHora: (dataISO: string) => string;
     longPressProps: Record<string, any>;
     handleMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => void; // A sua função local
-    // Adicionando um alias para o objeto que você estava usando no spread
     someProps: Record<string, any>;
+    setRascunhoParaEnviar: React.Dispatch<React.SetStateAction<Rascunho | null>>; // ADICIONADO
 }
 
 export default function MensagemItem({
@@ -64,7 +65,8 @@ export default function MensagemItem({
     handleReact,
     formatarHora,
     handleMouseLeave: handleMouseLeaveProp,
-    someProps
+    someProps,
+    setRascunhoParaEnviar, // DESTRUCTURED (agora disponível)
 }: MessageItemProps) {
     const [isHovered, setIsHovered] = useState(false);
     const mouseLeaveTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -72,19 +74,11 @@ export default function MensagemItem({
     const { onMouseLeave: longPressOnMouseLeave, ...restLongPressProps } = longPressProps;
     const { onMouseLeave: originalOnMouseLeave } = someProps || {};
 
-    const handleMouseEnter = () => {
-        if (mouseLeaveTimeout.current) {
-            clearTimeout(mouseLeaveTimeout.current);
-        }
-        setIsHovered(true);
-    };
-
     const handleMouseLeaveCombined = (e: React.MouseEvent<HTMLDivElement>) => {
         if (mouseLeaveTimeout.current) {
             clearTimeout(mouseLeaveTimeout.current);
         }
 
-        // Inicia um timeout de 100ms antes de fechar o menu
         mouseLeaveTimeout.current = setTimeout(() => {
             setIsHovered(false);
             longPressOnMouseLeave?.(e); // Chama a função do useLongPress
@@ -93,7 +87,6 @@ export default function MensagemItem({
         }, 100); // 100ms (você pode ajustar este valor se necessário)
     };
 
-    // ❗ NOVO: Cleanup para o timer
     useEffect(() => {
         return () => {
             if (mouseLeaveTimeout.current) {
@@ -112,6 +105,15 @@ export default function MensagemItem({
         acc[reacao.emoji].push(reacao);
         return acc;
     }, {} as Record<string, typeof mensagem.reacoes>) || {};
+
+    const [estadoDeEdicao, setEstadoDeEdicao] = useState<{
+        id: string;
+        conteudoOriginal: string;
+        tipoOriginal: Mensagem["tipo"];
+        arquivoTemporario: File | null; // Para lidar com a substituição
+    } | null>(null);
+
+    // REMOVED placeholder erro (não há throw/placeholder mais)
 
     return (
         <div
@@ -205,16 +207,38 @@ export default function MensagemItem({
                                 souEu={souEu}
                                 mensagem={mensagem}
                                 onReply={() => { setResposta(mensagem); setMensagemSelecionada(null); setMostrarMenu(false); }}
-                                onEdit={() => { if (souEu) { setEditandoId(mensagem.id); setTexto(mensagem.conteudo); setMensagemSelecionada(null); setMostrarMenu(false); } }}
-                                onDelete={() => {
-                                    if (souEu) {
-                                        // 1. Executa a exclusão no Supabase
-                                        supabase.from("mensagens").delete().eq("id", mensagem.id);
-                                        // 2. Fecha o menu de seleção
-                                        setMensagemSelecionada(null);
 
-                                        // 3. Fecha o menu de ações (se estiver aberto por hover/touch)
-                                        setMostrarMenu(false); // Adicionado
+                                onEdit={() => {
+                                    if (souEu) {
+                                        const [conteudoPrincipal, legendaDaMensagem] = mensagem.conteudo.split("|SEPARATOR|") || [mensagem.conteudo, ""];
+
+                                        setEditandoId(mensagem.id);
+
+                                        if (mensagem.tipo === "texto") {
+                                            setTexto(conteudoPrincipal.trim());
+                                        } else {
+                                            // usa a prop setRascunhoParaEnviar (chegou via Conversa -> ChatComponent)
+                                            setRascunhoParaEnviar({
+                                                tipo: mensagem.tipo!,
+                                                conteudo: conteudoPrincipal,
+                                                legenda: legendaDaMensagem || "",
+                                                file: undefined,
+                                            });
+                                        }
+
+                                        setMensagemSelecionada(null);
+                                        setMostrarMenu(false);
+                                    }
+                                }}
+
+                                onDelete={async () => {
+                                    if (souEu) {
+                                        await supabase
+                                            .from("mensagens")
+                                            .delete()
+                                            .eq("id", mensagem.id);
+                                        setMensagemSelecionada(null);
+                                        setMostrarMenu(false);
                                     }
                                 }}
                                 onReact={(emoji: string) => { handleReact(mensagem, emoji); setMensagemSelecionada(null); setMostrarMenu(false); }}
@@ -245,6 +269,8 @@ export default function MensagemItem({
                             </div>
                         </div>
                     )}
+
+
 
                 </div>
             </div>

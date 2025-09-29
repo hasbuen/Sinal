@@ -9,6 +9,7 @@ import { RefObject, useEffect, useRef, useState } from "react";
 import { X, FileText, FileSpreadsheet, Paperclip } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import MensagemItem from "./MessageItem";
+import { Rascunho } from "@/types/rascunho";
 
 interface Mensagem {
     id: string;
@@ -51,6 +52,7 @@ interface ConversaProps {
     setMostrarModalEmojis: React.Dispatch<React.SetStateAction<boolean>>;
     fimDasMensagens: RefObject<HTMLDivElement | null>;
     mensagemRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
+    setRascunhoParaEnviar: React.Dispatch<React.SetStateAction<Rascunho | null>>; 
 }
 
 export default function Conversa({
@@ -68,6 +70,7 @@ export default function Conversa({
     setMensagemDestacada,
     fimDasMensagens,
     mensagemRefs,
+    setRascunhoParaEnviar, 
 }: ConversaProps) {
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
 
@@ -208,12 +211,9 @@ useEffect(() => {
                             userId={userId}
                             handleReact={handleReact}
                             formatarHora={formatarHora}
-                            
-                            // 3. PASSA AS PROPS CORRETAS E LIMPAS
+                            setRascunhoParaEnviar={setRascunhoParaEnviar} 
                             handleMouseLeave={handleMouseLeaveLocal}
                             someProps={propsDoElementoBase}
-                            // longPressProps: se o 'useLongPress' estiver no MessageItem, passe {} ou remova
-                            // Aqui mantemos undefined se for a única opção, mas o ideal é passar {}
                             longPressProps={{}} 
                         />
                     ))}

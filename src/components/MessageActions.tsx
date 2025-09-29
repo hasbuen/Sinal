@@ -90,7 +90,7 @@ export default function MessageActions({
   }, []);
 
   return (
-  <div className="flex items-center gap-2 bg-[#1f2937] px-2 py-1 rounded-xl shadow-md relative menu-suspenso-chat">
+  <div className="flex items-center gap-2 bg-emerald-600 px-2 py-1 rounded-xl shadow-md relative menu-suspenso-chat">
       {/* Container para emojis rápidos */}
       <div
         className="relative menu-rapidos-chat"
@@ -98,7 +98,7 @@ export default function MessageActions({
         onMouseLeave={handleRapidosMouseLeave}
       >
         <button
-          className="p-1 hover:bg-gray-600 rounded-full transition"
+          className="p-1 hover:bg-emerald-400 rounded-full transition"
           onClick={(e) => {
             e.stopPropagation();
             setMostrarRapidos((prev) => !prev);
@@ -110,7 +110,7 @@ export default function MessageActions({
         </button>
         {mostrarRapidos && (
           <div
-            className="absolute z-20 flex gap-1 p-1 rounded-md shadow-lg bg-gray-800 max-w-[240px] max-h-[50px] overflow-hidden
+            className="absolute z-20 flex gap-1 p-1 rounded-4xl shadow-lg bg-emerald-800/70 max-w-[240px] max-h-[50px] overflow-hidden
              bottom-full transform -translate-x-1/2 mb-2 menu"
           >
             {emojisRapidos.map((emoji) => (
@@ -136,7 +136,7 @@ export default function MessageActions({
         onMouseLeave={handleMenuMouseLeave}
       >
         <button
-          className="p-1 hover:bg-gray-600 rounded-full transition"
+          className="p-1 hover:bg-emerald-400 rounded-full transition"
           onClick={(e) => {
             e.stopPropagation();
             setMostrarMenu((prev) => !prev);
@@ -148,7 +148,7 @@ export default function MessageActions({
         </button>
 
         {mostrarMenu && (
-          <div className="absolute bottom-full right-0 mb-2 flex flex-col bg-[#111827] p-2 rounded-2xl shadow-lg z-50 min-w-[140px] text-white menu-opcoes-chat">
+          <div className="absolute bottom-full right-0 mb-2 flex flex-col bg-[#111827]/70 p-2 rounded-2xl shadow-lg z-50 min-w-[140px] text-white menu-opcoes-chat">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -157,7 +157,7 @@ export default function MessageActions({
                 setMostrarRapidos(false);
                 setMostrarModalEmojis(false);
               }}
-              className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
+              className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
             >
               <Reply className="w-4 h-4 text-white" /> Responder
             </button>
@@ -172,7 +172,7 @@ export default function MessageActions({
                     setMostrarRapidos(false);
                     setMostrarModalEmojis(false);
                   }}
-                  className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
+                  className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
                 >
                   <Edit2 className="w-4 h-4 text-white" /> Editar
                 </button>
@@ -184,7 +184,7 @@ export default function MessageActions({
                     setMostrarRapidos(false);
                     setMostrarModalEmojis(false);
                   }}
-                  className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
+                  className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
                 >
                   <Trash2 className="w-4 h-4 text-white" /> Apagar
                 </button>
@@ -198,7 +198,7 @@ export default function MessageActions({
                 setMostrarMenu(false);
                 setMostrarRapidos(false);
               }}
-              className="text-left p-1 hover:bg-gray-600 rounded flex items-center gap-1"
+              className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
             >
               <Smile className="w-4 h-4 text-white" /> Emojis
             </button>

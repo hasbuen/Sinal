@@ -415,10 +415,9 @@ export default function ChatComponent({
         <div className="flex flex-col h-screen" style={{
                 backgroundImage: 'url("assets/wallpaper.jpg")',
                 backgroundRepeat: 'repeat',
-                // NOVO: Define o tamanho da imagem replicada. Ajuste este valor!
                 backgroundSize: '250px',
 
-                backgroundAttachment: 'fixed', // Mantém o fundo fixo
+                backgroundAttachment: 'fixed', 
                 backgroundPosition: 'center',
             }}>
             {/* Cabeçalho */}
@@ -537,7 +536,7 @@ export default function ChatComponent({
             {/* Input */}
             <div className="flex flex-col gap-2 p-4 bg-transparent transition-transform duration-300 ease-in-out">
                 {(resposta || rascunhoParaEnviar) && (
-                    <div className="p-2 bg-transparent border-l-4 border-green-500 flex justify-between items-center rounded-md">
+                    <div className="p-2 border-l-4 border-green-500 bg-green-900/70 rounded-3xl flex justify-between items-center rounded-md">
                         <div className="text-xs text-gray-300 flex-1">
                             {editandoId && (
                                 <span className="text-xs text-white mb-1 block">✏️ Você está editando...</span>

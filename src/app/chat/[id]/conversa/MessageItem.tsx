@@ -260,7 +260,7 @@ export default function MensagemItem({
                                 {Object.entries(reacoesAgrupadas).map(([emoji, reacoes]) => (
                                     <span
                                         key={emoji}
-                                        className="px-1 py-0.5 bg-[#1f1e1e] rounded-full text-xs cursor-pointer shadow-sm ml-1"
+                                        className="px-1 py-0.5 bg-emerald-900/70 rounded-full text-xs cursor-pointer shadow-sm ml-1"
                                         onClick={(e) => { e.stopPropagation(); handleReact(mensagem, emoji); }}
                                     >
                                         {emoji} {reacoes?.length > 1 ? reacoes.length : ""}

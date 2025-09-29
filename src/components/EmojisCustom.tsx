@@ -361,7 +361,7 @@ const EmojiBoard: React.FC<EmojiBoardProps> = ({ onEmojiClick }) => {
   ) || [];
 
   return (
-  <div className="bg-[#1f2937] rounded-lg p-2 w-full flex flex-col">
+  <div className="bg-transparent rounded-lg p-2 w-full flex flex-col">
       <div className="flex gap-2 mb-2">
         {EMOJI_CATEGORIES.map(cat => (
           <button

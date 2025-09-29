@@ -209,8 +209,8 @@ export default function MessageActions({
       {/* Picker de Emojis */}
       {mostrarModalEmojis && (
         <div className="fixed inset-0 z-50 flex items-center justify-center menu-modal-emojis-chat">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setMostrarModalEmojis(false)} />
-          <div className="relative p-4 bg-[#0b1220] rounded-xl shadow-lg max-w-[90vw] max-h-[80vh] overflow-auto">
+          <div className="fixed inset-0 bg-transparent" onClick={() => setMostrarModalEmojis(false)} />
+          <div className="relative p-4 bg-emerald-900/70 rounded-4xl shadow-lg max-w-[90vw] max-h-[80vh] overflow-auto">
             <EmojiBoard
               onEmojiClick={(emoji) => {
                 onReact(emoji);

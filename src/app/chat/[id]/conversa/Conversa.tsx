@@ -231,7 +231,7 @@ export default function Conversa({
 
             {mostrarModalEmojis && (
                 <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/50\">
-                    <div className="bg-[#1f2937] rounded-lg p-4 max-w-md w-full">
+                    <div className="bg-emerald-900/70 rounded-lg p-4 max-w-md w-full">
                         <EmojiCustom
                             onEmojiClick={(emoji) => {
                                 const mensagem = mensagens.find(m => m.id === mensagemSelecionada);

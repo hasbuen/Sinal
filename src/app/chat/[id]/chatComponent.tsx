@@ -501,7 +501,7 @@ export default function ChatComponent({
                 {mostrarModalEmojis && (
                     <div
                         ref={emojiModalRef}
-                        className="mx-auto w-full max-w-md bg-[#1f2937] rounded-lg p-6 flex flex-col touch-none select-none"
+                        className="mx-auto w-full max-w-md bg-emerald-900/70 rounded-4xl p-6 flex flex-col touch-none select-none"
                         onMouseDown={(e) => (dragStartY.current = e.clientY)}
                         onMouseUp={(e) => {
                             if (dragStartY.current !== null && e.clientY - dragStartY.current > 60) {

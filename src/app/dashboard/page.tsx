@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import InstallPwaPrompt from "@/components/InstallPwaPrompt";
 import { Button } from "@/components/ui/button";
 import Image, { ImageLoaderProps } from "next/image";
 import { Input } from "@/components/ui/input";
@@ -185,26 +186,26 @@ export default function Dashboard() {
   if (!carregado) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
-            
-            <motion.img
-                src="/icons/icon-transparent.png"
-                className="w-10 h-10"
-                alt="Ícone de Carregamento"
-                
-                initial={{ opacity: 0, rotate: 0 }}
-                animate={{ 
-                    opacity: 1, 
-                    rotate: 360
-                }}
-                transition={{
-                    duration: 1.5, 
-                    repeat: Infinity,
-                    repeatType: "loop", 
-                    ease: "linear", 
-                }}
-            />
-            
-        </div>
+
+        <motion.img
+          src="/icons/icon-transparent.png"
+          className="w-10 h-10"
+          alt="Ícone de Carregamento"
+
+          initial={{ opacity: 0, rotate: 0 }}
+          animate={{
+            opacity: 1,
+            rotate: 360
+          }}
+          transition={{
+            duration: 1.5,
+            repeat: Infinity,
+            repeatType: "loop",
+            ease: "linear",
+          }}
+        />
+
+      </div>
     );
   }
 
@@ -268,6 +269,8 @@ export default function Dashboard() {
             Sair
           </Button>
         </div>
+        
+          <InstallPwaPrompt />
 
         <div className="relative flex items-center w-full">
 

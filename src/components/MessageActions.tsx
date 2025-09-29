@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Smile, MoreHorizontal, Reply, Edit2, Trash2 } from "lucide-react";
+import { Smile, MoreHorizontal, Reply, Edit2, Trash2, SeparatorHorizontal } from "lucide-react";
 import EmojiBoard from "@/components/EmojisCustom";
 
 const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
@@ -150,6 +150,22 @@ export default function MessageActions({
         {mostrarMenu && (
           <div className="absolute bottom-full right-0 mb-2 flex flex-col bg-[#111827]/70 p-2 rounded-2xl shadow-lg z-50 min-w-[140px] text-white menu-opcoes-chat">
             <button
+  onClick={(e) => {
+    e.stopPropagation();
+    setMostrarModalEmojis(true);
+    setMostrarMenu(false);
+    setMostrarRapidos(false);
+  }}
+  className="group text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
+>
+  <Smile className="w-4 h-4 text-emerald-300 transition-colors duration-500 ease-in-out group-hover:text-green-200" />
+  <div className="transition-colors duration-500 ease-in-out group-hover:text-green-200">
+    +Emojis
+  </div>
+</button>
+
+            <div className="border-t border-emerald-700 my-1" />
+            <button
               onClick={(e) => {
                 e.stopPropagation();
                 onReply(mensagem);
@@ -159,7 +175,7 @@ export default function MessageActions({
               }}
               className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
             >
-              <Reply className="w-4 h-4 text-white" /> Responder
+              <Reply className="w-4 h-4 text-emerald-300 transform -scale-x-100" /> Responder
             </button>
 
             {souEu && (
@@ -174,7 +190,7 @@ export default function MessageActions({
                   }}
                   className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
                 >
-                  <Edit2 className="w-4 h-4 text-white" /> Editar
+                  <Edit2 className="w-4 h-4 text-emerald-300" /> Editar
                 </button>
                 <button
                   onClick={(e) => {
@@ -186,22 +202,10 @@ export default function MessageActions({
                   }}
                   className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
                 >
-                  <Trash2 className="w-4 h-4 text-white" /> Apagar
+                  <Trash2 className="w-4 h-4 text-red-500" /> Apagar
                 </button>
               </>
             )}
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setMostrarModalEmojis(true);
-                setMostrarMenu(false);
-                setMostrarRapidos(false);
-              }}
-              className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
-            >
-              <Smile className="w-4 h-4 text-white" /> Emojis
-            </button>
           </div>
         )}
       </div>

@@ -12,6 +12,7 @@ import Compartilhamento from "./compartilhamento/Compartilhamento";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Rascunho } from "@/types/rascunho";
 import { Textarea } from "@/components/ui/textarea";
+import ForwardModal from "@/components/ForwardModal";
 
 interface Mensagem {
     id: string;
@@ -68,7 +69,7 @@ export default function ChatComponent({
     const [mensagemSelecionada, setMensagemSelecionada] = useState<string | null>(null);
     const [mensagemDestacada, setMensagemDestacada] = useState<string | null>(null);
     const [abaAtiva, setAbaAtiva] = useState("chat");
-
+    const [mensagemParaEncaminhar, setMensagemParaEncaminhar] = useState<any | null>(null);
     const fimDasMensagens = useRef<HTMLDivElement>(null);
     const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -374,6 +375,12 @@ export default function ChatComponent({
         }
     };
 
+    useEffect(() => {
+        const handler = (e: any) => setMensagemParaEncaminhar(e.detail);
+        document.addEventListener("abrirEncaminhar", handler);
+        return () => document.removeEventListener("abrirEncaminhar", handler);
+    }, []);
+
     const handleCameraClick = () => {
         document.getElementById("camera-input")?.click();
     };
@@ -653,7 +660,7 @@ export default function ChatComponent({
                                     focus:ring-0
                                     placeholder:text-gray-400 
                                     resize-none overflow-hidden 
-                                    min-h-[40px] max-h-40 px-2 py-2 rounded-xl" 
+                                    min-h-[40px] max-h-40 px-2 py-2 rounded-xl"
                         />
 
                         {((!rascunhoParaEnviar && !texto.trim()) ||
@@ -691,6 +698,15 @@ export default function ChatComponent({
                                     </Button>
                                 </>
                             )}
+
+                        {mensagemParaEncaminhar && (
+                            <ForwardModal
+                                mensagem={mensagemParaEncaminhar}
+                                destinatarioId={destinatarioId} 
+                                onClose={() => setMensagemParaEncaminhar(null)}
+                            />
+                        )}
+
                     </div>
 
                     <Button

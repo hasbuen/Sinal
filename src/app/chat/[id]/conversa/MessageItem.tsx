@@ -207,7 +207,10 @@ export default function MensagemItem({
                                 souEu={souEu}
                                 mensagem={mensagem}
                                 onReply={() => { setResposta(mensagem); setMensagemSelecionada(null); setMostrarMenu(false); }}
-
+                                onForward={() => {
+                                    setMensagemSelecionada(mensagem.id);
+                                    document.dispatchEvent(new CustomEvent("abrirEncaminhar", { detail: mensagem }));
+                                }}
                                 onEdit={() => {
                                     if (souEu) {
                                         const [conteudoPrincipal, legendaDaMensagem] = mensagem.conteudo.split("|SEPARATOR|") || [mensagem.conteudo, ""];

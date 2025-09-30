@@ -89,7 +89,7 @@ export default function AudioPlayer({ src }: AudioPlayerProps) {
       </button>
 
       {/* Elemento de áudio escondido */}
-      <audio ref={audioRef} src={src} />
+      {src && <audio ref={audioRef} src={src} />}
     </div>
   );
 }

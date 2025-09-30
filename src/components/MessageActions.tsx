@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Smile, MoreHorizontal, Reply, Edit2, Trash2, SeparatorHorizontal } from "lucide-react";
+import { Smile, MoreHorizontal, Reply, Edit2, Trash2, ReplyAll } from "lucide-react";
 import EmojiBoard from "@/components/EmojisCustom";
 
 const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
@@ -13,12 +13,14 @@ interface MessageActionsProps {
   onEdit: () => void;
   onDelete: () => void;
   onReact: (emoji: string) => void;
+  onForward: (mensagem: any) => void;
 }
 
 export default function MessageActions({
   souEu,
   mensagem,
   onReply,
+  onForward,
   onEdit,
   onDelete,
   onReact,
@@ -177,6 +179,20 @@ export default function MessageActions({
             >
               <Reply className="w-4 h-4 text-emerald-300 transform -scale-x-100" /> Responder
             </button>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onForward(mensagem);
+                setMostrarMenu(false);
+                setMostrarRapidos(false);
+                setMostrarModalEmojis(false);
+              }}
+              className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
+            >
+              <ReplyAll className="w-4 h-4 text-emerald-300" /> Encaminhar
+            </button>
+
 
             {souEu && (
               <>

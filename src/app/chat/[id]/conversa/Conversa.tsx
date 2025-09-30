@@ -152,27 +152,21 @@ export default function Conversa({
     useEffect(() => {
         const el = chatContainerRef.current;
 
-        // Calcula se o usuário está próximo do final
         const estaProximoDoFinal = el
-            ? el.scrollHeight - el.scrollTop - el.clientHeight < 300 // 300px de margem
+            ? el.scrollHeight - el.scrollTop - el.clientHeight < 300 
             : false;
 
-        // Se a lista de mensagens mudou E o usuário estava próximo do final, role.
         if (mensagens.length > 0 && estaProximoDoFinal) {
-            // Usa um pequeno timeout para garantir que o DOM foi atualizado
             const timeout = setTimeout(() => {
-                rolarParaOFinal(true); // Rola com animação
+                rolarParaOFinal(true); 
             }, 50);
 
             return () => clearTimeout(timeout);
         }
 
-        // Rola para o final na primeira carga (se as mensagens acabaram de ser carregadas)
         if (!el || mensagens.length === 0) return;
-
-        // Lógica para rolagem inicial (apenas na primeira renderização se não houver rolagem)
         if (el.scrollTop === 0 && el.scrollHeight > el.clientHeight) {
-            rolarParaOFinal(false); // Rola sem animação na primeira carga
+            rolarParaOFinal(false); 
         }
 
     }, [mensagens.length]);
@@ -187,11 +181,10 @@ export default function Conversa({
             style={{
                 backgroundImage: 'url("assets/wallpaper.jpg")',
                 backgroundRepeat: 'repeat',
-                // NOVO: Define o tamanho da imagem replicada. Ajuste este valor!
                 backgroundSize: '250px',
 
-                backgroundAttachment: 'fixed', // Mantém o fundo fixo
-                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed', 
+                backgroundPosition: 'center'
             }}
         >
             {mensagensAgrupadas.map((grupo) => (

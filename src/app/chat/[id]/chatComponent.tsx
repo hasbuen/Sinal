@@ -11,6 +11,7 @@ import Conversa from "./conversa/Conversa";
 import Compartilhamento from "./compartilhamento/Compartilhamento";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Rascunho } from "@/types/rascunho";
+import { Textarea } from "@/components/ui/textarea";
 
 interface Mensagem {
     id: string;
@@ -413,13 +414,13 @@ export default function ChatComponent({
 
     return (
         <div className="flex flex-col h-screen" style={{
-                backgroundImage: 'url("assets/wallpaper.jpg")',
-                backgroundRepeat: 'repeat',
-                backgroundSize: '250px',
+            backgroundImage: 'url("assets/wallpaper.jpg")',
+            backgroundRepeat: 'repeat',
+            backgroundSize: '250px',
 
-                backgroundAttachment: 'fixed', 
-                backgroundPosition: 'center',
-            }}>
+            backgroundAttachment: 'fixed',
+            backgroundPosition: 'center',
+        }}>
             {/* Cabeçalho */}
             <div className="flex itens-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10 sticky top-0">
                 {onClose && (
@@ -462,8 +463,8 @@ export default function ChatComponent({
                 className="flex-1 flex flex-col overflow-hidden"
             >
                 <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
-                    <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]"><MessageCircleMore/>Conversa</TabsTrigger>
-                    <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-transparent"><TableOfContents/> Arquivos</TabsTrigger>
+                    <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]"><MessageCircleMore />Conversa</TabsTrigger>
+                    <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-transparent"><TableOfContents /> Arquivos</TabsTrigger>
                 </TabsList>
                 <TabsContent value="chat" className="flex-1 flex flex-col bg-transparent overflow-hidden">
                     <Conversa
@@ -621,7 +622,7 @@ export default function ChatComponent({
                     backgroundRepeat: 'repeat',
                     backgroundSize: '250px',
 
-                    backgroundAttachment: 'fixed', 
+                    backgroundAttachment: 'fixed',
                     backgroundPosition: 'center'
                 }}>
                     <div className="flex-1 flex items-end bg-black/80 rounded-full px-4 py-2">
@@ -634,8 +635,7 @@ export default function ChatComponent({
                             <Smile className="w-6 h-6" />
                         </Button>
 
-                        <Input
-                            type="text"
+                        <Textarea
                             value={rascunhoParaEnviar ? legenda : texto}
                             onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
                             onKeyDown={(e) => {
@@ -648,9 +648,12 @@ export default function ChatComponent({
                                     }
                                 }
                             }}
-                            placeholder={rascunhoParaEnviar ? "Adicione uma legenda..." : "Digite uma mensagem"}
-                            className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-emerald-300/50 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
-                            style={{ paddingTop: "8px", paddingBottom: "8px" }}
+                            placeholder={rascunhoParaEnviar ? "Legenda..." : "Mensagem..."}
+                            className="flex-1 bg-transparent border-none 
+                                    focus:ring-0
+                                    placeholder:text-gray-400 
+                                    resize-none overflow-hidden 
+                                    min-h-[40px] max-h-40 px-2 py-2 rounded-xl" 
                         />
 
                         {((!rascunhoParaEnviar && !texto.trim()) ||
@@ -672,7 +675,7 @@ export default function ChatComponent({
                                     </Button>
                                     <Button
                                         variant="ghost"
-                                        size="icon" 
+                                        size="icon"
                                         className="text-emerald-400 hover:text-white hover:bg-gray-700 transition-colors duration-500 ease-in-out"
                                         onClick={handleCameraClick}
                                     >

@@ -149,8 +149,11 @@ export default function MensagemItem({
                     )}
 
                     {remetenteOriginal && (
-                        <div className="mb-1 text-xs text-gray-300 italic">
-                            {remetenteOriginal} enviou:
+                        <div className="mb-1 text-xs text-white flex items-center gap-1">
+                            <span className="bg-emerald-500 text-black font-bold px-2 py-0.5 rounded-md">
+                                {remetenteOriginal}
+                            </span>
+                            <span className="italic text-white">enviou:</span>
                         </div>
                     )}
 

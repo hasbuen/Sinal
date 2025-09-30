@@ -501,7 +501,7 @@ export default function ChatComponent({
                 {mostrarModalEmojis && (
                     <div
                         ref={emojiModalRef}
-                        className="mx-auto w-full max-w-md bg-emerald-900/70 rounded-4xl p-6 flex flex-col touch-none select-none"
+                        className="mx-auto w-full max-w-md bg-emerald-900/70 rounded-lg p-6 flex flex-col touch-none select-none"
                         onMouseDown={(e) => (dragStartY.current = e.clientY)}
                         onMouseUp={(e) => {
                             if (dragStartY.current !== null && e.clientY - dragStartY.current > 60) {
@@ -619,18 +619,17 @@ export default function ChatComponent({
                 <div className="flex items-end gap-4" style={{
                     backgroundImage: 'url("assets/wallpaper.jpg")',
                     backgroundRepeat: 'repeat',
-                    // NOVO: Define o tamanho da imagem replicada. Ajuste este valor!
                     backgroundSize: '250px',
 
-                    backgroundAttachment: 'fixed', // Mantém o fundo fixo
-                    backgroundPosition: 'center',
+                    backgroundAttachment: 'fixed', 
+                    backgroundPosition: 'center'
                 }}>
-                    <div className="flex-1 flex items-end bg-[#2a3942] rounded-full px-4 py-2">
+                    <div className="flex-1 flex items-end bg-black/80 rounded-full px-4 py-2">
                         <Button
                             variant="ghost"
                             size="icon"
                             onClick={() => setMostrarModalEmojis(!mostrarModalEmojis)}
-                            className="text-gray-400 hover:text-white"
+                            className="text-emerald-400 hover:text-white hover:bg-gray-700 transition-colors duration-500 ease-in-out"
                         >
                             <Smile className="w-6 h-6" />
                         </Button>
@@ -650,7 +649,7 @@ export default function ChatComponent({
                                 }
                             }}
                             placeholder={rascunhoParaEnviar ? "Adicione uma legenda..." : "Digite uma mensagem"}
-                            className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-gray-500 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
+                            className="flex-1 bg-transparent border-none text-white focus:outline-none focus:ring-0 placeholder:text-emerald-300/50 resize-none overflow-hidden h-auto max-h-40 px-2 py-0"
                             style={{ paddingTop: "8px", paddingBottom: "8px" }}
                         />
 
@@ -661,7 +660,7 @@ export default function ChatComponent({
                                         variant="ghost"
                                         size="icon"
                                         onClick={handleAnexoClick}
-                                        className="text-gray-400 hover:text-white"
+                                        className="text-emerald-400 hover:text-white hover:bg-gray-700 transition-colors duration-500 ease-in-out"
                                     >
                                         <Paperclip className="h-6 w-6" />
                                         <input
@@ -673,8 +672,8 @@ export default function ChatComponent({
                                     </Button>
                                     <Button
                                         variant="ghost"
-                                        size="icon"
-                                        className="text-gray-400 hover:text-white"
+                                        size="icon" 
+                                        className="text-emerald-400 hover:text-white hover:bg-gray-700 transition-colors duration-500 ease-in-out"
                                         onClick={handleCameraClick}
                                     >
                                         <Camera className="h-6 w-6" />

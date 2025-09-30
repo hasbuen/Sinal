@@ -66,7 +66,7 @@ export default function MensagemItem({
     formatarHora,
     handleMouseLeave: handleMouseLeaveProp,
     someProps,
-    setRascunhoParaEnviar, // DESTRUCTURED (agora disponível)
+    setRascunhoParaEnviar,
 }: MessageItemProps) {
     const [isHovered, setIsHovered] = useState(false);
     const mouseLeaveTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -81,10 +81,10 @@ export default function MensagemItem({
 
         mouseLeaveTimeout.current = setTimeout(() => {
             setIsHovered(false);
-            longPressOnMouseLeave?.(e); // Chama a função do useLongPress
-            originalOnMouseLeave?.(e); // Chama o onMouseLeave do someProps
-            handleMouseLeaveProp?.(e); // Chama a sua prop handleMouseLeave
-        }, 100); // 100ms (você pode ajustar este valor se necessário)
+            longPressOnMouseLeave?.(e);
+            originalOnMouseLeave?.(e);
+            handleMouseLeaveProp?.(e);
+        }, 100);
     };
 
     useEffect(() => {
@@ -98,22 +98,22 @@ export default function MensagemItem({
 
     const [mostrarMenu, setMostrarMenu] = useState(false);
 
-    const [conteudoDaMensagem, legendaDaMensagem] = mensagem.conteudo?.split("|SEPARATOR|") || ["", ""];
+    let conteudo = mensagem.conteudo;
+    let remetenteOriginal: string | null = null;
+
+    if (conteudo.startsWith("ENCAMINHADO_DE|")) {
+        const partes = conteudo.split("|");
+        remetenteOriginal = partes[1];        // Nome original
+        conteudo = partes.slice(2).join("|"); // Conteúdo real da msg
+    }
+
+    const [conteudoDaMensagem, legendaDaMensagem] = conteudo?.split("|SEPARATOR|") || ["", ""];
 
     const reacoesAgrupadas = mensagem.reacoes?.reduce((acc, reacao) => {
         if (!acc[reacao.emoji]) acc[reacao.emoji] = [];
         acc[reacao.emoji].push(reacao);
         return acc;
     }, {} as Record<string, typeof mensagem.reacoes>) || {};
-
-    const [estadoDeEdicao, setEstadoDeEdicao] = useState<{
-        id: string;
-        conteudoOriginal: string;
-        tipoOriginal: Mensagem["tipo"];
-        arquivoTemporario: File | null; // Para lidar com a substituição
-    } | null>(null);
-
-    // REMOVED placeholder erro (não há throw/placeholder mais)
 
     return (
         <div
@@ -148,8 +148,14 @@ export default function MensagemItem({
                         </div>
                     )}
 
+                    {remetenteOriginal && (
+                        <div className="mb-1 text-xs text-gray-300 italic">
+                            {remetenteOriginal} enviou:
+                        </div>
+                    )}
+
                     {/* Conteúdo da mensagem */}
-                    {mensagem.tipo === "texto" && <span>{mensagem.conteudo}</span>}
+                    {mensagem.tipo === "texto" && <span>{conteudoDaMensagem}</span>}
                     {mensagem.tipo === "imagem" && (
                         <>
                             <img

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Smile, MoreHorizontal, Reply, Edit2, Trash2, ReplyAll } from "lucide-react";
+import { Smile, MoreHorizontal, Reply, Edit2, Trash2, ReplyAll, Copy } from "lucide-react";
 import EmojiBoard from "@/components/EmojisCustom";
 
 const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
@@ -9,6 +9,7 @@ const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
 interface MessageActionsProps {
   souEu: boolean;
   mensagem: any;
+  onCopy: (mensagem: any) => void;
   onReply: (mensagem: any) => void;
   onEdit: () => void;
   onDelete: () => void;
@@ -19,6 +20,7 @@ interface MessageActionsProps {
 export default function MessageActions({
   souEu,
   mensagem,
+  onCopy,
   onReply,
   onForward,
   onEdit,
@@ -28,12 +30,10 @@ export default function MessageActions({
   const [mostrarRapidos, setMostrarRapidos] = useState(false);
   const [mostrarMenu, setMostrarMenu] = useState(false);
   const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
-  // Proteção para evitar fechar imediatamente após abrir
   const ignoreOutsideClick = useRef(false);
 
   const rapidosTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const menuTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const modalEmojisTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleRapidosMouseEnter = () => {
     if (rapidosTimeoutRef.current) {
@@ -93,7 +93,6 @@ export default function MessageActions({
 
   return (
     <div className="flex items-center gap-2 bg-emerald-600 px-2 py-1 rounded-xl shadow-md relative menu-suspenso-chat">
-      {/* Container para emojis rápidos */}
       <div
         className="relative menu-rapidos-chat"
         onMouseEnter={handleRapidosMouseEnter}
@@ -131,7 +130,6 @@ export default function MessageActions({
         )}
       </div>
 
-      {/* Container para o menu de opções */}
       <div
         className="relative menu-opcoes-chat"
         onMouseEnter={handleMenuMouseEnter}
@@ -167,6 +165,20 @@ export default function MessageActions({
             </button>
 
             <div className="border-t border-emerald-700 my-1" />
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCopy(mensagem);
+                setMostrarMenu(false);
+                setMostrarRapidos(false);
+                setMostrarModalEmojis(false);
+              }}
+              className="text-left p-1 hover:bg-emerald-600 rounded flex items-center gap-1"
+            >
+              <Copy className="w-4 h-4 text-emerald-300 transform -scale-x-100" /> Copiar
+            </button>
+
             <button
               onClick={(e) => {
                 e.stopPropagation();

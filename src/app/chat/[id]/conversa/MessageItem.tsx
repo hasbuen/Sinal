@@ -215,6 +215,7 @@ export default function MensagemItem({
                             <MessageActions
                                 souEu={souEu}
                                 mensagem={mensagem}
+                                onCopy={() => { navigator.clipboard.writeText(conteudoDaMensagem); }}
                                 onReply={() => { setResposta(mensagem); setMensagemSelecionada(null); setMostrarMenu(false); }}
                                 onForward={() => {
                                     setMensagemSelecionada(mensagem.id);

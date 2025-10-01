@@ -2,7 +2,6 @@
 
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState, useRef, useCallback } from "react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet, MessageCircleMore, TableOfContents } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
@@ -12,6 +11,7 @@ import Compartilhamento from "./compartilhamento/Compartilhamento";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Rascunho } from "@/types/rascunho";
 import { Textarea } from "@/components/ui/textarea";
+import TextFormatterMenu from "@/components/TextFormatterMenu";
 import ForwardModal from "@/components/ForwardModal";
 
 interface Mensagem {
@@ -74,7 +74,6 @@ export default function ChatComponent({
     const [mensagemParaEncaminhar, setMensagemParaEncaminhar] = useState<any | null>(null);
     const fimDasMensagens = useRef<HTMLDivElement>(null);
     const mensagemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
-
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
     const emojiModalRef = useRef<HTMLDivElement>(null);
     const dragStartY = useRef<number | null>(null);
@@ -82,12 +81,14 @@ export default function ChatComponent({
     const [legenda, setLegenda] = useState("");
     const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [arquivos, setArquivos] = useState<Mensagem[]>([]);
-
     const [zoomLevel, setZoomLevel] = useState(1);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const panStartRef = useRef<{ x: number; y: number } | null>(null);
+    const [mostrarMenuFormatacao, setMostrarMenuFormatacao] = useState(false);
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
+    const [corTexto, setCorTexto] = useState("#ffffff");
 
     const onSelectUserChat = (targetUserId: string) => {
         console.debug("ChatComponent.onSelectUserChat called", { targetUserId, destinatarioId });
@@ -276,12 +277,12 @@ export default function ChatComponent({
         });
 
         console.debug("fetchAndSyncMessages: mensagensDoChat (preview)", mensagensDoChat.slice(-10).map(m => ({
-  id: m.id,
-  remetente: m.remetente,
-  destinatario: m.destinatario,
-  remetente_original_id: (m as any).remetente_original_id || (m as any).remetenteOriginalId || null,
-  remetenteOriginal: (m as any).remetenteOriginal || null,
-})));
+            id: m.id,
+            remetente: m.remetente,
+            destinatario: m.destinatario,
+            remetente_original_id: (m as any).remetente_original_id || (m as any).remetenteOriginalId || null,
+            remetenteOriginal: (m as any).remetenteOriginal || null,
+        })));
     };
 
     useEffect(() => {
@@ -329,6 +330,10 @@ export default function ChatComponent({
         if (!destinatarioId || !userId) return;
         let conteudoParaSalvar = conteudo;
 
+        if (tipo === "texto" && conteudoParaSalvar && !editandoId) {
+            conteudoParaSalvar = `|COLOR:${corTexto}|${conteudoParaSalvar}`;
+        }
+
         if (file) {
             const sanitizedFilename = sanitizeFilename(
                 file instanceof File ? file.name : "audio.webm"
@@ -372,6 +377,7 @@ export default function ChatComponent({
         }
 
         setTexto("");
+        setCorTexto("#ffffff");
         setResposta(null);
         setRascunhoParaEnviar(null);
         setLegenda("");
@@ -438,12 +444,19 @@ export default function ChatComponent({
     };
 
     const handleSendDraft = async () => {
-        if (!rascunhoParaEnviar) return;
+    if (!rascunhoParaEnviar) return;
+    
+    if (rascunhoParaEnviar.tipo === "texto") {
+        await enviarMensagem("texto", rascunhoParaEnviar.conteudo);
+    } else {
         await enviarMensagem(rascunhoParaEnviar.tipo, legenda.trim(), rascunhoParaEnviar.file);
-        setRascunhoParaEnviar(null);
-        setLegenda("");
-        removerStatus();
-    };
+    }
+    
+    setRascunhoParaEnviar(null);
+    setLegenda("");
+    setCorTexto("#ffffff"); // Resetar a cor
+    removerStatus();
+};
 
     const handleCancelDraft = () => {
         setRascunhoParaEnviar(null);
@@ -452,6 +465,55 @@ export default function ChatComponent({
         setMostrarModalEmojis(false);
         setResposta(null);
         removerStatus();
+    };
+
+    useEffect(() => {
+        const shouldShow = texto.trim().length > 0 && !editandoId;
+        setMostrarMenuFormatacao(shouldShow);
+    }, [texto, editandoId]);
+
+    const handleFormat = (type: 'bold' | 'italic' | 'underline') => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = texto.substring(start, end);
+
+        let formattedText = selectedText;
+        let prefix = '';
+        let suffix = '';
+
+        switch (type) {
+            case 'bold':
+                prefix = '*';
+                suffix = '*';
+                break;
+            case 'italic':
+                prefix = '~';
+                suffix = '~';
+                break;
+            case 'underline':
+                prefix = '_';
+                suffix = '_';
+                break;
+        }
+
+        if (selectedText) {
+            formattedText = prefix + selectedText + suffix;
+        } else {
+            formattedText = prefix + suffix;
+            textarea.setSelectionRange(start + prefix.length, end + prefix.length);
+        }
+
+        const newText = texto.substring(0, start) + formattedText + texto.substring(end);
+
+        setTexto(newText);
+        setMostrarMenuFormatacao(false);
+    };
+
+    const handleColorChange = (color: string) => {
+        setCorTexto(color);
     };
 
     return (
@@ -677,27 +739,36 @@ export default function ChatComponent({
                             <Smile className="w-6 h-6" />
                         </Button>
 
-                        <Textarea
-                            value={rascunhoParaEnviar ? legenda : texto}
-                            onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter" && !e.shiftKey) {
-                                    e.preventDefault();
-                                    if (rascunhoParaEnviar) {
-                                        handleSendDraft();
-                                    } else if (texto.trim()) {
-                                        enviarMensagem("texto", texto);
+                        <div className="flex flex-1 items-center bg-gray-700/50 rounded-xl relative">
+                            <TextFormatterMenu
+                                visible={mostrarMenuFormatacao}
+                                onFormat={handleFormat}
+                                onColorChange={handleColorChange}
+                                currentColor={corTexto}
+                            />
+                            <Textarea
+                                ref={textareaRef}
+                                value={rascunhoParaEnviar ? legenda : texto}
+                                style={{ color: corTexto }}
+                                onChange={rascunhoParaEnviar ? (e) => setLegenda(e.target.value) : handleTextChange}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter" && !e.shiftKey) {
+                                        e.preventDefault();
+                                        if (rascunhoParaEnviar) {
+                                            handleSendDraft();
+                                        } else if (texto.trim()) {
+                                            enviarMensagem("texto", texto);
+                                        }
                                     }
-                                }
-                            }}
-                            placeholder={rascunhoParaEnviar ? "Legenda..." : "Mensagem..."}
-                            className="flex-1 bg-transparent border-none 
+                                }}
+                                placeholder={rascunhoParaEnviar ? "Legenda..." : "Mensagem..."}
+                                className="flex-1 bg-transparent border-none 
                                     focus:ring-0
                                     placeholder:text-gray-400 
                                     resize-none overflow-hidden 
                                     min-h-[40px] max-h-40 px-2 py-2 rounded-xl"
-                        />
-
+                            />
+                        </div>
                         {((!rascunhoParaEnviar && !texto.trim()) ||
                             (rascunhoParaEnviar && rascunhoParaEnviar.tipo !== "texto")) && (
                                 <>

@@ -122,6 +122,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
@@ -137,13 +138,39 @@
   0% {
     background-color: transparent;
   }
+
   25% {
-    background-color: #3b82f640; 
+    background-color: #3b82f640;
   }
+
   75% {
     background-color: #3b82f640;
   }
+
   100% {
     background-color: transparent;
   }
+}
+
+.formatter-menu {
+  position: absolute;
+  bottom: 100%; 
+  left: 0;
+  margin-bottom: 7px; 
+  background: #1f2937; 
+  border: 0.5px solid #00a884; 
+  padding: 8px;
+  display: flex;
+  gap: 8px;
+  z-index: 20; 
+  border-radius: 8px;
+}
+
+.formatter-menu button {
+  padding: 0.005rem 0.010rem;
+  cursor: pointer;
+  background-color: #00a884;
+  color: white;
+  border: none;
+  border-radius: 4px;
 }

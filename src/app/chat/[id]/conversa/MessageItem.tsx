@@ -54,6 +54,46 @@ interface MessageItemProps extends React.HTMLAttributes<HTMLDivElement> {
     onSelectUserChat: (userId: string) => void;
 }
 
+interface ParsedContent {
+    text: string;
+    color?: string; // Cor opcional (string HEX)
+    formattedHtml: string;
+}
+
+const parseMessageContent = (text: string): ParsedContent => {
+    if (!text) return { text: "", color: undefined, formattedHtml: "" };
+
+    let contentToFormat = text;
+    let color: string | undefined = undefined;
+
+    // 1. Extrair a cor e o conteúdo
+    // Regex: Procura por |COLOR:#RRGGBB| no início
+    const colorMatch = text.match(/^\|COLOR:(#[0-9a-fA-F]{6})\|/);
+
+    if (colorMatch) {
+        color = colorMatch[1]; // O código HEX, ex: #c6fb04
+        contentToFormat = text.substring(colorMatch[0].length); // O resto da string, sem o prefixo
+    }
+
+    // 2. Aplicar as formatações Markdown restantes
+    let formattedHtml = contentToFormat;
+
+    // Negrito: Substitui *texto* por <strong>texto</strong>
+    formattedHtml = formattedHtml.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+
+    // Itálico: Substitui ~texto~ por <em>texto</em>
+    formattedHtml = formattedHtml.replace(/\~(.*?)\~/g, '<em>$1</em>');
+
+    // Sublinhado: Substitui _texto_ por <u>texto</u>
+    formattedHtml = formattedHtml.replace(/\_(.*?)\_/g, '<u>$1</u>');
+
+    return {
+        text: contentToFormat,
+        color: color,
+        formattedHtml: formattedHtml
+    };
+};
+
 export default function MensagemItem({
     mensagem,
     souEu,
@@ -117,6 +157,26 @@ export default function MensagemItem({
         return acc;
     }, {} as Record<string, typeof mensagem.reacoes>) || {};
 
+    const formatMessageContent = (text: string): string => {
+        if (!text) return "";
+
+        let formattedText = text;
+
+        // 1. Negrito: Substitui *texto* por <strong>texto</strong>
+        // A flag 'g' (global) é crucial para substituir todas as ocorrências.
+        formattedText = formattedText.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+
+        // 2. Itálico: Substitui _texto_ por <em>texto</em>
+        formattedText = formattedText.replace(/\~(.*?)\~/g, '<em>$1</em>');
+
+        // Opcional: Sublinhado (se você usar ~texto~)
+        formattedText = formattedText.replace(/\_(.*?)\_/g, '<u>$1</u>');
+
+        return formattedText;
+    };
+
+    const { color, formattedHtml } = parseMessageContent(conteudoDaMensagem);
+
     return (
         <div
             className={`relative flex flex-col pb-8 ${souEu ? "items-end" : "items-start"}`}
@@ -151,37 +211,51 @@ export default function MensagemItem({
                     )}
 
                     {remetenteOriginal && remetenteOriginalId && (
-  <div className="mb-1 text-xs bg-yellow-300/10 rounded-full text-white flex items-center gap-1">
-    <span
-      onClick={(e) => {
-        e.stopPropagation(); // evita que o clique suba pro onClick do container
-        console.debug("MensagemItem: clique no remetenteOriginal", { remetenteOriginalId, remetenteOriginal });
-        if (remetenteOriginalId) {
-          onSelectUserChat(remetenteOriginalId);
-        } else {
-          console.warn("MensagemItem: remetenteOriginalId vazio");
-        }
-      }}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") {
-          e.stopPropagation();
-          console.debug("MensagemItem: Enter no remetenteOriginal", { remetenteOriginalId });
-          if (remetenteOriginalId) onSelectUserChat(remetenteOriginalId);
-        }
-      }}
-      role="button"
-      tabIndex={0}
-      className="bg-yellow-500 text-black font-bold px-2 py-0.5 rounded-md hover:bg-yellow-700/70 hover:text-emerald-300 cursor-pointer transform-colors duration-300"
-    >
-      {remetenteOriginal}
-    </span>
-    <span className="text-yellow-400 text-[0.625rem]">encaminhamento:</span>
-  </div>
-)}
+                        <div className="mb-1 text-xs bg-yellow-300/10 rounded-full text-white flex items-center gap-1">
+                            <span
+                                onClick={(e) => {
+                                    e.stopPropagation(); // evita que o clique suba pro onClick do container
+                                    console.debug("MensagemItem: clique no remetenteOriginal", { remetenteOriginalId, remetenteOriginal });
+                                    if (remetenteOriginalId) {
+                                        onSelectUserChat(remetenteOriginalId);
+                                    } else {
+                                        console.warn("MensagemItem: remetenteOriginalId vazio");
+                                    }
+                                }}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.stopPropagation();
+                                        console.debug("MensagemItem: Enter no remetenteOriginal", { remetenteOriginalId });
+                                        if (remetenteOriginalId) onSelectUserChat(remetenteOriginalId);
+                                    }
+                                }}
+                                role="button"
+                                tabIndex={0}
+                                className="bg-yellow-500 text-black font-bold px-2 py-0.5 rounded-md hover:bg-yellow-700/70 hover:text-emerald-300 cursor-pointer transform-colors duration-300"
+                            >
+                                {remetenteOriginal}
+                            </span>
+                            <span className="text-yellow-400 text-[0.625rem]">encaminhamento:</span>
+                        </div>
+                    )}
 
 
                     {/* Conteúdo da mensagem */}
-                    {mensagem.tipo === "texto" && <span>{conteudoDaMensagem}</span>}
+                    {mensagem.tipo === "texto" &&
+                <span>
+                    <div
+                        // Use a classe CSS 'whitespace-pre-wrap' para respeitar quebras de linha
+                        className={`whitespace-pre-wrap break-words ${souEu ? "text-white" : "text-gray-100"} `}
+                        
+                        // NOVO: Aplica a cor extraída
+                        style={{ color: color || undefined }} 
+                        
+                        // APLICAÇÃO PRINCIPAL: Usar dangerouslySetInnerHTML com o HTML formatado
+                        dangerouslySetInnerHTML={{ 
+                            __html: formattedHtml 
+                        }}
+                    />
+                </span>}
                     {mensagem.tipo === "imagem" && (
                         <>
                             <img

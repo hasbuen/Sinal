@@ -444,19 +444,19 @@ export default function ChatComponent({
     };
 
     const handleSendDraft = async () => {
-    if (!rascunhoParaEnviar) return;
-    
-    if (rascunhoParaEnviar.tipo === "texto") {
-        await enviarMensagem("texto", rascunhoParaEnviar.conteudo);
-    } else {
-        await enviarMensagem(rascunhoParaEnviar.tipo, legenda.trim(), rascunhoParaEnviar.file);
-    }
-    
-    setRascunhoParaEnviar(null);
-    setLegenda("");
-    setCorTexto("#ffffff"); // Resetar a cor
-    removerStatus();
-};
+        if (!rascunhoParaEnviar) return;
+
+        if (rascunhoParaEnviar.tipo === "texto") {
+            await enviarMensagem("texto", rascunhoParaEnviar.conteudo);
+        } else {
+            await enviarMensagem(rascunhoParaEnviar.tipo, legenda.trim(), rascunhoParaEnviar.file);
+        }
+
+        setRascunhoParaEnviar(null);
+        setLegenda("");
+        setCorTexto("#ffffff"); // Resetar a cor
+        removerStatus();
+    };
 
     const handleCancelDraft = () => {
         setRascunhoParaEnviar(null);
@@ -512,8 +512,24 @@ export default function ChatComponent({
         setMostrarMenuFormatacao(false);
     };
 
-    const handleColorChange = (color: string) => {
-        setCorTexto(color);
+    const handleColorFormat = (color: string) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const selectedText = texto.substring(start, end);
+
+        if (!selectedText) return;
+
+        // Sempre fecha o bloco
+        const formattedText = `|COLOR:${color}|${selectedText}|ENDCOLOR|`;
+
+        const newText =
+            texto.substring(0, start) + formattedText + texto.substring(end);
+
+        setTexto(newText);
+        setMostrarMenuFormatacao(false);
     };
 
     return (
@@ -743,9 +759,10 @@ export default function ChatComponent({
                             <TextFormatterMenu
                                 visible={mostrarMenuFormatacao}
                                 onFormat={handleFormat}
-                                onColorChange={handleColorChange}
+                                onColorChange={handleColorFormat}
                                 currentColor={corTexto}
                             />
+
                             <Textarea
                                 ref={textareaRef}
                                 value={rascunhoParaEnviar ? legenda : texto}

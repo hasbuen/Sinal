@@ -8,6 +8,7 @@ import useLongPress from "@/hooks/useLongPress";
 import { supabase } from "@/lib/supabase";
 import { Rascunho } from "@/types/rascunho";
 
+
 interface Mensagem {
     id: string;
     remetente: string;
@@ -54,44 +55,67 @@ interface MessageItemProps extends React.HTMLAttributes<HTMLDivElement> {
     onSelectUserChat: (userId: string) => void;
 }
 
-interface ParsedContent {
+type ParsedContent = {
     text: string;
-    color?: string; // Cor opcional (string HEX)
     formattedHtml: string;
-}
+};
 
-const parseMessageContent = (text: string): ParsedContent => {
-    if (!text) return { text: "", color: undefined, formattedHtml: "" };
+const parseMessageContent = (text: string): { formattedHtml: string } => {
+  if (!text) return { formattedHtml: "" };
 
-    let contentToFormat = text;
-    let color: string | undefined = undefined;
+  const applyInlineFormatting = (str: string) => {
+    return str
+      .replace(/\*(.*?)\*/g, "<strong>$1</strong>")   // *negrito*
+      .replace(/\~(.*?)\~/g, "<em>$1</em>")           // ~itálico~
+      .replace(/\_(.*?)\_/g, "<u>$1</u>");            // _sublinhado_
+  };
 
-    // 1. Extrair a cor e o conteúdo
-    // Regex: Procura por |COLOR:#RRGGBB| no início
-    const colorMatch = text.match(/^\|COLOR:(#[0-9a-fA-F]{6})\|/);
+  // RegEx que casa aberturas e fechamentos como tokens
+  const tokenRegex = /\|COLOR:(#[0-9a-fA-F]{6})\||\|ENDCOLOR\|/g;
+  let result = "";
+  let lastIndex = 0;
+  const stack: string[] = [];
 
-    if (colorMatch) {
-        color = colorMatch[1]; // O código HEX, ex: #c6fb04
-        contentToFormat = text.substring(colorMatch[0].length); // O resto da string, sem o prefixo
+  let m: RegExpExecArray | null;
+  while ((m = tokenRegex.exec(text)) !== null) {
+    const index = m.index;
+    // texto antes do token
+    if (index > lastIndex) {
+      const before = text.slice(lastIndex, index);
+      result += applyInlineFormatting(before);
     }
 
-    // 2. Aplicar as formatações Markdown restantes
-    let formattedHtml = contentToFormat;
+    // Se captura um grupo de cor, m[1] terá o hex; se undefined, é |ENDCOLOR|
+    if (m[1]) {
+      // abertura de cor
+      const color = m[1];
+      stack.push(color);
+      result += `<span style="color:${color}">`;
+    } else {
+      // fechamento
+      if (stack.length > 0) {
+        stack.pop();
+        result += `</span>`;
+      } else {
+        // token |ENDCOLOR| sobrando — ignorar
+      }
+    }
 
-    // Negrito: Substitui *texto* por <strong>texto</strong>
-    formattedHtml = formattedHtml.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+    lastIndex = tokenRegex.lastIndex;
+  }
 
-    // Itálico: Substitui ~texto~ por <em>texto</em>
-    formattedHtml = formattedHtml.replace(/\~(.*?)\~/g, '<em>$1</em>');
+  // resto do texto
+  if (lastIndex < text.length) {
+    result += applyInlineFormatting(text.slice(lastIndex));
+  }
 
-    // Sublinhado: Substitui _texto_ por <u>texto</u>
-    formattedHtml = formattedHtml.replace(/\_(.*?)\_/g, '<u>$1</u>');
+  // fecha spans abertos (caso existam)
+  while (stack.length > 0) {
+    stack.pop();
+    result += `</span>`;
+  }
 
-    return {
-        text: contentToFormat,
-        color: color,
-        formattedHtml: formattedHtml
-    };
+  return { formattedHtml: result };
 };
 
 export default function MensagemItem({
@@ -157,25 +181,6 @@ export default function MensagemItem({
         return acc;
     }, {} as Record<string, typeof mensagem.reacoes>) || {};
 
-    const formatMessageContent = (text: string): string => {
-        if (!text) return "";
-
-        let formattedText = text;
-
-        // 1. Negrito: Substitui *texto* por <strong>texto</strong>
-        // A flag 'g' (global) é crucial para substituir todas as ocorrências.
-        formattedText = formattedText.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
-
-        // 2. Itálico: Substitui _texto_ por <em>texto</em>
-        formattedText = formattedText.replace(/\~(.*?)\~/g, '<em>$1</em>');
-
-        // Opcional: Sublinhado (se você usar ~texto~)
-        formattedText = formattedText.replace(/\_(.*?)\_/g, '<u>$1</u>');
-
-        return formattedText;
-    };
-
-    const { color, formattedHtml } = parseMessageContent(conteudoDaMensagem);
 
     return (
         <div
@@ -242,20 +247,16 @@ export default function MensagemItem({
 
                     {/* Conteúdo da mensagem */}
                     {mensagem.tipo === "texto" &&
-                <span>
-                    <div
-                        // Use a classe CSS 'whitespace-pre-wrap' para respeitar quebras de linha
-                        className={`whitespace-pre-wrap break-words ${souEu ? "text-white" : "text-gray-100"} `}
-                        
-                        // NOVO: Aplica a cor extraída
-                        style={{ color: color || undefined }} 
-                        
-                        // APLICAÇÃO PRINCIPAL: Usar dangerouslySetInnerHTML com o HTML formatado
-                        dangerouslySetInnerHTML={{ 
-                            __html: formattedHtml 
-                        }}
-                    />
-                </span>}
+                        <span>
+                            <div
+                                // Use a classe CSS 'whitespace-pre-wrap' para respeitar quebras de linha
+                                className={`whitespace-pre-wrap break-words ${souEu ? "text-white" : "text-gray-100"} `}
+                                // APLICAÇÃO PRINCIPAL: Usar dangerouslySetInnerHTML com o HTML formatado
+                                dangerouslySetInnerHTML={{
+                                    __html: parseMessageContent(conteudoDaMensagem).formattedHtml
+                                }}
+                            />
+                        </span>}
                     {mensagem.tipo === "imagem" && (
                         <>
                             <img

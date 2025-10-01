@@ -468,7 +468,7 @@ export default function ChatComponent({
     };
 
     useEffect(() => {
-        const shouldShow = texto.trim().length > 0 && !editandoId;
+        const shouldShow = texto.trim().length > 0;
         setMostrarMenuFormatacao(shouldShow);
     }, [texto, editandoId]);
 
@@ -656,6 +656,7 @@ export default function ChatComponent({
 
             {/* Input */}
             <div className="flex flex-col gap-2 p-4 bg-transparent transition-transform duration-300 ease-in-out">
+
                 {(resposta || rascunhoParaEnviar) && (
                     <div className="p-2 border-l-4 border-green-500 bg-green-900/70 rounded-3xl flex justify-between items-center">
                         <div className="text-xs text-gray-300 flex-1">
@@ -755,7 +756,7 @@ export default function ChatComponent({
                             <Smile className="w-6 h-6" />
                         </Button>
 
-                        <div className="flex flex-1 items-center bg-gray-700/50 rounded-xl relative"> 
+                        <div className="flex flex-1 items-center bg-gray-700/50 rounded-xl relative">
 
                             <TextFormatterMenu
                                 visible={mostrarMenuFormatacao}

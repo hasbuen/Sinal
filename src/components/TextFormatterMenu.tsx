@@ -69,7 +69,8 @@ const TextFormatterMenu = ({
         </button>
 
         {open && (
-          <div className="absolute bottom-10 mb-1 right-1 -translate-x-1/2 bg-gray-900 border border-gray-700 p-2 rounded shadow-lg z-20">
+          <div className="absolute bottom-10 mb-1 right-1 -translate-x-1/2 bg-gray-900 border border-gray-700 p-2 rounded shadow-lg z-20"
+            onClick={(e) => e.stopPropagation()}>
             <HexColorPicker
               color={currentColor}
               onChange={(c) => onColorChange(c)}

@@ -58,7 +58,10 @@ const TextFormatterMenu = ({
       {/* Color Picker Custom */}
       <div className="relative">
         <button
-          onClick={() => setOpen(!open)}
+          onClick={(e) => {
+                e.preventDefault(); 
+                setOpen(!open);
+            }}
           aria-label="Cor do Texto"
           className="flex items-center justify-center w-6 h-6 rounded-md bg-gray-800 hover:bg-emerald-700 text-gray-200"
         >

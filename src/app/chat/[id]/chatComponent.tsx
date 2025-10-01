@@ -3,7 +3,7 @@
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet, MessageCircleMore, TableOfContents } from "lucide-react";
+import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet, MessageCircleMore, TableOfContents, Bold } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import EmojiBoard from "@/components/EmojisCustom";
 import Conversa from "./conversa/Conversa";
@@ -755,7 +755,8 @@ export default function ChatComponent({
                             <Smile className="w-6 h-6" />
                         </Button>
 
-                        <div className="flex flex-1 items-center bg-gray-700/50 rounded-xl relative">
+                        <div className="flex flex-1 items-center bg-gray-700/50 rounded-xl relative"> 
+
                             <TextFormatterMenu
                                 visible={mostrarMenuFormatacao}
                                 onFormat={handleFormat}

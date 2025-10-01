@@ -3,7 +3,16 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 
-export default function ForwardModal({ mensagem, destinatarioId, onClose }: { mensagem: any, destinatarioId: string, onClose: () => void }) {
+export default function ForwardModal({ 
+    mensagem, 
+    destinatarioId, 
+    onSelectNewChat,
+    onClose }: { 
+        mensagem: any, 
+        destinatarioId: string, 
+        onSelectNewChat: (newDestinatarioId: string) => void
+        onClose: () => void 
+    }) {
     const [contatos, setContatos] = useState<any[]>([]);
     const [selecionados, setSelecionados] = useState<string[]>([]);
     const [userId, setUserId] = useState<string | null>(null);
@@ -43,15 +52,28 @@ export default function ForwardModal({ mensagem, destinatarioId, onClose }: { me
             .single();
 
         const remetenteNome = remetenteData?.nome || "Desconhecido";
+        const idDoRemetenteOriginal = mensagem.remetente_original_id 
+        ? mensagem.remetente_original_id 
+        : mensagem.remetente;
 
         for (const destinatarioId of selecionados) {
             await supabase.from("mensagens").insert({
                 remetente: userId,
                 destinatario: destinatarioId,
-                conteudo: `ENCAMINHADO_DE|${remetenteNome}|${mensagem.conteudo}`, // 👈 Agora vem com nome real
+                conteudo: mensagem.conteudo, 
                 tipo: mensagem.tipo,
+                remetente_original_id: idDoRemetenteOriginal
             });
         }
+
+        if (selecionados.length === 1) {
+            const novoDestinatarioId = selecionados[0];
+            
+            if (onSelectNewChat) {
+                onSelectNewChat(novoDestinatarioId); 
+            }
+        }
+
         onClose();
     };
 

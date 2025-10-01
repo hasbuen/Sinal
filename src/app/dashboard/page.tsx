@@ -269,8 +269,8 @@ export default function Dashboard() {
             Sair
           </Button>
         </div>
-        
-          <InstallPwaPrompt />
+
+        <InstallPwaPrompt />
 
         <div className="relative flex items-center w-full">
 
@@ -405,6 +405,7 @@ export default function Dashboard() {
             >
               <ChatComponent
                 destinatarioId={usuarioSelecionado}
+                onSelectNewChat={(novoId) => setUsuarioSelecionado(novoId)}
                 onClose={() => setUsuarioSelecionado(null)}
               />
             </motion.div>
@@ -440,6 +441,7 @@ export default function Dashboard() {
           ) : (
             <ChatComponent
               destinatarioId={usuarioSelecionado}
+              onSelectNewChat={(novoId) => setUsuarioSelecionado(novoId)} 
               onClose={() => setUsuarioSelecionado(null)}
             />
           )}

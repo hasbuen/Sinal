@@ -53,6 +53,7 @@ interface ConversaProps {
     fimDasMensagens: RefObject<HTMLDivElement | null>;
     mensagemRefs: React.MutableRefObject<Map<string, HTMLDivElement>>;
     setRascunhoParaEnviar: React.Dispatch<React.SetStateAction<Rascunho | null>>;
+    onSelectUserChat: (userId: string) => void;
 }
 
 export default function Conversa({
@@ -71,6 +72,7 @@ export default function Conversa({
     fimDasMensagens,
     mensagemRefs,
     setRascunhoParaEnviar,
+    onSelectUserChat 
 }: ConversaProps) {
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
 
@@ -215,6 +217,7 @@ export default function Conversa({
                             handleMouseLeave={handleMouseLeaveLocal}
                             someProps={propsDoElementoBase}
                             longPressProps={{}}
+                            onSelectUserChat={onSelectUserChat} 
                         />
                     ))}
                 </div>

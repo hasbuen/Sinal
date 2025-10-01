@@ -51,9 +51,11 @@ const sanitizeFilename = (filename: string): string => {
 
 export default function ChatComponent({
     destinatarioId,
+    onSelectNewChat,
     onClose,
 }: {
     destinatarioId: string;
+    onSelectNewChat: (newDestinatarioId: string) => void;
     onClose?: () => void;
 }) {
     const [mensagens, setMensagens] = useState<Mensagem[]>([]);
@@ -86,6 +88,25 @@ export default function ChatComponent({
     const panStartRef = useRef<{ x: number; y: number } | null>(null);
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
+
+    const onSelectUserChat = (targetUserId: string) => {
+        console.debug("ChatComponent.onSelectUserChat called", { targetUserId, destinatarioId });
+        if (!onSelectNewChat) {
+            console.warn("ChatComponent: onSelectNewChat não passado");
+            return;
+        }
+        if (targetUserId === destinatarioId) {
+            console.debug("ChatComponent: targetUserId === destinatarioId, não muda de chat");
+            return;
+        }
+        setResposta(null);
+        setEditandoId(null);
+        setTexto("");
+        setRascunhoParaEnviar(null);
+        setMensagemSelecionada(null);
+        setImagemAmpliada(null);
+        onSelectNewChat(targetUserId);
+    };
 
     useEffect(() => {
         const fetchUser = async () => {
@@ -216,25 +237,31 @@ export default function ChatComponent({
         if (!destinatarioId || !userId) return;
         const { data, error } = await supabase
             .from("mensagens")
-            .select(
-                `
+            .select(`
                 *,
                 resposta:resposta_id(conteudo, tipo),
-                reacoes:mensagens_reacoes(id, remetente, emoji, mensagem_id)
-                `
-            )
+                reacoes:mensagens_reacoes(id, remetente, emoji, mensagem_id),
+                remetente_original:remetente_original_id(id, nome)
+            `)
             .order("criado_em", { ascending: true });
+
 
         if (error) {
             console.error("Erro ao buscar mensagens:", error.message);
             return;
         }
 
-        const mensagensDoChat = (data || []).filter(
-            (m: Mensagem) =>
+        const mensagensDoChat = (data || [])
+            .filter((m: any) =>
                 (m.remetente === userId && m.destinatario === destinatarioId) ||
                 (m.remetente === destinatarioId && m.destinatario === userId)
-        );
+            )
+            .map((m: any) => ({
+                ...m,
+                remetenteOriginalId: m.remetente_original?.id || null,
+                remetenteOriginal: m.remetente_original?.nome || null,
+            }));
+
 
         setMensagens(mensagensDoChat);
         setArquivos(mensagensDoChat.filter((m) => m.tipo !== "texto"));
@@ -247,6 +274,14 @@ export default function ChatComponent({
                 marcarMensagensComoLidas();
             }
         });
+
+        console.debug("fetchAndSyncMessages: mensagensDoChat (preview)", mensagensDoChat.slice(-10).map(m => ({
+  id: m.id,
+  remetente: m.remetente,
+  destinatario: m.destinatario,
+  remetente_original_id: (m as any).remetente_original_id || (m as any).remetenteOriginalId || null,
+  remetenteOriginal: (m as any).remetenteOriginal || null,
+})));
     };
 
     useEffect(() => {
@@ -492,7 +527,7 @@ export default function ChatComponent({
                         fimDasMensagens={fimDasMensagens}
                         mensagemRefs={mensagemRefs}
                         setRascunhoParaEnviar={setRascunhoParaEnviar}
-                    />
+                        onSelectUserChat={onSelectUserChat} />
                 </TabsContent>
                 <TabsContent value="arquivos" className="flex-1 flex flex-col overflow-hidden">
                     <Compartilhamento
@@ -702,7 +737,8 @@ export default function ChatComponent({
                         {mensagemParaEncaminhar && (
                             <ForwardModal
                                 mensagem={mensagemParaEncaminhar}
-                                destinatarioId={destinatarioId} 
+                                destinatarioId={destinatarioId}
+                                onSelectNewChat={onSelectNewChat}
                                 onClose={() => setMensagemParaEncaminhar(null)}
                             />
                         )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Smile, MoreHorizontal, Reply, Edit2, Trash2, ReplyAll, Copy } from "lucide-react";
+import { Smile, Reply, Edit2, Trash2, ReplyAll, Copy, MoreVertical } from "lucide-react";
 import EmojiBoard from "@/components/EmojisCustom";
 
 const emojisRapidos = ["😂", "😍", "😱", "👍", "👎", "❤️"];
@@ -144,7 +144,7 @@ export default function MessageActions({
             setTimeout(() => { ignoreOutsideClick.current = false; }, 120);
           }}
         >
-          <MoreHorizontal className="w-4 h-4 text-white" />
+          <MoreVertical className="w-4 h-4 text-white" />
         </button>
 
         {mostrarMenu && (

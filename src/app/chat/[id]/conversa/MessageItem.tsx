@@ -20,6 +20,8 @@ interface Mensagem {
         conteudo: string;
         tipo: "texto" | "imagem" | "audio" | "anexo" | null;
     } | null;
+    remetenteOriginalId?: string | null;
+    remetenteOriginal?: string | null;
     reacoes?: {
         id: string;
         remetente: string;
@@ -46,9 +48,10 @@ interface MessageItemProps extends React.HTMLAttributes<HTMLDivElement> {
     handleReact: (mensagem: Mensagem, emoji: string) => void;
     formatarHora: (dataISO: string) => string;
     longPressProps: Record<string, any>;
-    handleMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => void; // A sua função local
+    handleMouseLeave: (e: React.MouseEvent<HTMLDivElement>) => void;
     someProps: Record<string, any>;
-    setRascunhoParaEnviar: React.Dispatch<React.SetStateAction<Rascunho | null>>; // ADICIONADO
+    setRascunhoParaEnviar: React.Dispatch<React.SetStateAction<Rascunho | null>>;
+    onSelectUserChat: (userId: string) => void;
 }
 
 export default function MensagemItem({
@@ -67,6 +70,7 @@ export default function MensagemItem({
     handleMouseLeave: handleMouseLeaveProp,
     someProps,
     setRascunhoParaEnviar,
+    onSelectUserChat,
 }: MessageItemProps) {
     const [isHovered, setIsHovered] = useState(false);
     const mouseLeaveTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -99,13 +103,11 @@ export default function MensagemItem({
     const [mostrarMenu, setMostrarMenu] = useState(false);
 
     let conteudo = mensagem.conteudo;
-    let remetenteOriginal: string | null = null;
 
-    if (conteudo.startsWith("ENCAMINHADO_DE|")) {
-        const partes = conteudo.split("|");
-        remetenteOriginal = partes[1];        // Nome original
-        conteudo = partes.slice(2).join("|"); // Conteúdo real da msg
-    }
+    const {
+        remetenteOriginal,
+        remetenteOriginalId,
+    } = mensagem;
 
     const [conteudoDaMensagem, legendaDaMensagem] = conteudo?.split("|SEPARATOR|") || ["", ""];
 
@@ -148,14 +150,35 @@ export default function MensagemItem({
                         </div>
                     )}
 
-                    {remetenteOriginal && (
-                        <div className="mb-1 text-xs text-white flex items-center gap-1">
-                            <span className="bg-emerald-500 text-black font-bold px-2 py-0.5 rounded-md">
-                                {remetenteOriginal}
-                            </span>
-                            <span className="italic text-white">enviou:</span>
-                        </div>
-                    )}
+                    {remetenteOriginal && remetenteOriginalId && (
+  <div className="mb-1 text-xs bg-yellow-300/10 rounded-full text-white flex items-center gap-1">
+    <span
+      onClick={(e) => {
+        e.stopPropagation(); // evita que o clique suba pro onClick do container
+        console.debug("MensagemItem: clique no remetenteOriginal", { remetenteOriginalId, remetenteOriginal });
+        if (remetenteOriginalId) {
+          onSelectUserChat(remetenteOriginalId);
+        } else {
+          console.warn("MensagemItem: remetenteOriginalId vazio");
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.stopPropagation();
+          console.debug("MensagemItem: Enter no remetenteOriginal", { remetenteOriginalId });
+          if (remetenteOriginalId) onSelectUserChat(remetenteOriginalId);
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="bg-yellow-500 text-black font-bold px-2 py-0.5 rounded-md hover:bg-yellow-700/70 hover:text-emerald-300 cursor-pointer transform-colors duration-300"
+    >
+      {remetenteOriginal}
+    </span>
+    <span className="text-yellow-400 text-[0.625rem]">encaminhamento:</span>
+  </div>
+)}
+
 
                     {/* Conteúdo da mensagem */}
                     {mensagem.tipo === "texto" && <span>{conteudoDaMensagem}</span>}

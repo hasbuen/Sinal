@@ -89,6 +89,13 @@ export default function ChatComponent({
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
     const [corTexto, setCorTexto] = useState("#ffffff");
+    // --- Image viewer state (mobile gestures: double-tap, pinch, pan) ---
+    const [viewerScale, setViewerScale] = useState(1);
+    const [viewerPan, setViewerPan] = useState({ x: 0, y: 0 });
+    const viewerImgRef = useRef<HTMLImageElement | null>(null);
+    const lastTouchDistanceRef = useRef<number | null>(null);
+    const lastPanRef = useRef<{ x: number; y: number } | null>(null);
+    const lastTapRef = useRef<number | null>(null);
 
     const onSelectUserChat = (targetUserId: string) => {
         console.debug("ChatComponent.onSelectUserChat called", { targetUserId, destinatarioId });
@@ -116,6 +123,97 @@ export default function ChatComponent({
         };
         fetchUser();
     }, []);
+
+    // Reset viewer state when image changes
+    useEffect(() => {
+        if (imagemAmpliada) {
+            setViewerScale(1);
+            setViewerPan({ x: 0, y: 0 });
+            lastTouchDistanceRef.current = null;
+            lastPanRef.current = null;
+            lastTapRef.current = null;
+        }
+    }, [imagemAmpliada]);
+
+    // Gesture helpers for the fullscreen image viewer
+    const distance = (p1: Touch, p2: Touch) => Math.hypot(p2.clientX - p1.clientX, p2.clientY - p1.clientY);
+    const centerPoint = (p1: Touch, p2: Touch) => ({ x: (p1.clientX + p2.clientX) / 2, y: (p1.clientY + p2.clientY) / 2 });
+
+    const onViewerTouchStart = (e: React.TouchEvent) => {
+        if (!imagemAmpliada) return;
+        if (e.touches.length === 2) {
+            lastTouchDistanceRef.current = distance(e.touches[0] as unknown as Touch, e.touches[1] as unknown as Touch);
+        } else if (e.touches.length === 1) {
+            lastPanRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+    };
+
+    const onViewerTouchMove = (e: React.TouchEvent) => {
+        if (!imagemAmpliada) return;
+        if (e.touches.length === 2) {
+            const prev = lastTouchDistanceRef.current;
+            const d = distance(e.touches[0] as unknown as Touch, e.touches[1] as unknown as Touch);
+            if (prev) {
+                let nextScale = viewerScale * (d / prev);
+                nextScale = Math.max(0.5, Math.min(4, nextScale));
+                setViewerScale(nextScale);
+            }
+            lastTouchDistanceRef.current = d;
+        } else if (e.touches.length === 1 && viewerScale > 1) {
+            const last = lastPanRef.current;
+            const cur = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            if (last) {
+                const dx = cur.x - last.x;
+                const dy = cur.y - last.y;
+                setViewerPan(p => ({ x: p.x + dx, y: p.y + dy }));
+            }
+            lastPanRef.current = cur;
+        }
+    };
+
+    const onViewerTouchEnd = (e: React.TouchEvent) => {
+        if (!imagemAmpliada) return;
+        if (e.touches.length < 2) lastTouchDistanceRef.current = null;
+        if (e.touches.length === 0) lastPanRef.current = null;
+
+        // if scale reduced below threshold, close viewer (like WhatsApp)
+        if (viewerScale < 0.8) {
+            setImagemAmpliada(null);
+            setViewerScale(1);
+            setViewerPan({ x: 0, y: 0 });
+        }
+    };
+
+    const onViewerDoubleTap = (clientX?: number, clientY?: number) => {
+        if (viewerScale <= 1.01) {
+            setViewerScale(2);
+            if (viewerImgRef.current && clientX != null && clientY != null) {
+                const rect = viewerImgRef.current.getBoundingClientRect();
+                const offsetX = (clientX - rect.left) - rect.width / 2;
+                const offsetY = (clientY - rect.top) - rect.height / 2;
+                setViewerPan({ x: -offsetX, y: -offsetY });
+            }
+        } else {
+            setViewerScale(1);
+            setViewerPan({ x: 0, y: 0 });
+        }
+    };
+
+    const handleViewerTouchTap = (e: React.TouchEvent) => {
+        const now = Date.now();
+        const last = lastTapRef.current || 0;
+        const touch = e.touches[0];
+        if (!touch) return;
+        if (now - last < 300) {
+            onViewerDoubleTap(touch.clientX, touch.clientY);
+            lastTapRef.current = 0;
+        } else {
+            lastTapRef.current = now;
+            setTimeout(() => {
+                lastTapRef.current = null;
+            }, 350);
+        }
+    };
 
     useEffect(() => {
         if (!destinatarioId) return;
@@ -330,10 +428,6 @@ export default function ChatComponent({
         if (!destinatarioId || !userId) return;
         let conteudoParaSalvar = conteudo;
 
-        if (tipo === "texto" && conteudoParaSalvar && !editandoId) {
-            conteudoParaSalvar = `|COLOR:${corTexto}|${conteudoParaSalvar}`;
-        }
-
         if (file) {
             const sanitizedFilename = sanitizeFilename(
                 file instanceof File ? file.name : "audio.webm"
@@ -472,6 +566,19 @@ export default function ChatComponent({
         setMostrarMenuFormatacao(shouldShow);
     }, [texto, editandoId]);
 
+    // Quando o viewport muda (ex: teclado mobile), rolar para o final para manter input visível
+    useEffect(() => {
+        const onResize = () => {
+            try {
+                fimDasMensagens.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            } catch (e) {
+                // ignore
+            }
+        };
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+
     const handleFormat = (type: 'bold' | 'italic' | 'underline') => {
         const textarea = textareaRef.current;
         if (!textarea) return;
@@ -534,15 +641,13 @@ export default function ChatComponent({
 
     return (
         <div className="flex flex-col h-screen" style={{
-            backgroundImage: 'url("assets/wallpaper.jpg")',
-            backgroundRepeat: 'repeat',
-            backgroundSize: '250px',
-
+            background: 'linear-gradient(to bottom, rgb(55, 65, 81), rgb(17, 24, 39), rgb(0, 0, 0))',
             backgroundAttachment: 'fixed',
             backgroundPosition: 'center',
+            backgroundSize: 'cover'
         }}>
             {/* Cabeçalho */}
-            <div className="flex itens-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-10 sticky top-0">
+            <div className="flex items-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-40 sticky top-0 backdrop-blur-sm">
                 {onClose && (
                     <Button
                         variant="ghost"
@@ -654,8 +759,11 @@ export default function ChatComponent({
                 )}
             </div>
 
-            {/* Input */}
-            <div className="flex flex-col gap-2 p-4 bg-transparent transition-transform duration-300 ease-in-out">
+            {/* Input (sticky no rodapé com safe-area) */}
+            <div
+                className="flex flex-col gap-2 p-4 bg-transparent transition-transform duration-300 ease-in-out sticky bottom-0 z-40"
+                style={{ paddingBottom: 'env(safe-area-inset-bottom)', WebkitOverflowScrolling: 'touch' }}
+            >
 
                 {(resposta || rascunhoParaEnviar) && (
                     <div className="p-2 border-l-4 border-green-500 bg-green-900/70 rounded-3xl flex justify-between items-center">
@@ -739,14 +847,11 @@ export default function ChatComponent({
                 )}
 
                 <div className="flex items-end gap-4" style={{
-                    backgroundImage: 'url("assets/wallpaper.jpg")',
-                    backgroundRepeat: 'repeat',
-                    backgroundSize: '250px',
 
                     backgroundAttachment: 'fixed',
                     backgroundPosition: 'center'
                 }}>
-                    <div className="flex-1 flex items-end bg-black/80 rounded-full px-4 py-2">
+                    <div className="flex-1 flex items-end bg-black/80 rounded-full px-4 py-2 gap-2">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -756,7 +861,7 @@ export default function ChatComponent({
                             <Smile className="w-6 h-6" />
                         </Button>
 
-                        <div className="flex flex-1 items-center bg-gray-700/50 rounded-xl relative">
+                        <div className="flex flex-1 items-center bg-green-700/50 rounded-xl relative">
 
                             <TextFormatterMenu
                                 visible={mostrarMenuFormatacao}
@@ -781,8 +886,8 @@ export default function ChatComponent({
                                     }
                                 }}
                                 placeholder={rascunhoParaEnviar ? "Legenda..." : "Mensagem..."}
-                                className="flex-1 bg-transparent border-none 
-                                    focus:ring-0
+                                className="flex-1 bg-transparent dark:bg-transparent border-none 
+                                    focus:ring-0 focus-visible:ring-0 focus-visible:border-none
                                     placeholder:text-gray-400 
                                     resize-none overflow-hidden 
                                     min-h-[40px] max-h-40 px-2 py-2 rounded-xl"
@@ -855,7 +960,37 @@ export default function ChatComponent({
                     </Button>
                 </div>
             </div>
+
+            {imagemAmpliada && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                    onTouchStart={(e) => { onViewerTouchStart(e); handleViewerTouchTap(e); }}
+                    onTouchMove={onViewerTouchMove}
+                    onTouchEnd={onViewerTouchEnd}
+                    onClick={() => { setImagemAmpliada(null); setViewerScale(1); setViewerPan({ x: 0, y: 0 }); }}
+                >
+                    <div className="relative max-w-full max-h-full overflow-hidden">
+                        <img
+                            ref={viewerImgRef}
+                            src={imagemAmpliada}
+                            alt="ampliada"
+                            className="max-w-full max-h-full touch-none"
+                            style={{
+                                transform: `translate(${viewerPan.x}px, ${viewerPan.y}px) scale(${viewerScale})`,
+                                transition: viewerScale === 1 ? 'transform 200ms ease' : 'none',
+                                willChange: 'transform',
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setImagemAmpliada(null); setViewerScale(1); setViewerPan({ x: 0, y: 0 }); }}
+                        className="absolute top-4 right-4 bg-black/30 text-white rounded-full p-2"
+                    >
+                        <X />
+                    </button>
+                </div>
+            )}
         </div>
     );
-
 }

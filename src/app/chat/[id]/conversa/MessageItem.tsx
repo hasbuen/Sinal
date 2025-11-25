@@ -207,7 +207,12 @@ export default function MensagemItem({
                         >
                             <span className="block font-semibold">Mensagem original:</span>
                             {mensagem.resposta.tipo === "texto" && (
-                                <span className="block break-words break-all">{mensagem.resposta.conteudo}</span>
+                                <span 
+                                    className="block break-words break-all"
+                                    dangerouslySetInnerHTML={{
+                                        __html: parseMessageContent(mensagem.resposta.conteudo).formattedHtml
+                                    }}
+                                />
                             )}
                             {mensagem.resposta.tipo === "imagem" && <span className="italic opacity-80">📷 Imagem</span>}
                             {mensagem.resposta.tipo === "audio" && <span className="italic opacity-80">🎤 Áudio</span>}

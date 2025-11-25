@@ -72,7 +72,7 @@ export default function Conversa({
     fimDasMensagens,
     mensagemRefs,
     setRascunhoParaEnviar,
-    onSelectUserChat 
+    onSelectUserChat
 }: ConversaProps) {
     const [mostrarModalEmojis, setMostrarModalEmojis] = useState(false);
 
@@ -155,12 +155,12 @@ export default function Conversa({
         const el = chatContainerRef.current;
 
         const estaProximoDoFinal = el
-            ? el.scrollHeight - el.scrollTop - el.clientHeight < 300 
+            ? el.scrollHeight - el.scrollTop - el.clientHeight < 300
             : false;
 
         if (mensagens.length > 0 && estaProximoDoFinal) {
             const timeout = setTimeout(() => {
-                rolarParaOFinal(true); 
+                rolarParaOFinal(true);
             }, 50);
 
             return () => clearTimeout(timeout);
@@ -168,7 +168,7 @@ export default function Conversa({
 
         if (!el || mensagens.length === 0) return;
         if (el.scrollTop === 0 && el.scrollHeight > el.clientHeight) {
-            rolarParaOFinal(false); 
+            rolarParaOFinal(false);
         }
 
     }, [mensagens.length]);
@@ -181,12 +181,10 @@ export default function Conversa({
             onTouchEnd={handleMouseUp}
             className="flex-1 overflow-y-auto px-5 py-3 space-y-3 relative"
             style={{
-                backgroundImage: 'url("assets/wallpaper.jpg")',
-                backgroundRepeat: 'repeat',
-                backgroundSize: '250px',
-
-                backgroundAttachment: 'fixed', 
-                backgroundPosition: 'center'
+                background: 'linear-gradient(to top, rgb(0, 0, 0), rgba(0, 0, 0, 0), rgb(0, 0, 0))',
+                backgroundAttachment: 'fixed',
+                backgroundPosition: 'center',
+                backgroundSize: 'cover'
             }}
         >
             {mensagensAgrupadas.map((grupo) => (
@@ -217,7 +215,7 @@ export default function Conversa({
                             handleMouseLeave={handleMouseLeaveLocal}
                             someProps={propsDoElementoBase}
                             longPressProps={{}}
-                            onSelectUserChat={onSelectUserChat} 
+                            onSelectUserChat={onSelectUserChat}
                         />
                     ))}
                 </div>
@@ -226,7 +224,7 @@ export default function Conversa({
             <div ref={fimDasMensagens} />
 
             {mostrarModalEmojis && (
-                <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/50\">
+                <div className="fixed inset-0 z-50 flex justify-center items-center bg-black/50">
                     <div className="bg-emerald-900/70 rounded-lg p-4 max-w-md w-full">
                         <EmojiCustom
                             onEmojiClick={(emoji) => {

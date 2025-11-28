@@ -180,17 +180,12 @@ export default function Conversa({
             onMouseUp={handleMouseUp}
             onTouchEnd={handleMouseUp}
             className="flex-1 overflow-y-auto px-5 py-3 space-y-3 relative"
-            style={{
-                background: 'linear-gradient(to top, rgb(0, 0, 0), rgba(0, 0, 0, 0), rgb(0, 0, 0))',
-                backgroundAttachment: 'fixed',
-                backgroundPosition: 'center',
-                backgroundSize: 'cover'
-            }}
+
         >
             {mensagensAgrupadas.map((grupo) => (
                 <div key={grupo.data}>
                     <div className="sticky top-0 z-20 flex justify-center my-2">
-                        <span className="bg-[#1f2937] text-white text-xs px-3 py-1 rounded-lg">{grupo.data}</span>
+                        <span className="bg-emerald-600 text-white text-xs px-3 py-1 rounded-lg">{grupo.data}</span>
                     </div>
                     {grupo.mensagens.map((m) => (
                         <MensagemItem

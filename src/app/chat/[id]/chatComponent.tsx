@@ -3,12 +3,11 @@
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet, MessageCircleMore, TableOfContents, Bold } from "lucide-react";
+import { ArrowLeft, MessageCircleMore, Paperclip, Mic, X, SendHorizonal, Camera, Smile, FileText, FileSpreadsheet, Folder } from "lucide-react";
 import AudioPlayer from "@/components/AudioPlayer";
 import EmojiBoard from "@/components/EmojisCustom";
 import Conversa from "./conversa/Conversa";
 import Compartilhamento from "./compartilhamento/Compartilhamento";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Rascunho } from "@/types/rascunho";
 import { Textarea } from "@/components/ui/textarea";
 import TextFormatterMenu from "@/components/TextFormatterMenu";
@@ -89,7 +88,7 @@ export default function ChatComponent({
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
     const [corTexto, setCorTexto] = useState("#ffffff");
-    // --- Image viewer state (mobile gestures: double-tap, pinch, pan) ---
+    const [arquivoParaEncaminhar, setArquivoParaEncaminhar] = useState<Mensagem | null>(null);
     const [viewerScale, setViewerScale] = useState(1);
     const [viewerPan, setViewerPan] = useState({ x: 0, y: 0 });
     const viewerImgRef = useRef<HTMLImageElement | null>(null);
@@ -641,57 +640,63 @@ export default function ChatComponent({
 
     return (
         <div className="flex flex-col h-screen" style={{
-            background: 'linear-gradient(to bottom, rgb(55, 65, 81), rgb(17, 24, 39), rgb(0, 0, 0))',
+            background: 'linear-gradient(to top, rgb(20, 20, 20), rgb(10, 10, 10), rgb(0, 0, 0))',
             backgroundAttachment: 'fixed',
             backgroundPosition: 'center',
             backgroundSize: 'cover'
         }}>
             {/* Cabeçalho */}
-            <div className="flex items-center gap-3 p-3 bg-[#1f2937] text-white shadow-md z-40 sticky top-0 backdrop-blur-sm">
-                {onClose && (
+            <div className="flex items-center justify-between gap-3 p-3 bg-emerald-800 text-white shadow-md z-40 sticky top-0 backdrop-blur-sm">
+                <div className="flex items-center gap-3">
+                    {onClose && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={onClose}
+                            className="md:hidden text-white hover:text-gray-300"
+                        >
+                            <ArrowLeft />
+                        </Button>
+                    )}
+                    {destinatario?.foto_url && (
+                        <img
+                            src={destinatario.foto_url}
+                            alt={destinatario.nome}
+                            className="w-10 h-10 rounded-full object-cover"
+                        />
+                    )}
+                    <div>
+                        <h2 className="text-lg font-semibold">{destinatario?.nome}</h2>
+                        <p className="text-xs opacity-70">
+                            {statusOutroUsuario === "digitando" && (
+                                <span className="text-green-400 animate-pulse">Digitando...</span>
+                            )}
+                            {statusOutroUsuario === "gravando" && (
+                                <span className="text-green-400 animate-pulse flex items-center gap-1">
+                                    <Mic className="inline w-4 h-4 text-green-400" /> Gravando áudio
+                                </span>
+                            )}
+                            {!statusOutroUsuario && destinatario?.status}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center">
                     <Button
                         variant="ghost"
                         size="icon"
-                        onClick={onClose}
-                        className="md:hidden text-white hover:text-gray-300"
+                        onClick={() => setAbaAtiva("arquivos")}
+                        className="text-emerald-400 hover:text-emerald-700"
+                        aria-label="Abrir arquivos"
                     >
-                        <ArrowLeft />
+                        <Folder />
                     </Button>
-                )}
-                {destinatario?.foto_url && (
-                    <img
-                        src={destinatario.foto_url}
-                        alt={destinatario.nome}
-                        className="w-10 h-10 rounded-full object-cover"
-                    />
-                )}
-                <div>
-                    <h2 className="text-lg font-semibold">{destinatario?.nome}</h2>
-                    <p className="text-xs opacity-70">
-                        {statusOutroUsuario === "digitando" && (
-                            <span className="text-green-400 animate-pulse">Digitando...</span>
-                        )}
-                        {statusOutroUsuario === "gravando" && (
-                            <span className="text-green-400 animate-pulse flex items-center gap-1">
-                                <Mic className="inline w-4 h-4 text-green-400" /> Gravando áudio
-                            </span>
-                        )}
-                        {!statusOutroUsuario && destinatario?.status}
-                    </p>
                 </div>
             </div>
 
-            {/* Tabs */}
-            <Tabs
-                value={abaAtiva}
-                onValueChange={setAbaAtiva}
-                className="flex-1 flex flex-col overflow-hidden"
-            >
-                <TabsList className="grid w-full grid-cols-2 bg-transparent text-white">
-                    <TabsTrigger value="chat" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-[#1f2937]"><MessageCircleMore />Conversa</TabsTrigger>
-                    <TabsTrigger value="arquivos" className="text-white data-[state=active]:bg-[#006453] data-[state=inactive]:bg-transparent"><TableOfContents /> Arquivos</TabsTrigger>
-                </TabsList>
-                <TabsContent value="chat" className="flex-1 flex flex-col bg-transparent overflow-hidden">
+            {/* Conteúdo principal: conversa ou arquivos */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {abaAtiva === "chat" ? (
                     <Conversa
                         key={destinatarioId}
                         mensagens={mensagens}
@@ -710,17 +715,35 @@ export default function ChatComponent({
                         fimDasMensagens={fimDasMensagens}
                         mensagemRefs={mensagemRefs}
                         setRascunhoParaEnviar={setRascunhoParaEnviar}
-                        onSelectUserChat={onSelectUserChat} />
-                </TabsContent>
-                <TabsContent value="arquivos" className="flex-1 flex flex-col overflow-hidden">
-                    <Compartilhamento
-                        arquivos={arquivos}
-                        setImagemAmpliada={setImagemAmpliada}
-                        setZoomLevel={setZoomLevel}
-                        setPanOffset={setPanOffset}
+                        onSelectUserChat={onSelectUserChat}
                     />
-                </TabsContent>
-            </Tabs>
+                ) : (
+                    <div className="flex-1 flex flex-col overflow-hidden">
+                        {/* Container do cabeçalho/botão de navegação */}
+                        <div className="flex items-center gap-2 p-2 bg-gradient-to-b from-emerald-900/40 to-transparent">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setAbaAtiva("chat")}
+                                className="text-emerald-400 hover:bg-black/40 focus:bg-black/40 active:bg-black/40 group p-1"
+                            >
+                                <MessageCircleMore
+                                    className="h-12 w-12 transition-colors group-hover:text-green-300"
+                                    strokeWidth={3}
+                                /> <p>Conversar</p>
+                            </Button>
+                        </div>
+                        <div className="flex-1 overflow-auto bg-gradient-to-b from-transparent via-transparent to-black/20">
+                            <Compartilhamento
+                                arquivos={arquivos}
+                                setImagemAmpliada={setImagemAmpliada}
+                                setZoomLevel={setZoomLevel}
+                                setPanOffset={setPanOffset}
+                                setArquivoParaEncaminhar={setArquivoParaEncaminhar}
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Modal de Emojis */}
             <div className={`p-2 bg-transparent transition-transform duration-300 ease-in-out ${mostrarModalEmojis ? "transform-none" : "transform translate-y-full"}`}>
@@ -759,9 +782,10 @@ export default function ChatComponent({
                 )}
             </div>
 
-            {/* Input (sticky no rodapé com safe-area) */}
+
+            {abaAtiva === "chat" && (
             <div
-                className="flex flex-col gap-2 p-4 bg-transparent transition-transform duration-300 ease-in-out sticky bottom-0 z-40"
+                className="sticky top-0 bottom-0 left-0 right-0 z-40 p-2 flex flex-col gap-4 ease-in-out"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom)', WebkitOverflowScrolling: 'touch' }}
             >
 
@@ -846,12 +870,11 @@ export default function ChatComponent({
                     </div>
                 )}
 
-                <div className="flex items-end gap-4" style={{
+                <div
+                    className="top-0 bottom-0 left-0 right-0 py-2 z-20 flex flex-row gap-2"
+                >
+                    <div className="flex-1 flex items-end bg-black rounded-full px-4 py-2 gap-2">
 
-                    backgroundAttachment: 'fixed',
-                    backgroundPosition: 'center'
-                }}>
-                    <div className="flex-1 flex items-end bg-black/80 rounded-full px-4 py-2 gap-2">
                         <Button
                             variant="ghost"
                             size="icon"
@@ -861,7 +884,7 @@ export default function ChatComponent({
                             <Smile className="w-6 h-6" />
                         </Button>
 
-                        <div className="flex flex-1 items-center bg-green-700/50 rounded-xl relative">
+                        <div className="flex flex-1 items-center bg-green-950/50 rounded-xl relative">
 
                             <TextFormatterMenu
                                 visible={mostrarMenuFormatacao}
@@ -960,37 +983,49 @@ export default function ChatComponent({
                     </Button>
                 </div>
             </div>
-
-            {imagemAmpliada && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-                    onTouchStart={(e) => { onViewerTouchStart(e); handleViewerTouchTap(e); }}
-                    onTouchMove={onViewerTouchMove}
-                    onTouchEnd={onViewerTouchEnd}
-                    onClick={() => { setImagemAmpliada(null); setViewerScale(1); setViewerPan({ x: 0, y: 0 }); }}
-                >
-                    <div className="relative max-w-full max-h-full overflow-hidden">
-                        <img
-                            ref={viewerImgRef}
-                            src={imagemAmpliada}
-                            alt="ampliada"
-                            className="max-w-full max-h-full touch-none"
-                            style={{
-                                transform: `translate(${viewerPan.x}px, ${viewerPan.y}px) scale(${viewerScale})`,
-                                transition: viewerScale === 1 ? 'transform 200ms ease' : 'none',
-                                willChange: 'transform',
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
-                    <button
-                        onClick={(e) => { e.stopPropagation(); setImagemAmpliada(null); setViewerScale(1); setViewerPan({ x: 0, y: 0 }); }}
-                        className="absolute top-4 right-4 bg-black/30 text-white rounded-full p-2"
-                    >
-                        <X />
-                    </button>
-                </div>
             )}
-        </div>
+
+            {
+                imagemAmpliada && (
+                    <div
+                        className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+                        onTouchStart={(e) => { onViewerTouchStart(e); handleViewerTouchTap(e); }}
+                        onTouchMove={onViewerTouchMove}
+                        onTouchEnd={onViewerTouchEnd}
+                        onClick={() => { setImagemAmpliada(null); setViewerScale(1); setViewerPan({ x: 0, y: 0 }); }}
+                    >
+                        <div className="relative max-w-full max-h-full overflow-hidden">
+                            <img
+                                ref={viewerImgRef}
+                                src={imagemAmpliada}
+                                alt="ampliada"
+                                className="max-w-full max-h-full touch-none"
+                                style={{
+                                    transform: `translate(${viewerPan.x}px, ${viewerPan.y}px) scale(${viewerScale})`,
+                                    transition: viewerScale === 1 ? 'transform 200ms ease' : 'none',
+                                    willChange: 'transform',
+                                }}
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                        </div>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setImagemAmpliada(null); setViewerScale(1); setViewerPan({ x: 0, y: 0 }); }}
+                            className="absolute top-4 right-4 bg-black/30 text-white rounded-full p-2"
+                        >
+                            <X />
+                        </button>
+                    </div>
+                )
+            }
+
+            {arquivoParaEncaminhar && (
+                <ForwardModal
+                    mensagem={arquivoParaEncaminhar}
+                    destinatarioId={destinatarioId}
+                    onSelectNewChat={onSelectNewChat}
+                    onClose={() => setArquivoParaEncaminhar(null)}
+                />
+            )}
+        </div >
     );
 }

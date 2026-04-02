@@ -23,29 +23,43 @@ export default function OnboardingTour() {
         {
           element: "#tour-profile",
           popover: {
-            title: "Seu perfil",
-            description: "Aqui voce ve seu status atual e acessa configuracoes.",
+            title: "Conta ativa",
+            description: "Seu perfil local usa JWT e conversa direto com o backend GraphQL.",
           },
         },
         {
           element: "#tour-install",
           popover: {
             title: "Instalacao",
-            description: "Instale o app como PWA para abrir direto da tela inicial.",
+            description: "Instale o app como PWA para abrir da tela inicial ou empacotar no Android.",
           },
         },
         {
           element: "#tour-search",
           popover: {
             title: "Busca rapida",
-            description: "Filtre contatos por nome para ir direto ao chat certo.",
+            description: "Filtre conversas e pessoas antes de abrir um chat ou grupo.",
+          },
+        },
+        {
+          element: "#tour-group",
+          popover: {
+            title: "Grupos",
+            description: "Crie grupos com varios membros para testar o fluxo estilo mensageria.",
           },
         },
         {
           element: "#tour-chat-list",
           popover: {
             title: "Fila de conversas",
-            description: "Selecione um contato para abrir a conversa e retomar o fluxo.",
+            description: "Aqui entram grupos, conversas diretas e o ultimo preview de mensagem.",
+          },
+        },
+        {
+          element: "#tour-composer",
+          popover: {
+            title: "Composer",
+            description: "Envie texto, emoji, audio, links, imagens, videos e arquivos.",
           },
         },
       ],

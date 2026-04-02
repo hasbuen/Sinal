@@ -1,40 +1,21 @@
 "use client";
 
-import { Suspense, useMemo } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import ChatComponent from "../chat/[id]/chatComponent";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
+import ChatWorkspace from "@/components/chat/ChatWorkspace";
 
 function ChatPageContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const destinatarioId = useMemo(
-    () => searchParams.get("id")?.trim() || "",
-    [searchParams]
-  );
+  const conversationId = searchParams.get("id")?.trim() || undefined;
 
-  if (!destinatarioId) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] px-6 text-center text-white">
-        Selecione uma conversa pelo dashboard para abrir o chat.
-      </div>
-    );
-  }
-
-  return (
-    <ChatComponent
-      destinatarioId={destinatarioId}
-      onSelectNewChat={(newDestinatarioId) =>
-        router.replace(`/chat?id=${newDestinatarioId}`)
-      }
-    />
-  );
+  return <ChatWorkspace initialConversationId={conversationId} />;
 }
 
 export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-white">
+        <div className="flex min-h-screen items-center justify-center bg-[#071019] text-white">
           Carregando conversa...
         </div>
       }

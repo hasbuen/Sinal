@@ -1,52 +1,71 @@
 # Sinal
 
-Aplicativo de mensagens em tempo real com Supabase, export estatico em Next.js 16, onboarding guiado e base para Android via Capacitor.
+Aplicacao de mensageria com frontend em Next.js, backend novo em NestJS e base Android via Capacitor.
 
-## Stack
+## Estrutura
 
-- Next.js 16.2.2
-- React 19.2.4
-- Supabase JS
-- Tailwind CSS v4
-- Driver.js para tutorial guiado
-- Capacitor para Android
+- `src/`: frontend exportavel para GitHub Pages
+- `backend/`: API NestJS + GraphQL + Prisma + MongoDB
+- `android/`: wrapper Android do frontend
 
-## Desenvolvimento
+## Frontend
 
 ```bash
 npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-## Build estatico
-
-```bash
-npm run build
-```
-
-O build gera a pasta `out/`, usada tanto para deploy quanto para o empacotamento Android.
-
-## Android
-
-```bash
-npm run android:sync
-npm run android:build
-```
-
-Requisitos locais:
-
-- Android SDK instalado
-- JDK 17 configurado
-
-## GitHub Pages
-
-O workflow em `.github/workflows/pages.yml` publica o export do Next no GitHub Pages usando `NEXT_PUBLIC_BASE_PATH=/Sinal`.
-
-## Variaveis de ambiente
-
-Crie um arquivo `.env.local` com:
+Variaveis principais:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+NEXT_PUBLIC_API_URL=http://localhost:4000/api/graphql
+NEXT_PUBLIC_BACKEND_ORIGIN=http://localhost:4000
+NEXT_PUBLIC_BASE_PATH=
 ```
+
+## Backend
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+npm run prisma:generate
+npm run prisma:push
+npm run dev
+```
+
+Scripts uteis na raiz:
+
+```bash
+npm run backend:dev
+npm run backend:build
+npm run backend:typecheck
+```
+
+## Arquitetura atual
+
+- Next.js 16 com export estatico
+- NestJS 11 com GraphQL code-first
+- Prisma 6.x com MongoDB
+- Redis para presenca e typing
+- SQLite para cache local de snapshots
+- Upload multipart para imagem, audio, video e arquivos
+- Tutorial lazy com `driver.js`
+- PWA + Capacitor Android
+
+## Deploy
+
+- Landing e frontend estatico: GitHub Pages
+- Backend: Railway apontando para `backend/`
+- Banco MongoDB gratis: Atlas
+- Redis: servico separado barato ou gratis
+
+## Fluxo recomendado no Railway
+
+1. Criar um servico com root em `backend/`.
+2. Usar `backend/railway.json` como config-as-code.
+3. Definir `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN` e `PUBLIC_API_ORIGIN`.
+4. Rodar `npm run prisma:push` no primeiro deploy.
+
+Observacao: Railway hoje entrega bem o NestJS, mas para banco gratis o Atlas segue sendo a opcao mais estavel.

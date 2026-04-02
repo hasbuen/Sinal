@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { loginUser, setBackendToken } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,27 +16,25 @@ export default function PaginaLogin() {
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  const entrar = async () => {
+  async function entrar() {
     if (!email || !senha) {
       toast.error("Preencha e-mail e senha.");
       return;
     }
 
-    setCarregando(true);
-    const { error: loginError } = await supabase.auth.signInWithPassword({
-      email,
-      password: senha,
-    });
-
-    setCarregando(false);
-
-    if (loginError) {
-      toast.error(`Erro ao entrar: ${loginError.message}`);
-      return;
+    try {
+      setCarregando(true);
+      const auth = await loginUser(email, senha);
+      setBackendToken(auth.accessToken);
+      router.replace("/dashboard");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Erro ao entrar no backend.",
+      );
+    } finally {
+      setCarregando(false);
     }
-
-    router.replace("/dashboard");
-  };
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#0f766e22,transparent_30%),linear-gradient(180deg,#030712,#111827)] px-4">
@@ -56,7 +54,7 @@ export default function PaginaLogin() {
             <span>Sinal</span>
           </CardTitle>
           <p className="text-center text-sm text-white/60">
-            Entre e continue sua conversa em qualquer dispositivo.
+            Login via backend NestJS com JWT e GraphQL.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -75,7 +73,7 @@ export default function PaginaLogin() {
             onChange={(e) => setSenha(e.target.value)}
           />
           <Button
-            onClick={entrar}
+            onClick={() => void entrar()}
             disabled={carregando}
             className="w-full bg-emerald-400 font-bold text-slate-950 hover:bg-emerald-300"
           >

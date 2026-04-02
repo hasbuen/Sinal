@@ -2,9 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 
 const highlights = [
-  "Chat em tempo real com Supabase",
-  "Instalacao PWA e empacotamento Android",
-  "Fluxo pronto para GitHub Pages e releases",
+  "Frontend exportado para GitHub Pages",
+  "Backend NestJS + GraphQL + Prisma com MongoDB",
+  "Midias, grupos, tutorial lazy e base Android pronta",
 ];
 
 export default function Home() {
@@ -25,7 +25,7 @@ export default function Home() {
               <p className="text-xs uppercase tracking-[0.35em] text-emerald-300/80">
                 Sinal
               </p>
-              <h1 className="text-lg font-semibold">Mensageria direta</h1>
+              <h1 className="text-lg font-semibold">Mensageria full stack</h1>
             </div>
           </div>
           <nav className="hidden gap-3 md:flex">
@@ -47,15 +47,16 @@ export default function Home() {
         <section className="grid items-center gap-12 py-16 md:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-8">
             <span className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-200">
-              Agora com export estatico, onboarding guiado e base para APK
+              Agora com Railway, NestJS, GraphQL, MongoDB, Redis e SQLite
             </span>
             <div className="space-y-5">
               <h2 className="max-w-3xl text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
-                Um chat com cara de produto, pronto para web, GitHub Pages e Android.
+                O Sinal virou uma stack completa para chat, midia, grupos e Android.
               </h2>
               <p className="max-w-2xl text-lg text-white/70">
-                Sinal ficou mais seguro, exportavel e preparado para distribuicao.
-                A mesma base serve para a experiencia web, a landing publica e o pacote Android.
+                A landing segue estatica para GitHub Pages, enquanto o app usa um backend
+                NestJS com Prisma, MongoDB e cache local para entregar uma experiencia de
+                mensageria mais fluida.
               </p>
             </div>
 
@@ -91,19 +92,19 @@ export default function Home() {
             <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/70 p-6 shadow-2xl backdrop-blur">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-emerald-300">Status do stack</p>
-                  <h3 className="text-2xl font-semibold">Entrega pronta para publicar</h3>
+                  <p className="text-sm text-emerald-300">Stack atual</p>
+                  <h3 className="text-2xl font-semibold">Web, backend e APK alinhados</h3>
                 </div>
                 <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs uppercase tracking-[0.25em] text-emerald-200">
-                  v2
+                  v3
                 </span>
               </div>
 
               <div className="space-y-4">
                 {[
-                  ["Seguranca", "Next 16.2.2 + React 19.2.4"],
-                  ["Distribuicao", "export estatico + assets locais"],
-                  ["Onboarding", "tutorial lazy com driver.js"],
+                  ["Frontend", "Next 16 exportado com lazy e onboarding"],
+                  ["Backend", "NestJS + GraphQL + Prisma 6 + MongoDB"],
+                  ["Deploy", "Railway no backend, Pages no marketing, Capacitor no Android"],
                 ].map(([label, value]) => (
                   <div
                     key={label}

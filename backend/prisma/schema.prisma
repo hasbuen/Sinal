@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+enum ConversationKind {
+  DIRECT
+  GROUP
+}
+
+enum ConversationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum MessageKind {
+  TEXT
+  IMAGE
+  AUDIO
+  VIDEO
+  FILE
+  LINK
+  EMOJI
+  SYSTEM
+}
+
+enum MediaKind {
+  IMAGE
+  AUDIO
+  VIDEO
+  FILE
+}
+
+model User {
+  id             String               @id @default(auto()) @map("_id") @db.ObjectId
+  email          String               @unique
+  username       String               @unique
+  displayName    String
+  passwordHash   String
+  avatarUrl      String?
+  bio            String?
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  memberships    ConversationMember[]
+  sentMessages   Message[]            @relation("MessageSender")
+  reactions      Reaction[]
+  ownedGroups    Conversation[]       @relation("ConversationOwner")
+}
+
+model Conversation {
+  id             String               @id @default(auto()) @map("_id") @db.ObjectId
+  kind           ConversationKind
+  title          String?
+  description    String?
+  avatarUrl      String?
+  createdById    String?              @db.ObjectId
+  createdBy      User?                @relation("ConversationOwner", fields: [createdById], references: [id])
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  lastMessageAt  DateTime?
+  members        ConversationMember[]
+  messages       Message[]
+}
+
+model ConversationMember {
+  id               String            @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId   String            @db.ObjectId
+  userId           String            @db.ObjectId
+  role             ConversationRole  @default(MEMBER)
+  joinedAt         DateTime          @default(now())
+  lastReadAt       DateTime?
+  conversation     Conversation      @relation(fields: [conversationId], references: [id])
+  user             User              @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id                    String            @id @default(auto()) @map("_id") @db.ObjectId
+  conversationId        String            @db.ObjectId
+  senderId              String            @db.ObjectId
+  kind                  MessageKind
+  text                  String?
+  emoji                 String?
+  linkUrl               String?
+  linkTitle             String?
+  linkDescription       String?
+  replyToId             String?           @db.ObjectId
+  forwardedFromId       String?           @db.ObjectId
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  editedAt              DateTime?
+  deletedAt             DateTime?
+  metadata              Json?
+  conversation          Conversation      @relation(fields: [conversationId], references: [id])
+  sender                User              @relation("MessageSender", fields: [senderId], references: [id])
+  replyTo               Message?          @relation("MessageReply", fields: [replyToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies               Message[]         @relation("MessageReply")
+  forwardedFrom         Message?          @relation("MessageForward", fields: [forwardedFromId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  forwardedCopies       Message[]         @relation("MessageForward")
+  attachments           MediaAttachment[]
+  reactions             Reaction[]
+
+  @@index([conversationId, createdAt(sort: Desc)])
+  @@index([senderId, createdAt(sort: Desc)])
+}
+
+model MediaAttachment {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  messageId      String      @db.ObjectId
+  kind           MediaKind
+  url            String
+  mimeType       String
+  fileName       String
+  sizeBytes      Int
+  width          Int?
+  height         Int?
+  durationMs     Int?
+  thumbnailUrl   String?
+  createdAt      DateTime    @default(now())
+  message        Message     @relation(fields: [messageId], references: [id])
+
+  @@index([messageId])
+}
+
+model Reaction {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  messageId      String      @db.ObjectId
+  userId         String      @db.ObjectId
+  emoji          String
+  createdAt      DateTime    @default(now())
+  message        Message     @relation(fields: [messageId], references: [id])
+  user           User        @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId, emoji])
+}

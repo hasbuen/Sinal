@@ -5,38 +5,44 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/lib/supabase";
+import { registerUser, setBackendToken } from "@/lib/backend-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function PaginaCadastro() {
   const router = useRouter();
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  const cadastrar = async () => {
-    if (!email || !senha) {
-      toast.error("Preencha e-mail e senha.");
+  async function cadastrar() {
+    if (!displayName || !username || !email || !senha) {
+      toast.error("Preencha nome, usuario, e-mail e senha.");
       return;
     }
 
-    setCarregando(true);
-    const { error: signUpError } = await supabase.auth.signUp({
-      email,
-      password: senha,
-    });
-    setCarregando(false);
-
-    if (signUpError) {
-      toast.error(signUpError.message);
-      return;
+    try {
+      setCarregando(true);
+      const auth = await registerUser({
+        displayName,
+        username,
+        email,
+        password: senha,
+      });
+      setBackendToken(auth.accessToken);
+      toast.success("Conta criada no MongoDB.");
+      router.replace("/dashboard");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Falha ao cadastrar.",
+      );
+    } finally {
+      setCarregando(false);
     }
-
-    toast.success("Cadastro realizado. Verifique seu e-mail para confirmar a conta.");
-    router.replace("/login");
-  };
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#164e6322,transparent_30%),linear-gradient(180deg,#020617,#0f172a)] px-4">
@@ -56,10 +62,22 @@ export default function PaginaCadastro() {
             <span>Criar conta</span>
           </CardTitle>
           <p className="text-center text-sm text-white/60">
-            Configure seu acesso e entre no ecossistema Sinal.
+            Cadastro direto no backend NestJS com Prisma e MongoDB.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <Input
+            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
+            placeholder="Nome exibido"
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+          />
+          <Input
+            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
+            placeholder="Usuario"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
           <Input
             className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
             placeholder="E-mail"
@@ -74,9 +92,8 @@ export default function PaginaCadastro() {
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
           />
-
           <Button
-            onClick={cadastrar}
+            onClick={() => void cadastrar()}
             disabled={carregando}
             className="w-full bg-cyan-300 font-bold text-slate-950 hover:bg-cyan-200"
           >

@@ -9,13 +9,6 @@ const nextConfig: NextConfig = {
   assetPrefix: basePath || undefined,
   images: {
     unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "mmevnmwnbptcmozlhtny.supabase.co",
-        pathname: "/storage/v1/object/public/uploads/**",
-      },
-    ],
   },
 };
 

@@ -41,7 +41,7 @@ async function bootstrap() {
   app.use("/uploads", serveStatic(appConfig.uploadDir));
   app.enableShutdownHooks();
 
-  await app.listen(appConfig.port);
+  await app.listen(appConfig.port, "0.0.0.0");
 }
 
 void bootstrap();

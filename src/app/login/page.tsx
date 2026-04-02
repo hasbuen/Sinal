@@ -1,70 +1,91 @@
 "use client";
 
-import { supabase } from "@/lib/supabase";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from 'sonner';
 
 export default function PaginaLogin() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
+  const [carregando, setCarregando] = useState(false);
 
   const entrar = async () => {
+    if (!email || !senha) {
+      toast.error("Preencha e-mail e senha.");
+      return;
+    }
+
+    setCarregando(true);
     const { error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password: senha,
     });
 
+    setCarregando(false);
+
     if (loginError) {
-      toast.error("Erro ao fazer login: " + loginError.message);
-    } else {
-      window.location.href = "/dashboard";
+      toast.error(`Erro ao entrar: ${loginError.message}`);
+      return;
     }
+
+    router.replace("/dashboard");
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <Card className="w-full max-w-md bg-transparent border-none">
-        <CardHeader>
-          <CardTitle className="text-3xl text-center font-bold text-blue-400 flex items-center justify-center space-x-2">
-          
-            <img
+    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#0f766e22,transparent_30%),linear-gradient(180deg,#030712,#111827)] px-4">
+      <Card className="w-full max-w-md border-white/10 bg-slate-950/70 text-white shadow-2xl backdrop-blur">
+        <CardHeader className="space-y-6">
+          <Link href="/" className="text-sm text-white/55 transition hover:text-white">
+            ← Voltar para landing
+          </Link>
+          <CardTitle className="flex items-center justify-center gap-3 text-center text-3xl font-bold text-emerald-300">
+            <Image
               src="/icons/icon-transparent.png"
-              className="w-10 h-10"
+              alt="Sinal"
+              width={44}
+              height={44}
+              className="rounded-2xl"
             />
             <span>Sinal</span>
           </CardTitle>
+          <p className="text-center text-sm text-white/60">
+            Entre e continue sua conversa em qualquer dispositivo.
+          </p>
         </CardHeader>
         <CardContent className="space-y-4">
           <Input
-            className="bg-black/60 text-white !border-0 !ring-0 !ring-offset-0 focus:!ring-0"
+            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
             placeholder="Digite seu e-mail"
+            type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
           <Input
             type="password"
-            className="bg-black/60 text-white !border-0 !ring-0 !ring-offset-0 focus:!ring-0"
+            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
             placeholder="Digite sua senha"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
           />
           <Button
             onClick={entrar}
-            className="w-full bg-blue-500 hover:bg-blue-400 text-white font-bold"
+            disabled={carregando}
+            className="w-full bg-emerald-400 font-bold text-slate-950 hover:bg-emerald-300"
           >
-            Entrar
+            {carregando ? "Entrando..." : "Entrar"}
           </Button>
-          <p className="text-sm text-gray-400 text-center">
-            Não tem uma conta?{" "}
-            <a
-              href="/cadastro"
-              className="text-blue-400 hover:underline font-semibold"
-            >
-              Cadastre-se já
-            </a>
+          <p className="text-center text-sm text-white/55">
+            Ainda nao tem conta?{" "}
+            <Link href="/cadastro" className="font-semibold text-emerald-300 hover:underline">
+              Criar agora
+            </Link>
           </p>
         </CardContent>
       </Card>

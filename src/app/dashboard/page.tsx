@@ -2,15 +2,31 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import InstallPwaPrompt from "@/components/InstallPwaPrompt";
+import dynamic from "next/dynamic";
 import { Button } from "@/components/ui/button";
 import Image, { ImageLoaderProps } from "next/image";
 import { Input } from "@/components/ui/input";
 import { AnimatePresence, motion } from "framer-motion";
 import { Settings } from "lucide-react";
 import { useRouter } from "next/navigation";
-import ChatComponent from "../chat/[id]/chatComponent";
 import { Search } from "lucide-react";
+import { withBasePath } from "@/lib/utils";
+
+const InstallPwaPrompt = dynamic(() => import("@/components/InstallPwaPrompt"), {
+  ssr: false,
+});
+
+const OnboardingTour = dynamic(() => import("@/components/OnboardingTour"), {
+  ssr: false,
+});
+
+const ChatComponent = dynamic(() => import("../chat/[id]/chatComponent"), {
+  loading: () => (
+    <div className="flex h-full min-h-[50vh] items-center justify-center text-sm text-white/60">
+      Carregando conversa...
+    </div>
+  ),
+});
 
 const myLoader = ({ src, width, quality }: ImageLoaderProps) => {
   return `${src}?w=${width}&q=${quality || 75}`;
@@ -84,7 +100,7 @@ export default function Dashboard() {
 
               setTotalNaoLidas(novoTotal);
 
-              const som = new Audio("/assets/notification.mp3");
+              const som = new Audio(withBasePath("/assets/notification.mp3"));
               som.play().catch((e) =>
                 console.error("Erro ao tocar som: ", e)
               );
@@ -222,7 +238,7 @@ export default function Dashboard() {
   const ListaChats = () => (
     <div className="flex flex-col h-screen w-full bg-[#111827] border-r border-gray-800">
       <div className="flex flex-col gap-4 p-4 border-b border-gray-800">
-        <div className="flex items-center gap-3">
+        <div id="tour-profile" className="flex items-center gap-3">
           <Image
             loader={myLoader}
             src={fotoUrl || "/icons/icon-transparent.png"}
@@ -253,6 +269,7 @@ export default function Dashboard() {
           >
             <Settings className="h-5 w-5 text-gray-400 hover:text-white" />
           </Button>
+          <OnboardingTour />
           <Button
             onClick={async () => {
               if (userId) {
@@ -262,7 +279,7 @@ export default function Dashboard() {
                   .eq("id", userId);
               }
               await supabase.auth.signOut();
-              window.location.href = "/login";
+              router.replace("/login");
             }}
             className="bg-transparent hover:bg-white/10 text-white font-bold"
           >
@@ -270,9 +287,11 @@ export default function Dashboard() {
           </Button>
         </div>
 
-        <InstallPwaPrompt />
+        <div id="tour-install">
+          <InstallPwaPrompt />
+        </div>
 
-        <div className="relative flex items-center w-full">
+        <div id="tour-search" className="relative flex items-center w-full">
 
           <Search className="absolute left-3 h-5 w-5 text-gray-400 pointer-events-none" />
 
@@ -321,7 +340,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div id="tour-chat-list" className="flex-1 overflow-y-auto">
         {usuariosFiltrados.length > 0 ? (
           usuariosFiltrados.map((u) => {
             const contagem = contagemNaoLida[u.id] || 0;

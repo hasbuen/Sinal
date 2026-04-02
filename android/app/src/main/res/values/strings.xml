@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Sinal</string>
+    <string name="title_activity_main">Sinal</string>
+    <string name="package_name">com.hasbuen.sinal</string>
+    <string name="custom_url_scheme">com.hasbuen.sinal</string>
+</resources>

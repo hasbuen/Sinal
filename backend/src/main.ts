@@ -13,7 +13,11 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     cors: {
       origin: (origin, callback) => {
-        if (!origin || appConfig.frontendOrigins.includes(origin)) {
+        if (
+          appConfig.allowAllFrontendOrigins ||
+          !origin ||
+          appConfig.frontendOrigins.includes(origin)
+        ) {
           callback(null, true);
           return;
         }

@@ -11,6 +11,7 @@ const frontendOrigins = (
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+const allowAllFrontendOrigins = frontendOrigins.includes("*");
 const publicApiOrigin =
   process.env.PUBLIC_API_ORIGIN || `http://localhost:${port}`;
 
@@ -25,5 +26,6 @@ export const appConfig = {
   sqliteDir: dirname(sqlitePath),
   uploadDir,
   frontendOrigins,
+  allowAllFrontendOrigins,
   publicApiOrigin,
 };

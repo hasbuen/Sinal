@@ -49,6 +49,7 @@ import {
   subscribeToCallSignals,
   subscribeToMessageEvents,
   subscribeToPresence,
+  supportsWebSocketRealtime,
   toggleMessageSaved,
   uploadMedia,
   type BackendAttachment,
@@ -152,6 +153,7 @@ export default function ChatWorkspace({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const deferredSearch = useDeferredValue(searchTerm);
+  const websocketRealtime = supportsWebSocketRealtime();
 
   const normalizedConversations = useMemo(
     () =>
@@ -213,6 +215,27 @@ export default function ChatWorkspace({
   function patchMessage(updated: BackendMessage) {
     setMessages((current) =>
       current.map((message) => (message.id === updated.id ? updated : message)),
+    );
+  }
+
+  function appendMessage(message: BackendMessage) {
+    setMessages((current) => [...current, message]);
+  }
+
+  function syncConversationPreview(
+    conversationId: string,
+    message: BackendMessage,
+  ) {
+    setConversations((current) =>
+      current.map((conversation) =>
+        conversation.id === conversationId
+          ? {
+              ...conversation,
+              latestMessage: message,
+              lastMessageAt: message.createdAt,
+            }
+          : conversation,
+      ),
     );
   }
 
@@ -344,6 +367,10 @@ export default function ChatWorkspace({
 
   async function startOutgoingCall(mode: "audio" | "video") {
     if (!activeConversation || !activeDirectUser) return;
+    if (!websocketRealtime) {
+      toast.error("Chamadas em tempo real exigem um backend com suporte a WebSocket.");
+      return;
+    }
     try {
       const stream = await ensureLocalStream(mode);
       const peer = await createPeer(activeDirectUser.id, mode, activeConversation.id);
@@ -376,6 +403,10 @@ export default function ChatWorkspace({
 
   async function acceptIncomingCall() {
     if (!activeConversation || !callState.pendingOffer || !callState.remoteUserId) {
+      return;
+    }
+    if (!websocketRealtime) {
+      toast.error("Chamadas em tempo real exigem um backend com suporte a WebSocket.");
       return;
     }
     try {
@@ -516,9 +547,9 @@ export default function ChatWorkspace({
             editingMessage.kind === "LINK" && text ? new URL(text).hostname : undefined,
         });
         patchMessage(updated);
+        syncConversationPreview(activeConversationId, updated);
         setEditingMessage(null);
         setComposerText("");
-        await refreshSidebar();
         return;
       }
       const attachments: BackendAttachment[] = [];
@@ -527,7 +558,7 @@ export default function ChatWorkspace({
         attachments.push({ ...uploaded, url: resolveBackendAssetUrl(uploaded.url) });
       }
       const kind = inferMessageKind(text, attachments);
-      await sendMessage({
+      const created = await sendMessage({
         conversationId: activeConversationId,
         kind,
         replyToId: replyingTo?.id,
@@ -540,11 +571,9 @@ export default function ChatWorkspace({
       setComposerText("");
       setSelectedFiles([]);
       setReplyingTo(null);
-      await Promise.all([
-        setTypingStatus(activeConversationId, false),
-        refreshMessages(activeConversationId),
-        refreshSidebar(),
-      ]);
+      appendMessage(created);
+      syncConversationPreview(activeConversationId, created);
+      await setTypingStatus(activeConversationId, false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao enviar.");
     } finally {
@@ -561,13 +590,14 @@ export default function ChatWorkspace({
     void refreshMessages(activeConversationId);
     void syncPresence(activeConversationId);
     void setPresence(activeConversationId).catch(() => undefined);
+    if (!websocketRealtime) return;
     const interval = window.setInterval(() => {
       void refreshSidebar();
       void syncPresence(activeConversationId);
       void setPresence(activeConversationId).catch(() => undefined);
     }, 15000);
     return () => window.clearInterval(interval);
-  }, [activeConversationId, currentUser]);
+  }, [activeConversationId, currentUser, websocketRealtime]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setClock(Date.now()), 1000);
@@ -585,25 +615,55 @@ export default function ChatWorkspace({
 
   useEffect(() => {
     if (!activeConversationId) return;
+    if (!websocketRealtime) return;
     return subscribeToMessageEvents(activeConversationId, () => {
       void refreshMessages(activeConversationId);
       void refreshSidebar();
     });
-  }, [activeConversationId]);
+  }, [activeConversationId, websocketRealtime]);
 
   useEffect(() => {
     if (!activeConversationId) return;
+    if (!websocketRealtime) return;
     return subscribeToPresence(activeConversationId, (presence) => {
       setPresenceMap((current) => ({ ...current, [presence.userId]: presence }));
     });
-  }, [activeConversationId]);
+  }, [activeConversationId, websocketRealtime]);
 
   useEffect(() => {
     if (!activeConversationId) return;
+    if (!websocketRealtime) return;
     return subscribeToCallSignals(activeConversationId, (signal) => {
       void handleSignal(signal);
     });
-  }, [activeConversationId, activeConversation, users]);
+  }, [activeConversationId, activeConversation, users, websocketRealtime]);
+
+  useEffect(() => {
+    if (!activeConversationId || websocketRealtime) return;
+
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled || document.hidden) return;
+
+      await Promise.all([
+        refreshMessages(activeConversationId),
+        refreshSidebar(),
+        syncPresence(activeConversationId),
+        setPresence(activeConversationId).catch(() => undefined),
+      ]).catch(() => undefined);
+    };
+
+    void tick();
+    const interval = window.setInterval(() => {
+      void tick();
+    }, 4000);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [activeConversationId, websocketRealtime]);
 
   useEffect(() => {
     if (localVideoRef.current) localVideoRef.current.srcObject = localStream;
@@ -629,10 +689,10 @@ export default function ChatWorkspace({
   if (!currentUser) return null;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,#19d7ff26,transparent_24%),radial-gradient(circle_at_bottom,#ff2ba523,transparent_28%),linear-gradient(180deg,#020611,#08101d_55%,#0a1622)] text-white">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col gap-4 px-4 py-4 lg:flex-row">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(37,211,102,0.16),transparent_22%),radial-gradient(circle_at_top_right,rgba(88,101,242,0.18),transparent_24%),radial-gradient(circle_at_bottom,rgba(35,211,238,0.12),transparent_26%),linear-gradient(180deg,#07111a,#0a1622_45%,#0d1726)] text-white">
+      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col gap-4 px-3 py-3 lg:flex-row lg:px-5 lg:py-5">
         <aside className="w-full lg:max-w-sm">
-          <Card className="border-white/10 bg-slate-950/75 text-white shadow-2xl backdrop-blur">
+          <Card className="border-white/10 bg-[linear-gradient(180deg,rgba(9,15,24,0.92),rgba(10,18,28,0.84))] text-white shadow-[0_25px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl">
             <CardContent className="space-y-4 p-4">
               <div id="tour-profile" className="rounded-[1.75rem] border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center gap-3">
@@ -652,10 +712,10 @@ export default function ChatWorkspace({
           </Card>
         </aside>
 
-        <section className="flex min-h-[75vh] flex-1 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/75 shadow-2xl backdrop-blur">
+        <section className="flex min-h-[75vh] flex-1 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(8,13,22,0.92),rgba(7,15,24,0.78))] shadow-[0_25px_90px_rgba(0,0,0,0.38)] backdrop-blur-xl">
           {activeConversation ? <>
             <div id="tour-header" className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4"><div className="min-w-0"><p className="text-xs uppercase tracking-[0.25em] text-cyan-300/70">Modo efemero</p><p className="mt-1 truncate text-sm text-white/45">{formatTypingLabel(typingUsers, "Mensagens expiram em 1 hora por padrao")}</p></div><div className="flex gap-2">{activeConversation.kind === "DIRECT" ? <><Button variant="ghost" size="icon" onClick={() => void startOutgoingCall("audio")} className="rounded-full border border-white/10 text-white/75 hover:bg-white/10"><Phone className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => void startOutgoingCall("video")} className="rounded-full border border-white/10 text-white/75 hover:bg-white/10"><Video className="h-4 w-4" /></Button></> : null}</div></div>
-            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">{visibleMessages.map((message) => <ChatMessageBubble key={message.id} message={message} currentUserId={currentUser.id} conversation={activeConversation} clock={clock} menuOpen={menuMessageId === message.id} onToggleMenu={() => setMenuMessageId((current) => current === message.id ? null : message.id)} onReply={setReplyingTo} onSaveToggle={(item) => void toggleMessageSaved(item.id, !item.isSaved).then((updated) => { patchMessage(updated); void refreshSidebar(); })} onCopy={(item) => void navigator.clipboard.writeText(item.text || item.emoji || item.linkUrl || item.attachments[0]?.url || "").then(() => toast.success("Mensagem copiada."))} onForward={(item) => { setForwardingMessage(item); setShowForwardSheet(true); setMenuMessageId(null); }} onEdit={(item) => { setEditingMessage(item); setReplyingTo(null); setComposerText(item.kind === "LINK" ? item.linkUrl || "" : item.kind === "EMOJI" ? item.emoji || "" : item.text || ""); setMenuMessageId(null); }} onDelete={(messageId) => void deleteMessage(messageId).then((updated) => { patchMessage(updated); setMenuMessageId(null); void refreshSidebar(); })} onReaction={(messageId, emoji) => void reactToMessage(messageId, emoji).then((updated) => { patchMessage(updated); void refreshSidebar(); })} />)}{visibleMessages.length === 0 ? <div className="flex h-full min-h-80 items-center justify-center"><div className="max-w-md rounded-[2rem] border border-dashed border-white/10 bg-white/5 px-6 py-8 text-center"><p className="text-lg font-semibold text-cyan-200">Conversa pronta para uso</p><p className="mt-2 text-sm text-white/50">Texto, emoji, audio, imagem, video, links, chamada e mensagens temporarias.</p></div></div> : null}</div>
+            <div className="flex-1 space-y-4 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.03),transparent_28%)] px-5 py-5">{visibleMessages.map((message) => <ChatMessageBubble key={message.id} message={message} currentUserId={currentUser.id} conversation={activeConversation} clock={clock} menuOpen={menuMessageId === message.id} onToggleMenu={() => setMenuMessageId((current) => current === message.id ? null : message.id)} onReply={setReplyingTo} onSaveToggle={(item) => void toggleMessageSaved(item.id, !item.isSaved).then((updated) => { patchMessage(updated); syncConversationPreview(activeConversation.id, updated); })} onCopy={(item) => void navigator.clipboard.writeText(item.text || item.emoji || item.linkUrl || item.attachments[0]?.url || "").then(() => toast.success("Mensagem copiada."))} onForward={(item) => { setForwardingMessage(item); setShowForwardSheet(true); setMenuMessageId(null); }} onEdit={(item) => { setEditingMessage(item); setReplyingTo(null); setComposerText(item.kind === "LINK" ? item.linkUrl || "" : item.kind === "EMOJI" ? item.emoji || "" : item.text || ""); setMenuMessageId(null); }} onDelete={(messageId) => void deleteMessage(messageId).then((updated) => { patchMessage(updated); syncConversationPreview(activeConversation.id, updated); setMenuMessageId(null); })} onReaction={(messageId, emoji) => void reactToMessage(messageId, emoji).then((updated) => { patchMessage(updated); syncConversationPreview(activeConversation.id, updated); })} />)}{visibleMessages.length === 0 ? <div className="flex h-full min-h-80 items-center justify-center"><div className="max-w-md rounded-[2rem] border border-dashed border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] px-6 py-8 text-center shadow-[0_20px_60px_rgba(0,0,0,0.22)]"><p className="text-lg font-semibold text-cyan-200">Conversa pronta para uso</p><p className="mt-2 text-sm text-white/50">Texto, emoji, audio, imagem, video, links, chamada e mensagens temporarias.</p></div></div> : null}</div>
             <div id="tour-composer" className="border-t border-white/10 bg-black/20 px-4 py-4">{replyingTo ? <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/8 px-4 py-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Respondendo a {replyingTo.sender.displayName}</p><p className="mt-1 truncate text-sm text-white/70">{replyingTo.text || replyingTo.emoji || replyingTo.linkUrl || messagePreview(replyingTo)}</p></div><Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="rounded-full text-white/70 hover:bg-white/5"><X className="h-4 w-4" /></Button></div> : null}{editingMessage ? <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-amber-300/20 bg-amber-300/8 px-4 py-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200">Editando mensagem</p><p className="mt-1 truncate text-sm text-white/70">{messagePreview(editingMessage)}</p></div><Button variant="ghost" size="icon" onClick={() => { setEditingMessage(null); setComposerText(""); }} className="rounded-full text-white/70 hover:bg-white/5"><X className="h-4 w-4" /></Button></div> : null}{selectedFiles.length > 0 ? <div className="mb-3 flex flex-wrap gap-2">{selectedFiles.map((file) => <span key={`${file.name}-${file.lastModified}`} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">{file.name}</span>)}</div> : null}<div className="flex flex-col gap-3 lg:flex-row lg:items-end"><div className="flex flex-1 items-end gap-2 rounded-[1.7rem] border border-white/10 bg-slate-950/80 p-3"><Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="rounded-full text-cyan-300 hover:bg-white/5"><Paperclip className="h-5 w-5" /></Button><Button variant="ghost" size="icon" onClick={() => setShowEmojiPicker(true)} className="rounded-full text-cyan-300 hover:bg-white/5"><SmilePlus className="h-5 w-5" /></Button><Textarea value={composerText} onChange={(event) => queueTyping(event.target.value)} placeholder="Mensagem, emoji, link, legenda ou resposta..." className="min-h-12 border-none bg-transparent px-0 text-white shadow-none focus-visible:ring-0" /><Button variant="ghost" size="icon" onClick={() => void (async () => { if (recording) { recorderRef.current?.stop(); setRecording(false); return; } try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); const recorder = new MediaRecorder(stream); recorderChunksRef.current = []; recorderRef.current = recorder; recorder.ondataavailable = (event) => { if (event.data.size > 0) recorderChunksRef.current.push(event.data); }; recorder.onstop = () => { const blob = new Blob(recorderChunksRef.current, { type: "audio/webm" }); setSelectedFiles((current) => [...current, new File([blob], `audio-${Date.now()}.webm`, { type: "audio/webm" })]); stream.getTracks().forEach((track) => track.stop()); }; recorder.start(); setRecording(true); } catch { toast.error("Nao foi possivel acessar o microfone."); } })()} className={`rounded-full hover:bg-white/5 ${recording ? "text-red-400" : "text-cyan-300"}`}><Mic className="h-5 w-5" /></Button><input ref={fileInputRef} type="file" multiple className="hidden" onChange={(event) => setSelectedFiles((current) => [...current, ...Array.from(event.target.files || [])])} /></div><Button onClick={() => void handleSend()} disabled={pending || (!composerText.trim() && selectedFiles.length === 0 && !editingMessage)} className="h-12 rounded-full bg-emerald-400 px-6 font-semibold text-slate-950 hover:bg-emerald-300">{pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{editingMessage ? "Salvar edicao" : "Enviar"}</Button></div></div>
           </> : <div className="flex h-full min-h-[75vh] items-center justify-center px-6 text-center"><div className="max-w-xl"><p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Sinal</p><h1 className="mt-4 text-4xl font-semibold">Chat efemero com chamadas, recibos e salvar individual</h1><p className="mt-4 text-white/55">Selecione uma conversa ou crie um grupo. O fluxo prioriza mensagens temporarias, presenca em tempo real e chamada direta.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Button asChild className="rounded-full bg-cyan-300 text-slate-950 hover:bg-cyan-200"><Link href={withBasePath("/")}>Ver landing</Link></Button><Button variant="ghost" onClick={() => setShowGroupComposer(true)} className="rounded-full border border-white/10 text-white hover:bg-white/5">Criar primeiro grupo</Button></div></div></div>}
         </section>

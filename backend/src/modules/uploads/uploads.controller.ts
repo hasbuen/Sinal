@@ -6,8 +6,7 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { diskStorage } from "multer";
-import { appConfig } from "../../config/app.config";
+import { memoryStorage } from "multer";
 import { UploadsService } from "./uploads.service";
 import { AuthGuard } from "@nestjs/passport";
 
@@ -19,18 +18,13 @@ export class UploadsController {
   @Post()
   @UseInterceptors(
     FileInterceptor("file", {
-      storage: diskStorage({
-        destination: appConfig.uploadDir,
-        filename: (_request, file, callback) => {
-          callback(null, `${Date.now()}-${file.originalname.replace(/\s+/g, "-")}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: {
-        fileSize: 25 * 1024 * 1024,
+        fileSize: 4 * 1024 * 1024,
       },
     }),
   )
-  upload(@UploadedFile() file: Express.Multer.File) {
-    return this.uploadsService.buildUploadResponse(file);
+  async upload(@UploadedFile() file: Express.Multer.File) {
+    return this.uploadsService.storeFile(file);
   }
 }

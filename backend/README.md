@@ -31,15 +31,15 @@ npm run typecheck
 npm run dev
 ```
 
-## Deploy no Railway
+## Deploy no Vercel
 
-Fluxo recomendado no plano gratis:
+Fluxo recomendado:
 
-1. Criar um servico apontando para a pasta `backend/`.
-2. Configurar `backend/railway.json` como config-as-code do servico.
-3. Definir as variaveis do `.env.example`, principalmente `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN` e `PUBLIC_API_ORIGIN`.
-4. Manter MongoDB no Atlas gratis e Redis em servico separado.
-5. Executar `npm run prisma:push` no primeiro deploy ou como pre-deploy.
+1. Criar um projeto Vercel separado apontando para a pasta `backend/`.
+2. Definir as variaveis do `.env.example`, principalmente `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `PUBLIC_API_ORIGIN` e `BLOB_READ_WRITE_TOKEN`.
+3. Manter MongoDB no Atlas e Redis em servico separado.
+4. Criar um Blob Store no projeto para arquivos de midia.
+5. Executar `npm run prisma:push` no primeiro deploy.
 
 ## Modulos ja criados
 
@@ -47,4 +47,4 @@ Fluxo recomendado no plano gratis:
 - `users`: busca de usuarios
 - `conversations`: diretas, grupos, membros, leitura
 - `messages`: envio, reacoes, typing, subscription
-- `uploads`: upload multipart e entrega de URL publica do backend
+- `uploads`: upload multipart com Vercel Blob em producao e fallback local em desenvolvimento

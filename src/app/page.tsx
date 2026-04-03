@@ -48,7 +48,7 @@ export default function Home() {
         <section className="grid items-center gap-12 py-16 md:grid-cols-[1.15fr_0.85fr]">
           <div className="space-y-8">
             <span className="inline-flex rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-200">
-              Agora com Railway, NestJS, GraphQL, MongoDB, Redis e SQLite
+              Agora com Vercel, NestJS, GraphQL, MongoDB, Redis e Blob
             </span>
             <div className="space-y-5">
               <h2 className="max-w-3xl text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
@@ -104,7 +104,7 @@ export default function Home() {
               <div className="space-y-4">
                 {[
                   ["Experiencia", "Chat efemero, editar, encaminhar, recibos, audio e video"],
-                  ["Backend", "NestJS + GraphQL + Prisma 6 + MongoDB no Railway"],
+                  ["Backend", "NestJS + GraphQL + Prisma 6 + MongoDB com deploy em Vercel"],
                   ["Ecossistema", "Web, PWA, Android e Electron alinhados com o mesmo produto"],
                 ].map(([label, value]) => (
                   <div

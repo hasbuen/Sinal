@@ -60,12 +60,13 @@ export function ChatMessageBubble({
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
       <div
-        className={`relative max-w-[92%] rounded-[1.6rem] border px-4 py-3 shadow-lg sm:max-w-[78%] ${
+        className={`relative max-w-[92%] overflow-hidden rounded-[1.75rem] border px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur sm:max-w-[78%] ${
           mine
-            ? "border-cyan-300/20 bg-cyan-300/12"
-            : "border-white/10 bg-white/5"
+            ? "border-emerald-300/25 bg-[linear-gradient(180deg,rgba(37,211,102,0.18),rgba(20,33,28,0.88))]"
+            : "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(13,18,28,0.92))]"
         }`}
       >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/15" />
         <div className="flex items-center justify-between gap-3">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
             {mine ? "Voce" : message.sender.displayName}
@@ -76,7 +77,7 @@ export function ChatMessageBubble({
                 Salva
               </span>
             ) : timeUntilExpiry(message, clock) ? (
-              <span className="rounded-full bg-white/8 px-2 py-1 text-[10px] uppercase tracking-[0.15em] text-white/50">
+              <span className="rounded-full bg-black/20 px-2 py-1 text-[10px] uppercase tracking-[0.15em] text-white/55">
                 {timeUntilExpiry(message, clock)}
               </span>
             ) : null}

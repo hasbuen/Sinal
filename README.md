@@ -1,10 +1,10 @@
 # Sinal
 
-Aplicacao de mensageria com frontend em Next.js, backend novo em NestJS e base Android via Capacitor.
+Aplicacao de mensageria com frontend em Next.js, backend em NestJS e base Android via Capacitor.
 
 ## Estrutura
 
-- `src/`: frontend exportavel para GitHub Pages
+- `src/`: frontend Next.js pronto para Vercel
 - `backend/`: API NestJS + GraphQL + Prisma + MongoDB
 - `android/`: wrapper Android do frontend
 
@@ -21,6 +21,7 @@ Variaveis principais:
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:4000/api/graphql
 NEXT_PUBLIC_BACKEND_ORIGIN=http://localhost:4000
+NEXT_PUBLIC_ENABLE_WEBSOCKETS=true
 NEXT_PUBLIC_BASE_PATH=
 ```
 
@@ -45,27 +46,29 @@ npm run backend:typecheck
 
 ## Arquitetura atual
 
-- Next.js 16 com export estatico
+- Next.js 16 com frontend pronto para Vercel
 - NestJS 11 com GraphQL code-first
 - Prisma 6.x com MongoDB
 - Redis para presenca e typing
 - SQLite para cache local de snapshots
-- Upload multipart para imagem, audio, video e arquivos
+- Upload multipart com Vercel Blob em producao
 - Tutorial lazy com `driver.js`
 - PWA + Capacitor Android
 
 ## Deploy
 
-- Landing e frontend estatico: GitHub Pages
-- Backend: Railway apontando para `backend/`
+- Frontend: Vercel no root do repositorio
+- Backend: Vercel em projeto separado com root em `backend/`
 - Banco MongoDB gratis: Atlas
 - Redis: servico separado barato ou gratis
+- Arquivos: Vercel Blob
 
-## Fluxo recomendado no Railway
+## Fluxo recomendado no Vercel
 
-1. Criar um servico com root em `backend/`.
-2. Usar `backend/railway.json` como config-as-code.
-3. Definir `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN` e `PUBLIC_API_ORIGIN`.
-4. Rodar `npm run prisma:push` no primeiro deploy.
+1. Criar um projeto `web` apontando para a raiz.
+2. Criar um projeto `api` apontando para `backend/`.
+3. Definir `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_BACKEND_ORIGIN` e `NEXT_PUBLIC_ENABLE_WEBSOCKETS` no frontend.
+4. Definir `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `PUBLIC_API_ORIGIN` e `BLOB_READ_WRITE_TOKEN` no backend.
+5. Rodar `npm run prisma:push` no primeiro deploy do backend.
 
-Observacao: Railway hoje entrega bem o NestJS, mas para banco gratis o Atlas segue sendo a opcao mais estavel.
+Observacao: se o backend ficar em Vercel puro, mantenha `NEXT_PUBLIC_ENABLE_WEBSOCKETS=false` e o app usa polling inteligente no lugar de subscriptions.

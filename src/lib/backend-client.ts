@@ -3,7 +3,7 @@
 import { createClient, type Client, type SubscribePayload } from "graphql-ws";
 
 const LOCAL_BACKEND_ORIGIN = "http://localhost:4000";
-const PRODUCTION_BACKEND_ORIGIN = "https://sinal-production.up.railway.app";
+const PRODUCTION_BACKEND_ORIGIN = "https://sinal-api.vercel.app";
 
 function isLocalRuntime() {
   if (typeof window === "undefined") {
@@ -16,6 +16,8 @@ function isLocalRuntime() {
 const BACKEND_ORIGIN =
   process.env.NEXT_PUBLIC_BACKEND_ORIGIN ||
   (isLocalRuntime() ? LOCAL_BACKEND_ORIGIN : PRODUCTION_BACKEND_ORIGIN);
+const WEBSOCKETS_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_WEBSOCKETS === "true" || isLocalRuntime();
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || `${BACKEND_ORIGIN}/api/graphql`;
 const API_WS_URL = API_URL.replace(/^http/i, (protocol) =>
@@ -259,6 +261,10 @@ const conversationFields = `
 `;
 
 function getWsClient() {
+  if (!WEBSOCKETS_ENABLED) {
+    return null;
+  }
+
   if (!wsClient) {
     wsClient = createClient({
       url: API_WS_URL,
@@ -370,12 +376,17 @@ export function gqlSubscribe<TData>(
     return () => {};
   }
 
+  const client = getWsClient();
+  if (!client) {
+    return () => {};
+  }
+
   const payload: SubscribePayload = {
     query,
     variables,
   };
 
-  const dispose = getWsClient().subscribe(payload, {
+  const dispose = client.subscribe(payload, {
     next: (result) => {
       if (result.errors?.length) {
         handlers.onError?.(
@@ -397,6 +408,10 @@ export function gqlSubscribe<TData>(
   return () => {
     dispose();
   };
+}
+
+export function supportsWebSocketRealtime() {
+  return WEBSOCKETS_ENABLED;
 }
 
 export async function loginUser(email: string, password: string) {

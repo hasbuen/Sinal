@@ -14,6 +14,7 @@ const frontendOrigins = (
 const allowAllFrontendOrigins = frontendOrigins.includes("*");
 const publicApiOrigin =
   process.env.PUBLIC_API_ORIGIN || `http://localhost:${port}`;
+const blobReadWriteToken = process.env.BLOB_READ_WRITE_TOKEN || "";
 
 export const appConfig = {
   nodeEnv: process.env.NODE_ENV || "development",
@@ -28,4 +29,5 @@ export const appConfig = {
   frontendOrigins,
   allowAllFrontendOrigins,
   publicApiOrigin,
+  blobReadWriteToken,
 };

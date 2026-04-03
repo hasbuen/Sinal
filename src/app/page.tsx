@@ -2,9 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 
 const highlights = [
-  "Frontend exportado para GitHub Pages",
-  "Backend NestJS + GraphQL + Prisma com MongoDB",
-  "Midias, grupos, tutorial lazy e base Android pronta",
+  "Mensagens somem em 1 hora por padrao",
+  "Cada usuario decide o que salvar individualmente",
+  "Midia, grupos, audio, PWA e Android no mesmo fluxo",
 ];
 
 export default function Home() {
@@ -51,12 +51,11 @@ export default function Home() {
             </span>
             <div className="space-y-5">
               <h2 className="max-w-3xl text-5xl font-semibold leading-tight tracking-tight md:text-6xl">
-                O Sinal virou uma stack completa para chat, midia, grupos e Android.
+                Conversas com clima de mensageria real, mas com memoria curta por padrao.
               </h2>
               <p className="max-w-2xl text-lg text-white/70">
-                A landing segue estatica para GitHub Pages, enquanto o app usa um backend
-                NestJS com Prisma, MongoDB e cache local para entregar uma experiencia de
-                mensageria mais fluida.
+                O Sinal combina chat moderno, audio, midia e grupos com uma regra simples:
+                toda mensagem expira em uma hora, a menos que o proprio usuario escolha salvar.
               </p>
             </div>
 
@@ -102,9 +101,9 @@ export default function Home() {
 
               <div className="space-y-4">
                 {[
-                  ["Frontend", "Next 16 exportado com lazy e onboarding"],
-                  ["Backend", "NestJS + GraphQL + Prisma 6 + MongoDB"],
-                  ["Deploy", "Railway no backend, Pages no marketing, Capacitor no Android"],
+                  ["Experiencia", "Chat efemero, resposta rapida, emoji, audio e midia"],
+                  ["Backend", "NestJS + GraphQL + Prisma 6 + MongoDB no Railway"],
+                  ["Ecossistema", "Web, PWA e Android alinhados com o mesmo produto"],
                 ].map(([label, value]) => (
                   <div
                     key={label}

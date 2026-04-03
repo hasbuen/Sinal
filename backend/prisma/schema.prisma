@@ -94,8 +94,10 @@ model Message {
   forwardedFromId       String?           @db.ObjectId
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
+  expiresAt             DateTime?
   editedAt              DateTime?
   deletedAt             DateTime?
+  savedByIds            String[]          @db.ObjectId
   metadata              Json?
   conversation          Conversation      @relation(fields: [conversationId], references: [id])
   sender                User              @relation("MessageSender", fields: [senderId], references: [id])
@@ -107,6 +109,7 @@ model Message {
   reactions             Reaction[]
 
   @@index([conversationId, createdAt(sort: Desc)])
+  @@index([conversationId, expiresAt(sort: Desc)])
   @@index([senderId, createdAt(sort: Desc)])
 }
 

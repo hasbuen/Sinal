@@ -24,7 +24,7 @@ export default function OnboardingTour() {
           element: "#tour-profile",
           popover: {
             title: "Conta ativa",
-            description: "Seu perfil local usa JWT e conversa direto com o backend GraphQL.",
+            description: "Sua foto, bio e identidade agora aparecem no chat e podem ser editadas nas configuracoes.",
           },
         },
         {
@@ -52,14 +52,21 @@ export default function OnboardingTour() {
           element: "#tour-chat-list",
           popover: {
             title: "Fila de conversas",
-            description: "Aqui entram grupos, conversas diretas e o ultimo preview de mensagem.",
+            description: "Aqui entram grupos, conversas diretas e o ultimo preview visivel de cada conversa.",
+          },
+        },
+        {
+          element: "#tour-header",
+          popover: {
+            title: "Conversa efemera",
+            description: "Toda mensagem nasce com expiracao de 1 hora. O usuario decide salvar individualmente o que deve ficar.",
           },
         },
         {
           element: "#tour-composer",
           popover: {
             title: "Composer",
-            description: "Envie texto, emoji, audio, links, imagens, videos e arquivos.",
+            description: "Envie texto, emoji, audio, links, imagens, videos, arquivos e respostas encadeadas.",
           },
         },
       ],

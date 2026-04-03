@@ -43,6 +43,9 @@ export class MessageModel {
   @Field(() => [ReactionModel])
   reactions!: ReactionModel[];
 
+  @Field(() => Boolean)
+  isSaved!: boolean;
+
   @Field(() => GraphQLJSON, { nullable: true })
   metadata?: Record<string, unknown> | null;
 
@@ -51,6 +54,9 @@ export class MessageModel {
 
   @Field(() => Date)
   updatedAt!: Date;
+
+  @Field(() => Date, { nullable: true })
+  expiresAt?: Date | null;
 
   @Field(() => Date, { nullable: true })
   editedAt?: Date | null;

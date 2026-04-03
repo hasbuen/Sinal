@@ -1,10 +1,11 @@
-import { Args, Query, Resolver } from "@nestjs/graphql";
+import { Args, Mutation, Query, Resolver } from "@nestjs/graphql";
 import { UseGuards } from "@nestjs/common";
 import { GqlAuthGuard } from "../auth/gql-auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { UserModel } from "./models/user.model";
 import { UserSearchInput } from "./dto/user-search.input";
 import { UsersService } from "./users.service";
+import { UpdateProfileInput } from "./dto/update-profile.input";
 
 @Resolver(() => UserModel)
 export class UsersResolver {
@@ -17,5 +18,14 @@ export class UsersResolver {
     @Args("input", { nullable: true }) input?: UserSearchInput,
   ) {
     return this.usersService.search(user.id, input?.term);
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => UserModel)
+  updateProfile(
+    @CurrentUser() user: UserModel,
+    @Args("input") input: UpdateProfileInput,
+  ) {
+    return this.usersService.updateProfile(user.id, input);
   }
 }

@@ -80,8 +80,10 @@ export type BackendMessage = {
   forwardedFrom?: BackendMessage | null;
   attachments: BackendAttachment[];
   reactions: BackendReaction[];
+  isSaved: boolean;
   createdAt: string;
   updatedAt: string;
+  expiresAt?: string | null;
   editedAt?: string | null;
   deletedAt?: string | null;
 };
@@ -107,6 +109,8 @@ const messageFields = `
   linkDescription
   createdAt
   updatedAt
+  expiresAt
+  isSaved
   editedAt
   deletedAt
   sender {
@@ -468,6 +472,26 @@ export async function reactToMessage(messageId: string, emoji: string) {
   return data.reactToMessage;
 }
 
+export async function toggleMessageSaved(messageId: string, saved: boolean) {
+  const data = await gqlRequest<{ toggleMessageSaved: BackendMessage }>(
+    `
+      mutation ToggleMessageSaved($input: ToggleMessageSavedInput!) {
+        toggleMessageSaved(input: $input) {
+          ${messageFields}
+        }
+      }
+    `,
+    {
+      input: {
+        messageId,
+        saved,
+      },
+    },
+  );
+
+  return data.toggleMessageSaved;
+}
+
 export async function setTypingStatus(
   conversationId: string,
   isTyping: boolean,
@@ -519,4 +543,28 @@ export async function uploadMedia(file: File) {
   }
 
   return (await response.json()) as BackendAttachment;
+}
+
+export async function updateProfile(input: {
+  displayName?: string;
+  bio?: string;
+  avatarUrl?: string;
+}) {
+  const data = await gqlRequest<{ updateProfile: BackendUser }>(
+    `
+      mutation UpdateProfile($input: UpdateProfileInput!) {
+        updateProfile(input: $input) {
+          id
+          email
+          username
+          displayName
+          avatarUrl
+          bio
+        }
+      }
+    `,
+    { input },
+  );
+
+  return data.updateProfile;
 }

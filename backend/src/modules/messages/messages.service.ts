@@ -6,6 +6,7 @@ import { SendMessageInput } from "./dto/send-message.input";
 import { ReactToMessageInput } from "./dto/react-to-message.input";
 import { ConversationMessagesInput } from "./dto/conversation-messages.input";
 import { TypingInput } from "./dto/typing.input";
+import { ToggleMessageSavedInput } from "./dto/toggle-message-saved.input";
 import { RedisService } from "../../redis/redis.service";
 import { CacheSqliteService } from "../../sqlite/cache-sqlite.service";
 
@@ -35,6 +36,7 @@ const messageInclude = {
       sender: true,
     },
   },
+  savedByIds: true,
 };
 
 @Injectable()
@@ -46,6 +48,30 @@ export class MessagesService {
     private readonly sqliteCache: CacheSqliteService,
   ) {}
 
+  private getVisibleMessageWhere(currentUserId: string, conversationId?: string) {
+    return {
+      deletedAt: null,
+      ...(conversationId ? { conversationId } : {}),
+      OR: [
+        { expiresAt: { equals: null } },
+        { expiresAt: { gt: new Date() } },
+        { savedByIds: { has: currentUserId } },
+      ],
+    };
+  }
+
+  private mapMessageForUser<T>(
+    message: T,
+    currentUserId: string,
+  ) {
+    const savedByIds = ((message as { savedByIds?: string[] | null }).savedByIds ??
+      []) as string[];
+    return {
+      ...message,
+      isSaved: savedByIds.includes(currentUserId),
+    };
+  }
+
   async conversationMessages(currentUserId: string, input: ConversationMessagesInput) {
     await this.conversationsService.assertMembership(
       input.conversationId,
@@ -53,9 +79,7 @@ export class MessagesService {
     );
 
     const messages = await this.prisma.message.findMany({
-      where: {
-        conversationId: input.conversationId,
-      },
+      where: this.getVisibleMessageWhere(currentUserId, input.conversationId),
       orderBy: {
         createdAt: "asc",
       },
@@ -71,7 +95,9 @@ export class MessagesService {
       );
     });
 
-    return messages;
+    return messages.map((message: (typeof messages)[number]) =>
+      this.mapMessageForUser(message, currentUserId),
+    );
   }
 
   async sendMessage(currentUserId: string, input: SendMessageInput) {
@@ -101,6 +127,8 @@ export class MessagesService {
         linkDescription: input.linkDescription,
         replyToId: input.replyToId,
         forwardedFromId: input.forwardedFromId,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+        savedByIds: [],
         attachments: input.attachments?.length
           ? {
               create: input.attachments.map((attachment) => ({
@@ -127,11 +155,11 @@ export class MessagesService {
     );
 
     await messagePubSub.publish("message.added", {
-      messageAdded: message,
+      messageAdded: this.mapMessageForUser(message, currentUserId),
       conversationId: input.conversationId,
     });
 
-    return message;
+    return this.mapMessageForUser(message, currentUserId);
   }
 
   async reactToMessage(currentUserId: string, input: ReactToMessageInput) {
@@ -165,10 +193,45 @@ export class MessagesService {
       });
     }
 
-    return this.prisma.message.findUniqueOrThrow({
+    const updated = await this.prisma.message.findUniqueOrThrow({
       where: { id: input.messageId },
       include: messageInclude,
     });
+    return this.mapMessageForUser(updated, currentUserId);
+  }
+
+  async toggleMessageSaved(currentUserId: string, input: ToggleMessageSavedInput) {
+    const message = await this.prisma.message.findUniqueOrThrow({
+      where: { id: input.messageId },
+    });
+
+    await this.conversationsService.assertMembership(
+      message.conversationId,
+      currentUserId,
+    );
+
+    const savedByIds = new Set(message.savedByIds ?? []);
+    if (input.saved) {
+      savedByIds.add(currentUserId);
+    } else {
+      savedByIds.delete(currentUserId);
+    }
+
+    const updated = await this.prisma.message.update({
+      where: { id: input.messageId },
+      data: {
+        savedByIds: Array.from(savedByIds),
+      },
+      include: messageInclude,
+    });
+
+    this.sqliteCache.cacheMessage(
+      updated.id,
+      updated.conversationId,
+      JSON.stringify(updated),
+    );
+
+    return this.mapMessageForUser(updated, currentUserId);
   }
 
   async setTyping(currentUserId: string, input: TypingInput) {

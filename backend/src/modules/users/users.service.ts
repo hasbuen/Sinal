@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../prisma/prisma.service";
+import { UpdateProfileInput } from "./dto/update-profile.input";
 
 @Injectable()
 export class UsersService {
@@ -19,6 +20,17 @@ export class UsersService {
       },
       orderBy: { displayName: "asc" },
       take: 30,
+    });
+  }
+
+  async updateProfile(currentUserId: string, input: UpdateProfileInput) {
+    return this.prisma.user.update({
+      where: { id: currentUserId },
+      data: {
+        displayName: input.displayName?.trim() || undefined,
+        bio: input.bio?.trim() || undefined,
+        avatarUrl: input.avatarUrl?.trim() || undefined,
+      },
     });
   }
 }

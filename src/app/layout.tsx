@@ -23,6 +23,12 @@ export const metadata: Metadata = {
   authors: [{ name: "Julio Cesar O. Bueno", url: "https://github.com/hasbuen" }],
   manifest: `${basePath}/manifest.json`,
   icons: {
+    icon: [
+      { url: `${basePath}/favicon.png`, type: "image/png", sizes: "64x64" },
+      { url: `${basePath}/icons/icon-192x192.png`, type: "image/png", sizes: "192x192" },
+      { url: `${basePath}/icons/icon-512x512.png`, type: "image/png", sizes: "512x512" },
+    ],
+    shortcut: `${basePath}/favicon.png`,
     apple: `${basePath}/icons/apple-icon-180.png`,
   },
 };
@@ -38,6 +44,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable}`}
     >
       <head>
+        <link rel="icon" type="image/png" sizes="64x64" href={`${basePath}/favicon.png`} />
         <link rel="manifest" href={`${basePath}/manifest.json`} />
         <meta name="theme-color" content="#059669" />
       </head>

@@ -15,7 +15,7 @@ const conversationInclude = {
     orderBy: {
       createdAt: "desc" as const,
     },
-    take: 1,
+    take: 30,
     include: {
       sender: true,
       attachments: true,
@@ -26,6 +26,7 @@ const conversationInclude = {
       },
       replyTo: true,
       forwardedFrom: true,
+      savedByIds: true,
     },
   },
 };
@@ -36,6 +37,41 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly sqliteCache: CacheSqliteService,
   ) {}
+
+  private getVisibleMessages<T extends { expiresAt?: Date | null; savedByIds?: string[] | null }>(
+    messages: T[],
+    currentUserId: string,
+  ) {
+    const now = Date.now();
+    return messages.filter((message) => {
+      if (!message.expiresAt) {
+        return true;
+      }
+
+      return (
+        message.expiresAt.getTime() > now ||
+        (message.savedByIds ?? []).includes(currentUserId)
+      );
+    });
+  }
+
+  private toConversationPayload<T extends { messages: Array<{ savedByIds?: string[] | null; expiresAt?: Date | null }> }>(
+    conversation: T,
+    currentUserId: string,
+  ) {
+    const visibleMessages = this.getVisibleMessages(conversation.messages, currentUserId);
+    const latestMessage = visibleMessages[0]
+      ? {
+          ...visibleMessages[0],
+          isSaved: (visibleMessages[0].savedByIds ?? []).includes(currentUserId),
+        }
+      : null;
+
+    return {
+      ...conversation,
+      latestMessage,
+    };
+  }
 
   async findForUser(userId: string) {
     const conversations = await this.prisma.conversation.findMany({
@@ -59,10 +95,9 @@ export class ConversationsService {
       );
     });
 
-    return conversations.map((conversation: (typeof conversations)[number]) => ({
-      ...conversation,
-      latestMessage: conversation.messages[0] ?? null,
-    }));
+    return conversations.map((conversation: (typeof conversations)[number]) =>
+      this.toConversationPayload(conversation, userId),
+    );
   }
 
   async createDirectConversation(
@@ -85,10 +120,7 @@ export class ConversationsService {
     });
 
     if (existing) {
-      return {
-        ...existing,
-        latestMessage: existing.messages[0] ?? null,
-      };
+      return this.toConversationPayload(existing, currentUserId);
     }
 
     const conversation = await this.prisma.conversation.create({
@@ -165,10 +197,7 @@ export class ConversationsService {
       include: conversationInclude,
     });
 
-    return {
-      ...conversation,
-      latestMessage: conversation.messages[0] ?? null,
-    };
+    return this.toConversationPayload(conversation, currentUserId);
   }
 
   async markConversationRead(currentUserId: string, conversationId: string) {

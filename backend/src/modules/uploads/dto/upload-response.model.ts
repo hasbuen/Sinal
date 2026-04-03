@@ -6,13 +6,13 @@ export class UploadResponseModel {
   @Field(() => MediaKind)
   kind!: MediaKind;
 
-  @Field()
+  @Field(() => String)
   url!: string;
 
-  @Field()
+  @Field(() => String)
   mimeType!: string;
 
-  @Field()
+  @Field(() => String)
   fileName!: string;
 
   @Field(() => Int)

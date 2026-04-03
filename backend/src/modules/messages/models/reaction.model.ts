@@ -6,12 +6,12 @@ export class ReactionModel {
   @Field(() => ID)
   id!: string;
 
-  @Field()
+  @Field(() => String)
   emoji!: string;
 
   @Field(() => UserModel)
   user!: UserModel;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 }

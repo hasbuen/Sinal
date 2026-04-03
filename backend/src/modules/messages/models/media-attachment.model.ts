@@ -9,13 +9,13 @@ export class MediaAttachmentModel {
   @Field(() => MediaKind)
   kind!: MediaKind;
 
-  @Field()
+  @Field(() => String)
   url!: string;
 
-  @Field()
+  @Field(() => String)
   mimeType!: string;
 
-  @Field()
+  @Field(() => String)
   fileName!: string;
 
   @Field(() => Int)
@@ -30,6 +30,6 @@ export class MediaAttachmentModel {
   @Field(() => Int, { nullable: true })
   durationMs?: number | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   thumbnailUrl?: string | null;
 }

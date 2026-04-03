@@ -11,7 +11,7 @@ import { appConfig } from "../../config/app.config";
 import { UploadsService } from "./uploads.service";
 import { AuthGuard } from "@nestjs/passport";
 
-@Controller("api/uploads")
+@Controller("uploads")
 export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 

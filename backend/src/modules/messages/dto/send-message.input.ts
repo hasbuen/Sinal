@@ -18,27 +18,27 @@ export class SendMessageInput {
   @Field(() => MessageKind)
   kind!: MessageKind;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   text?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   emoji?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsUrl()
   linkUrl?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   linkTitle?: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   linkDescription?: string;

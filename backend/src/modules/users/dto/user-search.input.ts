@@ -3,7 +3,7 @@ import { IsOptional, IsString } from "class-validator";
 
 @InputType()
 export class UserSearchInput {
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   term?: string;

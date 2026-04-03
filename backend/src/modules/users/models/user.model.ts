@@ -14,15 +14,15 @@ export class UserModel {
   @Field()
   displayName!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   avatarUrl?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   bio?: string | null;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 }

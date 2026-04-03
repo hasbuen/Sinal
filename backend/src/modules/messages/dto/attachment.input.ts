@@ -39,7 +39,7 @@ export class AttachmentInput {
   @IsInt()
   durationMs?: number;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsUrl()
   thumbnailUrl?: string;

@@ -11,13 +11,13 @@ export class ConversationModel {
   @Field(() => ConversationKind)
   kind!: ConversationKind;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   title?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   description?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   avatarUrl?: string | null;
 
   @Field(() => [ConversationMemberModel])
@@ -26,12 +26,12 @@ export class ConversationModel {
   @Field(() => MessageModel, { nullable: true })
   latestMessage?: MessageModel | null;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   lastMessageAt?: Date | null;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 }

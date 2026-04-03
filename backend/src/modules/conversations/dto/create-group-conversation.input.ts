@@ -8,7 +8,7 @@ export class CreateGroupConversationInput {
   @MinLength(2)
   title!: string;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   @IsOptional()
   @IsString()
   description?: string;

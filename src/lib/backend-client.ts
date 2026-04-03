@@ -1,10 +1,21 @@
 "use client";
 
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/graphql";
+const LOCAL_BACKEND_ORIGIN = "http://localhost:4000";
+const PRODUCTION_BACKEND_ORIGIN = "https://sinal-production.up.railway.app";
+
+function isLocalRuntime() {
+  if (typeof window === "undefined") {
+    return process.env.NODE_ENV !== "production";
+  }
+
+  return ["localhost", "127.0.0.1"].includes(window.location.hostname);
+}
+
 const BACKEND_ORIGIN =
   process.env.NEXT_PUBLIC_BACKEND_ORIGIN ||
-  API_URL.replace(/\/api\/graphql$/, "").replace(/\/graphql$/, "");
+  (isLocalRuntime() ? LOCAL_BACKEND_ORIGIN : PRODUCTION_BACKEND_ORIGIN);
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL || `${BACKEND_ORIGIN}/api/graphql`;
 const TOKEN_KEY = "sinal-access-token";
 
 type GraphQLResponse<T> = {

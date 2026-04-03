@@ -13,19 +13,19 @@ export class MessageModel {
   @Field(() => MessageKind)
   kind!: MessageKind;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   text?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   emoji?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   linkUrl?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   linkTitle?: string | null;
 
-  @Field({ nullable: true })
+  @Field(() => String, { nullable: true })
   linkDescription?: string | null;
 
   @Field(() => UserModel)
@@ -46,15 +46,15 @@ export class MessageModel {
   @Field(() => GraphQLJSON, { nullable: true })
   metadata?: Record<string, unknown> | null;
 
-  @Field()
+  @Field(() => Date)
   createdAt!: Date;
 
-  @Field()
+  @Field(() => Date)
   updatedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   editedAt?: Date | null;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   deletedAt?: Date | null;
 }

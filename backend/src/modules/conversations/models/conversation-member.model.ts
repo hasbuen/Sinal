@@ -13,9 +13,9 @@ export class ConversationMemberModel {
   @Field(() => UserModel)
   user!: UserModel;
 
-  @Field()
+  @Field(() => Date)
   joinedAt!: Date;
 
-  @Field({ nullable: true })
+  @Field(() => Date, { nullable: true })
   lastReadAt?: Date | null;
 }

@@ -4,7 +4,7 @@ import Image from "next/image";
 const highlights = [
   "Mensagens somem em 1 hora por padrao",
   "Cada usuario decide o que salvar individualmente",
-  "Midia, grupos, audio, PWA e Android no mesmo fluxo",
+  "Chamadas, desktop Electron e auto-update por release",
 ];
 
 export default function Home() {
@@ -54,7 +54,7 @@ export default function Home() {
                 Conversas com clima de mensageria real, mas com memoria curta por padrao.
               </h2>
               <p className="max-w-2xl text-lg text-white/70">
-                O Sinal combina chat moderno, audio, midia e grupos com uma regra simples:
+                O Sinal combina chat moderno, audio, video, midia, grupos e app desktop com uma regra simples:
                 toda mensagem expira em uma hora, a menos que o proprio usuario escolha salvar.
               </p>
             </div>
@@ -101,9 +101,9 @@ export default function Home() {
 
               <div className="space-y-4">
                 {[
-                  ["Experiencia", "Chat efemero, resposta rapida, emoji, audio e midia"],
+                  ["Experiencia", "Chat efemero, editar, encaminhar, recibos, audio e video"],
                   ["Backend", "NestJS + GraphQL + Prisma 6 + MongoDB no Railway"],
-                  ["Ecossistema", "Web, PWA e Android alinhados com o mesmo produto"],
+                  ["Ecossistema", "Web, PWA, Android e Electron alinhados com o mesmo produto"],
                 ].map(([label, value]) => (
                   <div
                     key={label}

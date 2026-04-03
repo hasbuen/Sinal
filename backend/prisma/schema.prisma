@@ -44,6 +44,7 @@ model User {
   passwordHash   String
   avatarUrl      String?
   bio            String?
+  lastSeenAt     DateTime?
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
   memberships    ConversationMember[]
@@ -98,6 +99,8 @@ model Message {
   editedAt              DateTime?
   deletedAt             DateTime?
   savedByIds            String[]          @db.ObjectId
+  deliveredToIds        String[]          @db.ObjectId
+  readByIds             String[]          @db.ObjectId
   metadata              Json?
   conversation          Conversation      @relation(fields: [conversationId], references: [id])
   sender                User              @relation("MessageSender", fields: [senderId], references: [id])

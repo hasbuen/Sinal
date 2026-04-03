@@ -59,14 +59,14 @@ export default function OnboardingTour() {
           element: "#tour-header",
           popover: {
             title: "Conversa efemera",
-            description: "Toda mensagem nasce com expiracao de 1 hora. O usuario decide salvar individualmente o que deve ficar.",
+            description: "Toda mensagem nasce com expiracao de 1 hora. Agora o cabecalho tambem concentra presenca online e chamada de voz ou video.",
           },
         },
         {
           element: "#tour-composer",
           popover: {
             title: "Composer",
-            description: "Envie texto, emoji, audio, links, imagens, videos, arquivos e respostas encadeadas.",
+            description: "Envie texto, emoji, audio, links, imagens, videos, arquivos e respostas encadeadas. O menu da mensagem permite editar, apagar e encaminhar.",
           },
         },
       ],

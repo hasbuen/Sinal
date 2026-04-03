@@ -1,9 +1,16 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CreateDirectConversationInput } from "./dto/create-direct-conversation.input";
 import { CreateGroupConversationInput } from "./dto/create-group-conversation.input";
 import { AddMembersInput } from "./dto/add-members.input";
+import { PresenceHeartbeatInput } from "./dto/presence-heartbeat.input";
 import { CacheSqliteService } from "../../sqlite/cache-sqlite.service";
+import {
+  MessageEventType,
+} from "./models/chat.enums";
+import { RedisService } from "../../redis/redis.service";
+import { messagePubSub, presencePubSub } from "../messages/chat.events";
 
 const conversationInclude = {
   members: {
@@ -26,9 +33,15 @@ const conversationInclude = {
       },
       replyTo: true,
       forwardedFrom: true,
-      savedByIds: true,
     },
   },
+};
+
+type PresencePayload = {
+  userId: string;
+  online: boolean;
+  lastSeenAt?: string | null;
+  activeConversationId?: string | null;
 };
 
 @Injectable()
@@ -36,12 +49,15 @@ export class ConversationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sqliteCache: CacheSqliteService,
+    private readonly redisService: RedisService,
   ) {}
 
-  private getVisibleMessages<T extends { expiresAt?: Date | null; savedByIds?: string[] | null }>(
-    messages: T[],
-    currentUserId: string,
-  ) {
+  private getVisibleMessages<
+    T extends {
+      expiresAt?: Date | null;
+      savedByIds?: string[] | null;
+    },
+  >(messages: T[], currentUserId: string) {
     const now = Date.now();
     return messages.filter((message) => {
       if (!message.expiresAt) {
@@ -55,11 +71,18 @@ export class ConversationsService {
     });
   }
 
-  private toConversationPayload<T extends { messages: Array<{ savedByIds?: string[] | null; expiresAt?: Date | null }> }>(
-    conversation: T,
-    currentUserId: string,
-  ) {
-    const visibleMessages = this.getVisibleMessages(conversation.messages, currentUserId);
+  private toConversationPayload<
+    T extends {
+      messages: Array<{
+        savedByIds?: string[] | null;
+        expiresAt?: Date | null;
+      }>;
+    },
+  >(conversation: T, currentUserId: string) {
+    const visibleMessages = this.getVisibleMessages(
+      conversation.messages,
+      currentUserId,
+    );
     const latestMessage = visibleMessages[0]
       ? {
           ...visibleMessages[0],
@@ -70,6 +93,106 @@ export class ConversationsService {
     return {
       ...conversation,
       latestMessage,
+    };
+  }
+
+  private async syncMessageReceipts(
+    currentUserId: string,
+    conversationId: string,
+    markAsRead: boolean,
+  ) {
+    const candidates = (await this.prisma.message.findMany({
+      where: {
+        conversationId,
+        senderId: {
+          not: currentUserId,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      take: 100,
+    })) as Array<{
+      id: string;
+      deliveredToIds?: string[] | null;
+      readByIds?: string[] | null;
+    }>;
+
+    for (const message of candidates) {
+      const deliveredToIds = new Set(message.deliveredToIds ?? []);
+      const readByIds = new Set(message.readByIds ?? []);
+      let changed = false;
+
+      if (!deliveredToIds.has(currentUserId)) {
+        deliveredToIds.add(currentUserId);
+        changed = true;
+      }
+
+      if (markAsRead && !readByIds.has(currentUserId)) {
+        readByIds.add(currentUserId);
+        changed = true;
+      }
+
+      if (!changed) {
+        continue;
+      }
+
+      await this.prisma.message.update({
+        where: { id: message.id },
+        data: {
+          deliveredToIds: { set: Array.from(deliveredToIds) },
+          readByIds: { set: Array.from(readByIds) },
+        } as Prisma.MessageUpdateInput,
+      });
+
+      await messagePubSub.publish("message.event", {
+        messageEvent: {
+          messageId: message.id,
+          conversationId,
+          event: MessageEventType.RECEIPT,
+        },
+        conversationId,
+      });
+    }
+  }
+
+  private async publishPresence(
+    conversationId: string,
+    userId: string,
+    payload: PresencePayload,
+  ) {
+    await presencePubSub.publish("presence.changed", {
+      presenceChanged: {
+        userId,
+        online: payload.online,
+        lastSeenAt: payload.lastSeenAt ? new Date(payload.lastSeenAt) : null,
+        activeConversationId: payload.activeConversationId ?? null,
+      },
+      conversationId,
+    });
+  }
+
+  private async resolvePresenceForUser(userId: string) {
+    const payload = await this.redisService.getPresence(userId);
+    if (payload) {
+      const parsed = JSON.parse(payload) as PresencePayload;
+      return {
+        userId,
+        online: parsed.online,
+        lastSeenAt: parsed.lastSeenAt ? new Date(parsed.lastSeenAt) : null,
+        activeConversationId: parsed.activeConversationId ?? null,
+      };
+    }
+
+    const user = (await this.prisma.user.findUnique({
+      where: { id: userId },
+    })) as { lastSeenAt?: Date | null } | null;
+
+    return {
+      userId,
+      online: false,
+      lastSeenAt: user?.lastSeenAt ?? null,
+      activeConversationId: null,
     };
   }
 
@@ -89,10 +212,7 @@ export class ConversationsService {
     });
 
     conversations.forEach((conversation: (typeof conversations)[number]) => {
-      this.sqliteCache.cacheConversation(
-        conversation.id,
-        JSON.stringify(conversation),
-      );
+      this.sqliteCache.cacheConversation(conversation.id, JSON.stringify(conversation));
     });
 
     return conversations.map((conversation: (typeof conversations)[number]) =>
@@ -175,7 +295,9 @@ export class ConversationsService {
       where: { conversationId: input.conversationId },
       select: { userId: true },
     });
-    const existingIds = new Set(existingMembers.map((member: { userId: string }) => member.userId));
+    const existingIds = new Set(
+      existingMembers.map((member: { userId: string }) => member.userId),
+    );
     const newIds = input.memberIds.filter((memberId) => !existingIds.has(memberId));
 
     if (newIds.length > 0) {
@@ -211,7 +333,60 @@ export class ConversationsService {
         lastReadAt: new Date(),
       },
     });
+    await this.syncMessageReceipts(currentUserId, conversationId, true);
     return true;
+  }
+
+  async heartbeat(currentUserId: string, input: PresenceHeartbeatInput) {
+    if (input.activeConversationId) {
+      await this.assertMembership(input.activeConversationId, currentUserId);
+    }
+
+    const lastSeenAt = new Date();
+    const payload: PresencePayload = {
+      userId: currentUserId,
+      online: true,
+      lastSeenAt: lastSeenAt.toISOString(),
+      activeConversationId: input.activeConversationId ?? null,
+    };
+
+    await this.redisService.setPresence(currentUserId, JSON.stringify(payload), 70);
+    await this.prisma.user.update({
+      where: { id: currentUserId },
+      data: {
+        lastSeenAt,
+      },
+    });
+
+    if (input.activeConversationId) {
+      await this.publishPresence(input.activeConversationId, currentUserId, payload);
+    }
+
+    return {
+      userId: currentUserId,
+      online: true,
+      lastSeenAt,
+      activeConversationId: input.activeConversationId ?? null,
+    };
+  }
+
+  async conversationPresence(currentUserId: string, conversationId: string) {
+    await this.assertMembership(conversationId, currentUserId);
+
+    const members = await this.prisma.conversationMember.findMany({
+      where: {
+        conversationId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    return Promise.all(
+      members.map((member: { userId: string }) =>
+        this.resolvePresenceForUser(member.userId),
+      ),
+    );
   }
 
   async assertMembership(conversationId: string, userId: string) {

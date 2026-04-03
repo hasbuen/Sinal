@@ -46,6 +46,12 @@ export class MessageModel {
   @Field(() => Boolean)
   isSaved!: boolean;
 
+  @Field(() => [String])
+  deliveredToIds!: string[];
+
+  @Field(() => [String])
+  readByIds!: string[];
+
   @Field(() => GraphQLJSON, { nullable: true })
   metadata?: Record<string, unknown> | null;
 

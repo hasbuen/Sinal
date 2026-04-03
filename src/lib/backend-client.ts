@@ -1,5 +1,7 @@
 "use client";
 
+import { createClient, type Client, type SubscribePayload } from "graphql-ws";
+
 const LOCAL_BACKEND_ORIGIN = "http://localhost:4000";
 const PRODUCTION_BACKEND_ORIGIN = "https://sinal-production.up.railway.app";
 
@@ -16,7 +18,12 @@ const BACKEND_ORIGIN =
   (isLocalRuntime() ? LOCAL_BACKEND_ORIGIN : PRODUCTION_BACKEND_ORIGIN);
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || `${BACKEND_ORIGIN}/api/graphql`;
+const API_WS_URL = API_URL.replace(/^http/i, (protocol) =>
+  protocol.toLowerCase() === "https" ? "wss" : "ws",
+);
 const TOKEN_KEY = "sinal-access-token";
+
+let wsClient: Client | null = null;
 
 type GraphQLResponse<T> = {
   data?: T;
@@ -30,6 +37,7 @@ export type BackendUser = {
   displayName: string;
   avatarUrl?: string | null;
   bio?: string | null;
+  lastSeenAt?: string | null;
 };
 
 export type BackendConversationMember = {
@@ -81,6 +89,9 @@ export type BackendMessage = {
   attachments: BackendAttachment[];
   reactions: BackendReaction[];
   isSaved: boolean;
+  deliveredToIds: string[];
+  readByIds: string[];
+  metadata?: Record<string, unknown> | null;
   createdAt: string;
   updatedAt: string;
   expiresAt?: string | null;
@@ -99,6 +110,68 @@ export type BackendConversation = {
   lastMessageAt?: string | null;
 };
 
+export type BackendPresence = {
+  userId: string;
+  online: boolean;
+  lastSeenAt?: string | null;
+  activeConversationId?: string | null;
+};
+
+export type BackendMessageEvent = {
+  messageId: string;
+  conversationId: string;
+  event: "ADDED" | "UPDATED" | "DELETED" | "RECEIPT";
+};
+
+export type BackendCallSignal = {
+  conversationId: string;
+  senderId: string;
+  targetUserId?: string | null;
+  type:
+    | "OFFER"
+    | "ANSWER"
+    | "ICE_CANDIDATE"
+    | "RINGING"
+    | "ACCEPTED"
+    | "DECLINED"
+    | "ENDED"
+    | "TOGGLE_AUDIO"
+    | "TOGGLE_VIDEO";
+  payload?: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+const messageReferenceFields = `
+  id
+  kind
+  text
+  emoji
+  linkUrl
+  linkTitle
+  createdAt
+  sender {
+    id
+    email
+    username
+    displayName
+    avatarUrl
+    bio
+    lastSeenAt
+  }
+  attachments {
+    id
+    kind
+    url
+    mimeType
+    fileName
+    sizeBytes
+    width
+    height
+    durationMs
+    thumbnailUrl
+  }
+`;
+
 const messageFields = `
   id
   kind
@@ -111,8 +184,11 @@ const messageFields = `
   updatedAt
   expiresAt
   isSaved
+  deliveredToIds
+  readByIds
   editedAt
   deletedAt
+  metadata
   sender {
     id
     email
@@ -120,6 +196,13 @@ const messageFields = `
     displayName
     avatarUrl
     bio
+    lastSeenAt
+  }
+  replyTo {
+    ${messageReferenceFields}
+  }
+  forwardedFrom {
+    ${messageReferenceFields}
   }
   attachments {
     id
@@ -143,6 +226,7 @@ const messageFields = `
       displayName
       avatarUrl
       bio
+      lastSeenAt
     }
   }
 `;
@@ -166,12 +250,42 @@ const conversationFields = `
       displayName
       avatarUrl
       bio
+      lastSeenAt
     }
   }
   latestMessage {
     ${messageFields}
   }
 `;
+
+function getWsClient() {
+  if (!wsClient) {
+    wsClient = createClient({
+      url: API_WS_URL,
+      lazy: true,
+      connectionParams: () => ({
+        Authorization: getBackendToken()
+          ? `Bearer ${getBackendToken()}`
+          : undefined,
+      }),
+      shouldRetry: () => true,
+    });
+  }
+
+  return wsClient;
+}
+
+function parseGraphQlError(error: unknown) {
+  if (error instanceof Error) {
+    return error;
+  }
+
+  try {
+    return new Error(JSON.stringify(error));
+  } catch {
+    return new Error("Subscription failed.");
+  }
+}
 
 export function getBackendToken() {
   if (typeof window === "undefined") {
@@ -244,6 +358,47 @@ export async function gqlRequest<TData>(
   return payload.data;
 }
 
+export function gqlSubscribe<TData>(
+  query: string,
+  variables: Record<string, unknown>,
+  handlers: {
+    onData: (data: TData) => void;
+    onError?: (error: Error) => void;
+  },
+) {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+
+  const payload: SubscribePayload = {
+    query,
+    variables,
+  };
+
+  const dispose = getWsClient().subscribe(payload, {
+    next: (result) => {
+      if (result.errors?.length) {
+        handlers.onError?.(
+          new Error(result.errors[0]?.message || "Subscription failed."),
+        );
+        return;
+      }
+
+      if (result.data) {
+        handlers.onData(result.data as TData);
+      }
+    },
+    error: (error) => {
+      handlers.onError?.(parseGraphQlError(error));
+    },
+    complete: () => undefined,
+  });
+
+  return () => {
+    dispose();
+  };
+}
+
 export async function loginUser(email: string, password: string) {
   const data = await gqlRequest<{
     login: { accessToken: string; user: BackendUser };
@@ -259,6 +414,7 @@ export async function loginUser(email: string, password: string) {
             displayName
             avatarUrl
             bio
+            lastSeenAt
           }
         }
       }
@@ -294,6 +450,7 @@ export async function registerUser(input: {
             displayName
             avatarUrl
             bio
+            lastSeenAt
           }
         }
       }
@@ -314,6 +471,7 @@ export async function getCurrentUser() {
         displayName
         avatarUrl
         bio
+        lastSeenAt
       }
     }
   `);
@@ -332,6 +490,7 @@ export async function getUsers(term?: string) {
           displayName
           avatarUrl
           bio
+          lastSeenAt
         }
       }
     `,
@@ -492,6 +651,66 @@ export async function toggleMessageSaved(messageId: string, saved: boolean) {
   return data.toggleMessageSaved;
 }
 
+export async function editMessage(input: {
+  messageId: string;
+  text?: string;
+  emoji?: string;
+  linkUrl?: string;
+  linkTitle?: string;
+  linkDescription?: string;
+}) {
+  const data = await gqlRequest<{ editMessage: BackendMessage }>(
+    `
+      mutation EditMessage($input: EditMessageInput!) {
+        editMessage(input: $input) {
+          ${messageFields}
+        }
+      }
+    `,
+    { input },
+  );
+
+  return data.editMessage;
+}
+
+export async function deleteMessage(messageId: string) {
+  const data = await gqlRequest<{ deleteMessage: BackendMessage }>(
+    `
+      mutation DeleteMessage($input: DeleteMessageInput!) {
+        deleteMessage(input: $input) {
+          ${messageFields}
+        }
+      }
+    `,
+    {
+      input: {
+        messageId,
+      },
+    },
+  );
+
+  return data.deleteMessage;
+}
+
+export async function forwardMessage(input: {
+  messageId: string;
+  conversationId: string;
+  note?: string;
+}) {
+  const data = await gqlRequest<{ forwardMessage: BackendMessage }>(
+    `
+      mutation ForwardMessage($input: ForwardMessageInput!) {
+        forwardMessage(input: $input) {
+          ${messageFields}
+        }
+      }
+    `,
+    { input },
+  );
+
+  return data.forwardMessage;
+}
+
 export async function setTypingStatus(
   conversationId: string,
   isTyping: boolean,
@@ -522,6 +741,144 @@ export async function getTypingUsers(conversationId: string) {
   );
 
   return data.typingUsers;
+}
+
+export async function setPresence(activeConversationId?: string) {
+  const data = await gqlRequest<{ setPresence: BackendPresence }>(
+    `
+      mutation SetPresence($input: PresenceHeartbeatInput!) {
+        setPresence(input: $input) {
+          userId
+          online
+          lastSeenAt
+          activeConversationId
+        }
+      }
+    `,
+    {
+      input: {
+        activeConversationId,
+      },
+    },
+  );
+
+  return data.setPresence;
+}
+
+export async function getConversationPresence(conversationId: string) {
+  const data = await gqlRequest<{ conversationPresence: BackendPresence[] }>(
+    `
+      query ConversationPresence($conversationId: ID!) {
+        conversationPresence(conversationId: $conversationId) {
+          userId
+          online
+          lastSeenAt
+          activeConversationId
+        }
+      }
+    `,
+    { conversationId },
+  );
+
+  return data.conversationPresence;
+}
+
+export async function sendCallSignal(input: {
+  conversationId: string;
+  type: BackendCallSignal["type"];
+  targetUserId?: string;
+  payload?: Record<string, unknown>;
+}) {
+  const data = await gqlRequest<{ sendCallSignal: BackendCallSignal }>(
+    `
+      mutation SendCallSignal($input: SendCallSignalInput!) {
+        sendCallSignal(input: $input) {
+          conversationId
+          senderId
+          targetUserId
+          type
+          payload
+          createdAt
+        }
+      }
+    `,
+    { input },
+  );
+
+  return data.sendCallSignal;
+}
+
+export function subscribeToMessageEvents(
+  conversationId: string,
+  onData: (event: BackendMessageEvent) => void,
+  onError?: (error: Error) => void,
+) {
+  return gqlSubscribe<{ messageEvent: BackendMessageEvent }>(
+    `
+      subscription MessageEvent($conversationId: ID!) {
+        messageEvent(conversationId: $conversationId) {
+          messageId
+          conversationId
+          event
+        }
+      }
+    `,
+    { conversationId },
+    {
+      onData: (data) => onData(data.messageEvent),
+      onError,
+    },
+  );
+}
+
+export function subscribeToPresence(
+  conversationId: string,
+  onData: (presence: BackendPresence) => void,
+  onError?: (error: Error) => void,
+) {
+  return gqlSubscribe<{ presenceChanged: BackendPresence }>(
+    `
+      subscription PresenceChanged($conversationId: ID!) {
+        presenceChanged(conversationId: $conversationId) {
+          userId
+          online
+          lastSeenAt
+          activeConversationId
+        }
+      }
+    `,
+    { conversationId },
+    {
+      onData: (data) => onData(data.presenceChanged),
+      onError,
+    },
+  );
+}
+
+export function subscribeToCallSignals(
+  conversationId: string,
+  onData: (signal: BackendCallSignal) => void,
+  onError?: (error: Error) => void,
+) {
+  return gqlSubscribe<{ callSignal: BackendCallSignal }>(
+    `
+      subscription CallSignal($conversationId: ID!) {
+        callSignal(conversationId: $conversationId) {
+          conversationId
+          senderId
+          targetUserId
+          type
+          payload
+          createdAt
+        }
+      }
+    `,
+    { conversationId },
+    {
+      onData: (data) => onData(data.callSignal),
+      onError,
+    },
+  );
 }
 
 export async function uploadMedia(file: File) {
@@ -560,6 +917,7 @@ export async function updateProfile(input: {
           displayName
           avatarUrl
           bio
+          lastSeenAt
         }
       }
     `,

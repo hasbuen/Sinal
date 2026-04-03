@@ -26,9 +26,42 @@ import { UploadsModule } from "./modules/uploads/uploads.module";
       resolvers: {
         JSON: GraphQLJSON,
       },
-      context: ({ req, extra }: { req?: Request; extra?: { request?: Request } }) => ({
-        req: req ?? extra?.request,
-      }),
+      context: ({
+        req,
+        extra,
+      }: {
+        req?: Request;
+        extra?: {
+          request?: Request;
+          connectionParams?: Record<string, unknown>;
+        };
+      }) => {
+        const connectionAuthorization =
+          typeof extra?.connectionParams?.Authorization === "string"
+            ? extra.connectionParams.Authorization
+            : typeof extra?.connectionParams?.authorization === "string"
+              ? extra.connectionParams.authorization
+              : undefined;
+
+        const request =
+          req ??
+          extra?.request ??
+          ({
+            headers: connectionAuthorization
+              ? {
+                  authorization: connectionAuthorization,
+                }
+              : {},
+          } as Request);
+
+        if (connectionAuthorization && request.headers) {
+          request.headers.authorization = connectionAuthorization;
+        }
+
+        return {
+          req: request,
+        };
+      },
     }),
     PrismaModule,
     RedisModule,

@@ -1,4 +1,4 @@
-import { Args, Mutation, Query, Resolver } from "@nestjs/graphql";
+import { Args, ID, Mutation, Query, Resolver, Subscription } from "@nestjs/graphql";
 import { UseGuards } from "@nestjs/common";
 import { GqlAuthGuard } from "../auth/gql-auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
@@ -9,6 +9,9 @@ import { CreateDirectConversationInput } from "./dto/create-direct-conversation.
 import { CreateGroupConversationInput } from "./dto/create-group-conversation.input";
 import { AddMembersInput } from "./dto/add-members.input";
 import { MarkReadInput } from "./dto/mark-read.input";
+import { PresenceHeartbeatInput } from "./dto/presence-heartbeat.input";
+import { UserPresenceModel } from "./models/user-presence.model";
+import { presencePubSub } from "../messages/chat.events";
 
 @Resolver(() => ConversationModel)
 export class ConversationsResolver {
@@ -57,5 +60,38 @@ export class ConversationsResolver {
       user.id,
       input.conversationId,
     );
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => UserPresenceModel)
+  setPresence(
+    @CurrentUser() user: UserModel,
+    @Args("input") input: PresenceHeartbeatInput,
+  ) {
+    return this.conversationsService.heartbeat(user.id, input);
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Query(() => [UserPresenceModel])
+  conversationPresence(
+    @CurrentUser() user: UserModel,
+    @Args("conversationId", { type: () => ID }) conversationId: string,
+  ) {
+    return this.conversationsService.conversationPresence(user.id, conversationId);
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Subscription(() => UserPresenceModel, {
+    filter: (
+      payload: { conversationId: string },
+      variables: { conversationId: string },
+    ) => payload.conversationId === variables.conversationId,
+    resolve: (payload: { presenceChanged: UserPresenceModel }) =>
+      payload.presenceChanged,
+  })
+  presenceChanged(
+    @Args("conversationId", { type: () => ID }) _conversationId: string,
+  ) {
+    return presencePubSub.asyncIterableIterator("presence.changed");
   }
 }

@@ -19,7 +19,11 @@
 
 # production
 /build
-/tools
+/tools/*
+!/tools/generate-electron-icon.cjs
+/release
+/electron/build/icon.ico
+/electron/build/icon.png
 /android/.gradle
 /android/local.properties
 /backend/node_modules

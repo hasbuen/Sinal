@@ -11,12 +11,19 @@ import { GqlAuthGuard } from "../auth/gql-auth.guard";
 import { CurrentUser } from "../auth/current-user.decorator";
 import { UserModel } from "../users/models/user.model";
 import { MessageModel } from "./models/message.model";
-import { MessagesService, messagePubSub } from "./messages.service";
+import { MessagesService } from "./messages.service";
 import { SendMessageInput } from "./dto/send-message.input";
 import { ReactToMessageInput } from "./dto/react-to-message.input";
 import { ConversationMessagesInput } from "./dto/conversation-messages.input";
 import { TypingInput } from "./dto/typing.input";
 import { ToggleMessageSavedInput } from "./dto/toggle-message-saved.input";
+import { EditMessageInput } from "./dto/edit-message.input";
+import { DeleteMessageInput } from "./dto/delete-message.input";
+import { ForwardMessageInput } from "./dto/forward-message.input";
+import { SendCallSignalInput } from "./dto/send-call-signal.input";
+import { MessageEventModel } from "./models/message-event.model";
+import { CallSignalModel } from "./models/call-signal.model";
+import { callPubSub, messagePubSub } from "./chat.events";
 
 @Resolver(() => MessageModel)
 export class MessagesResolver {
@@ -59,6 +66,33 @@ export class MessagesResolver {
   }
 
   @UseGuards(GqlAuthGuard)
+  @Mutation(() => MessageModel)
+  editMessage(
+    @CurrentUser() user: UserModel,
+    @Args("input") input: EditMessageInput,
+  ) {
+    return this.messagesService.editMessage(user.id, input);
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => MessageModel)
+  deleteMessage(
+    @CurrentUser() user: UserModel,
+    @Args("input") input: DeleteMessageInput,
+  ) {
+    return this.messagesService.deleteMessage(user.id, input);
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => MessageModel)
+  forwardMessage(
+    @CurrentUser() user: UserModel,
+    @Args("input") input: ForwardMessageInput,
+  ) {
+    return this.messagesService.forwardMessage(user.id, input);
+  }
+
+  @UseGuards(GqlAuthGuard)
   @Mutation(() => Boolean)
   setTyping(
     @CurrentUser() user: UserModel,
@@ -76,14 +110,40 @@ export class MessagesResolver {
     return this.messagesService.typingUsers(user.id, conversationId);
   }
 
-  @Subscription(() => MessageModel, {
+  @UseGuards(GqlAuthGuard)
+  @Mutation(() => CallSignalModel)
+  sendCallSignal(
+    @CurrentUser() user: UserModel,
+    @Args("input") input: SendCallSignalInput,
+  ) {
+    return this.messagesService.sendCallSignal(user.id, input);
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Subscription(() => MessageEventModel, {
     filter: (
       payload: { conversationId: string },
       variables: { conversationId: string },
     ) => payload.conversationId === variables.conversationId,
-    resolve: (payload: { messageAdded: MessageModel }) => payload.messageAdded,
+    resolve: (payload: { messageEvent: MessageEventModel }) => payload.messageEvent,
   })
-  messageAdded(@Args("conversationId", { type: () => ID }) _conversationId: string) {
-    return messagePubSub.asyncIterableIterator("message.added");
+  messageEvent(@Args("conversationId", { type: () => ID }) _conversationId: string) {
+    return messagePubSub.asyncIterableIterator("message.event");
+  }
+
+  @UseGuards(GqlAuthGuard)
+  @Subscription(() => CallSignalModel, {
+    filter: (
+      payload: { conversationId: string; targetUserId?: string | null; callSignal: { senderId: string } },
+      variables: { conversationId: string },
+      context: { req?: { user?: UserModel } },
+    ) =>
+      payload.conversationId === variables.conversationId &&
+      payload.callSignal.senderId !== context.req?.user?.id &&
+      (!payload.targetUserId || payload.targetUserId === context.req?.user?.id),
+    resolve: (payload: { callSignal: CallSignalModel }) => payload.callSignal,
+  })
+  callSignal(@Args("conversationId", { type: () => ID }) _conversationId: string) {
+    return callPubSub.asyncIterableIterator("call.signal");
   }
 }

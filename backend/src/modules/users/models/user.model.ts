@@ -20,6 +20,9 @@ export class UserModel {
   @Field(() => String, { nullable: true })
   bio?: string | null;
 
+  @Field(() => Date, { nullable: true })
+  lastSeenAt?: Date | null;
+
   @Field(() => Date)
   createdAt!: Date;
 

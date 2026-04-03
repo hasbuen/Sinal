@@ -1,5 +1,9 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import {
+  MediaKind as PrismaMediaKind,
+  MessageKind as PrismaMessageKind,
+  Prisma,
+} from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
 import { ConversationsService } from "../conversations/conversations.service";
 import { SendMessageInput } from "./dto/send-message.input";
@@ -50,7 +54,7 @@ type PrismaMessagePayload = {
   id: string;
   conversationId: string;
   senderId: string;
-  kind: MessageKind;
+  kind: PrismaMessageKind | MessageKind;
   text?: string | null;
   emoji?: string | null;
   linkUrl?: string | null;
@@ -76,6 +80,66 @@ export class MessagesService {
     private readonly redisService: RedisService,
     private readonly sqliteCache: CacheSqliteService,
   ) {}
+
+  private toPrismaMessageKind(
+    kind?: MessageKind | PrismaMessageKind | string | null,
+  ): PrismaMessageKind {
+    switch (kind) {
+      case MessageKind.IMAGE:
+      case PrismaMessageKind.IMAGE:
+      case "IMAGE":
+        return PrismaMessageKind.IMAGE;
+      case MessageKind.AUDIO:
+      case PrismaMessageKind.AUDIO:
+      case "AUDIO":
+        return PrismaMessageKind.AUDIO;
+      case MessageKind.VIDEO:
+      case PrismaMessageKind.VIDEO:
+      case "VIDEO":
+        return PrismaMessageKind.VIDEO;
+      case MessageKind.FILE:
+      case PrismaMessageKind.FILE:
+      case "FILE":
+        return PrismaMessageKind.FILE;
+      case MessageKind.LINK:
+      case PrismaMessageKind.LINK:
+      case "LINK":
+        return PrismaMessageKind.LINK;
+      case MessageKind.EMOJI:
+      case PrismaMessageKind.EMOJI:
+      case "EMOJI":
+        return PrismaMessageKind.EMOJI;
+      case MessageKind.SYSTEM:
+      case PrismaMessageKind.SYSTEM:
+      case "SYSTEM":
+        return PrismaMessageKind.SYSTEM;
+      case MessageKind.TEXT:
+      case PrismaMessageKind.TEXT:
+      case "TEXT":
+      default:
+        return PrismaMessageKind.TEXT;
+    }
+  }
+
+  private toPrismaMediaKind(
+    kind?: PrismaMediaKind | string | null,
+  ): PrismaMediaKind {
+    switch (kind) {
+      case PrismaMediaKind.IMAGE:
+      case "IMAGE":
+        return PrismaMediaKind.IMAGE;
+      case PrismaMediaKind.AUDIO:
+      case "AUDIO":
+        return PrismaMediaKind.AUDIO;
+      case PrismaMediaKind.VIDEO:
+      case "VIDEO":
+        return PrismaMediaKind.VIDEO;
+      case PrismaMediaKind.FILE:
+      case "FILE":
+      default:
+        return PrismaMediaKind.FILE;
+    }
+  }
 
   private getVisibleMessageWhere(currentUserId: string, conversationId?: string) {
     return {
@@ -176,27 +240,27 @@ export class MessagesService {
   private inferUpdatedKind(
     message: PrismaMessagePayload,
     input: EditMessageInput,
-  ): MessageKind {
+  ): PrismaMessageKind {
     if (message.attachments?.length) {
-      return message.kind;
+      return this.toPrismaMessageKind(message.kind);
     }
 
     if (input.linkUrl) {
-      return MessageKind.LINK;
+      return PrismaMessageKind.LINK;
     }
 
     if (input.emoji && !input.text) {
-      return MessageKind.EMOJI;
+      return PrismaMessageKind.EMOJI;
     }
 
-    return MessageKind.TEXT;
+    return PrismaMessageKind.TEXT;
   }
 
   private normalizeDeletedMessage(currentUserId: string, messageId: string) {
     return this.prisma.message.update({
       where: { id: messageId },
       data: {
-        kind: MessageKind.SYSTEM,
+        kind: PrismaMessageKind.SYSTEM,
         text: "Mensagem apagada",
         emoji: null,
         linkUrl: null,
@@ -264,7 +328,7 @@ export class MessagesService {
       data: {
         conversationId: input.conversationId,
         senderId: currentUserId,
-        kind: input.kind,
+        kind: this.toPrismaMessageKind(input.kind),
         text: input.text,
         emoji: input.emoji,
         linkUrl: input.linkUrl,
@@ -279,7 +343,15 @@ export class MessagesService {
         attachments: input.attachments?.length
           ? {
               create: input.attachments.map((attachment) => ({
-                ...attachment,
+                kind: this.toPrismaMediaKind(attachment.kind),
+                url: attachment.url,
+                mimeType: attachment.mimeType,
+                fileName: attachment.fileName,
+                sizeBytes: attachment.sizeBytes,
+                width: attachment.width,
+                height: attachment.height,
+                durationMs: attachment.durationMs,
+                thumbnailUrl: attachment.thumbnailUrl,
               })),
             }
           : undefined,
@@ -480,7 +552,7 @@ export class MessagesService {
       data: {
         conversationId: input.conversationId,
         senderId: currentUserId,
-        kind: source.kind,
+        kind: this.toPrismaMessageKind(source.kind),
         text: input.note
           ? `${input.note}\n\n${source.text ?? ""}`.trim()
           : source.text,
@@ -499,7 +571,7 @@ export class MessagesService {
         attachments: source.attachments.length
           ? {
               create: source.attachments.map((attachment) => ({
-                kind: attachment.kind,
+                kind: this.toPrismaMediaKind(attachment.kind),
                 url: attachment.url,
                 mimeType: attachment.mimeType,
                 fileName: attachment.fileName,

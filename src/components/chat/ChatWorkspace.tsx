@@ -69,7 +69,9 @@ import { ChatMessageBubble } from "./ChatMessageBubble";
 import {
   avatarLabel,
   conversationName,
+  dedupeConversations,
   formatTypingLabel,
+  formatUserStatus,
   getConversationUser,
   hourFormatter,
   inferMessageKind,
@@ -108,6 +110,7 @@ export default function ChatWorkspace({
 }) {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const directOpenLocksRef = useRef<Set<string>>(new Set());
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recorderChunksRef = useRef<Blob[]>([]);
   const typingTimeoutRef = useRef<number | null>(null);
@@ -150,16 +153,18 @@ export default function ChatWorkspace({
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const deferredSearch = useDeferredValue(searchTerm);
 
-  const activeConversation = conversations.find(
+  const normalizedConversations = useMemo(
+    () =>
+      currentUser ? dedupeConversations(conversations, currentUser.id) : conversations,
+    [conversations, currentUser],
+  );
+  const activeConversation = normalizedConversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
   const activeDirectUser =
     activeConversation && currentUser
       ? getConversationUser(activeConversation, currentUser.id)
       : null;
-  const activePresence = activeDirectUser
-    ? presenceMap[activeDirectUser.id] || null
-    : null;
   const visibleMessages = useMemo(
     () =>
       messages.filter(
@@ -192,18 +197,18 @@ export default function ChatWorkspace({
         );
   }, [deferredSearch, users]);
   const filteredConversations = useMemo(() => {
-    if (!currentUser) return conversations;
+    if (!currentUser) return normalizedConversations;
     const term = deferredSearch.trim().toLowerCase();
     return !term
-      ? conversations
-      : conversations.filter((conversation) =>
+      ? normalizedConversations
+      : normalizedConversations.filter((conversation) =>
           `${conversationName(conversation, currentUser.id)} ${messagePreview(
             conversation.latestMessage,
           )}`
             .toLowerCase()
             .includes(term),
         );
-  }, [conversations, currentUser, deferredSearch]);
+  }, [currentUser, deferredSearch, normalizedConversations]);
 
   function patchMessage(updated: BackendMessage) {
     setMessages((current) =>
@@ -232,6 +237,39 @@ export default function ChatWorkspace({
       setTypingIds(nextTypingIds);
     });
     await markConversationRead(conversationId);
+  }
+
+  async function openDirectConversation(user: BackendUser) {
+    if (!currentUser) return;
+
+    const existing = normalizedConversations.find(
+      (conversation) =>
+        conversation.kind === "DIRECT" &&
+        getConversationUser(conversation, currentUser.id)?.id === user.id,
+    );
+
+    if (existing) {
+      setActiveConversationId(existing.id);
+      return;
+    }
+
+    if (directOpenLocksRef.current.has(user.id)) {
+      return;
+    }
+
+    directOpenLocksRef.current.add(user.id);
+
+    try {
+      setPending(true);
+      const conversation = await createDirectConversation(user.id);
+      await refreshSidebar();
+      setActiveConversationId(conversation.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Falha ao abrir conversa.");
+    } finally {
+      directOpenLocksRef.current.delete(user.id);
+      setPending(false);
+    }
   }
 
   async function syncPresence(conversationId: string) {
@@ -434,16 +472,21 @@ export default function ChatWorkspace({
         getUsers(),
         getConversations(),
       ]);
+      const visibleConversations = dedupeConversations(nextConversations, me.id);
       setCurrentUser(me);
       setUsers(nextUsers);
       setConversations(nextConversations);
       if (initialConversationId) {
-        const existing = nextConversations.find((item) => item.id === initialConversationId);
-        setActiveConversationId(
-          existing?.id || (await createDirectConversation(initialConversationId)).id,
+        const existing = visibleConversations.find(
+          (item) => item.id === initialConversationId,
         );
-      } else if (nextConversations[0]) {
-        setActiveConversationId(nextConversations[0].id);
+        if (existing) {
+          setActiveConversationId(existing.id);
+        } else if (visibleConversations[0]) {
+          setActiveConversationId(visibleConversations[0].id);
+        }
+      } else if (visibleConversations[0]) {
+        setActiveConversationId(visibleConversations[0].id);
       }
     } catch (error) {
       clearBackendToken();
@@ -536,6 +579,11 @@ export default function ChatWorkspace({
   }, [activeConversationId, router]);
 
   useEffect(() => {
+    if (activeConversation || normalizedConversations.length === 0) return;
+    setActiveConversationId(normalizedConversations[0].id);
+  }, [activeConversation, normalizedConversations]);
+
+  useEffect(() => {
     if (!activeConversationId) return;
     return subscribeToMessageEvents(activeConversationId, () => {
       void refreshMessages(activeConversationId);
@@ -597,16 +645,16 @@ export default function ChatWorkspace({
               </div>
               <div id="tour-install"><InstallPwaPrompt /></div>
               <div id="tour-search" className="flex items-center gap-2 rounded-full border border-white/10 bg-black/30 px-4 py-2"><Search className="h-4 w-4 text-white/40" /><Input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Buscar conversas ou pessoas" className="border-none bg-transparent px-0 text-white shadow-none focus-visible:ring-0" /></div>
-              <div id="tour-group" className="grid gap-2 sm:grid-cols-2"><Button onClick={() => setShowGroupComposer(true)} className="rounded-full bg-cyan-300 font-semibold text-slate-950 hover:bg-cyan-200"><Users className="h-4 w-4" />Novo grupo</Button><Button asChild variant="ghost" className="rounded-full border border-white/10 text-white hover:bg-white/5"><Link href="/configuracoes">Perfil</Link></Button></div>
+              <div id="tour-group"><Button onClick={() => setShowGroupComposer(true)} className="w-full rounded-full bg-cyan-300 font-semibold text-slate-950 hover:bg-cyan-200"><Users className="h-4 w-4" />Novo grupo</Button></div>
               <div id="tour-chat-list" className="space-y-3 rounded-[1.75rem] border border-white/10 bg-white/5 p-3"><p className="text-xs uppercase tracking-[0.25em] text-white/40">Conversas</p><div className="grid gap-2">{filteredConversations.map((conversation) => { const other = getConversationUser(conversation, currentUser.id); const presence = other && conversation.kind === "DIRECT" ? presenceMap[other.id] : null; return <button key={conversation.id} type="button" onClick={() => setActiveConversationId(conversation.id)} className={`rounded-[1.4rem] border p-3 text-left transition ${conversation.id === activeConversationId ? "border-cyan-300/40 bg-cyan-300/12" : "border-white/10 bg-black/20 hover:border-white/20 hover:bg-white/5"}`}><div className="flex items-start gap-3"><div className="relative shrink-0">{other?.avatarUrl ? <img src={resolveBackendAssetUrl(other.avatarUrl)} alt={conversationName(conversation, currentUser.id)} className="h-11 w-11 rounded-full object-cover" /> : <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">{conversation.kind === "GROUP" ? "GR" : avatarLabel(other?.displayName)}</div>}{presence?.online ? <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-slate-950 bg-emerald-400" /> : null}</div><div className="min-w-0 flex-1"><div className="flex items-start justify-between gap-3"><p className="truncate font-medium">{conversationName(conversation, currentUser.id)}</p>{conversation.latestMessage ? <p className="text-xs text-white/40">{hourFormatter.format(new Date(conversation.latestMessage.createdAt))}</p> : null}</div><p className="mt-1 truncate text-sm text-white/45">{messagePreview(conversation.latestMessage)}</p></div></div></button>; })}</div></div>
-              <div className="space-y-3 rounded-[1.75rem] border border-white/10 bg-white/5 p-3"><div className="flex items-center justify-between"><p className="text-xs uppercase tracking-[0.25em] text-white/40">Pessoas</p><span className="text-xs text-white/35">{filteredUsers.length} contatos</span></div><div className="grid max-h-72 gap-2 overflow-y-auto pr-1">{filteredUsers.map((user) => { const presence = presenceMap[user.id]; return <button key={user.id} type="button" onClick={() => void (async () => { setPending(true); try { const conversation = await createDirectConversation(user.id); await refreshSidebar(); setActiveConversationId(conversation.id); } catch (error) { toast.error(error instanceof Error ? error.message : "Falha ao abrir conversa."); } finally { setPending(false); } })()} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-white/20 hover:bg-white/5"><div className="flex min-w-0 items-center gap-3"><div className="relative shrink-0">{user.avatarUrl ? <img src={resolveBackendAssetUrl(user.avatarUrl)} alt={user.displayName} className="h-10 w-10 rounded-full object-cover" /> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">{avatarLabel(user.displayName)}</div>}{presence?.online ? <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-slate-950 bg-emerald-400" /> : null}</div><div className="min-w-0"><p className="truncate font-medium">{user.displayName}</p><p className="truncate text-sm text-white/45">@{user.username}</p></div></div><span className="rounded-full bg-cyan-300/15 px-3 py-1 text-xs text-cyan-200">Conversar</span></button>; })}</div></div>
+              <div className="space-y-3 rounded-[1.75rem] border border-white/10 bg-white/5 p-3"><div className="flex items-center justify-between"><p className="text-xs uppercase tracking-[0.25em] text-white/40">Pessoas</p><span className="text-xs text-white/35">{filteredUsers.length} contatos</span></div><div className="grid max-h-72 gap-2 overflow-y-auto pr-1">{filteredUsers.map((user) => { const presence = presenceMap[user.id]; const userStatus = formatUserStatus(user, presence); const online = userStatus === "Online"; return <button key={user.id} type="button" disabled={pending} onClick={() => void openDirectConversation(user)} className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-white/20 hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60"><div className="flex min-w-0 items-center gap-3"><div className="relative shrink-0">{user.avatarUrl ? <img src={resolveBackendAssetUrl(user.avatarUrl)} alt={user.displayName} className="h-10 w-10 rounded-full object-cover" /> : <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-sm font-semibold">{avatarLabel(user.displayName)}</div>}{online ? <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-slate-950 bg-emerald-400" /> : null}</div><div className="min-w-0"><p className="truncate font-medium">{user.displayName}</p><p className="truncate text-sm text-white/45">@{user.username}</p><p className={`truncate text-xs ${online ? "text-emerald-300/90" : "text-white/35"}`}>{userStatus}</p></div></div><span className="rounded-full bg-cyan-300/15 px-3 py-1 text-xs text-cyan-200">Conversar</span></button>; })}</div></div>
             </CardContent>
           </Card>
         </aside>
 
         <section className="flex min-h-[75vh] flex-1 flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-slate-950/75 shadow-2xl backdrop-blur">
           {activeConversation ? <>
-            <div id="tour-header" className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4"><div className="min-w-0"><p className="truncate text-xl font-semibold">{conversationName(activeConversation, currentUser.id)}</p><p className="mt-1 truncate text-sm text-white/45">{formatTypingLabel(typingUsers, "Mensagens expiram em 1 hora por padrao", activePresence)}</p></div><div className="flex gap-2">{activeConversation.kind === "DIRECT" ? <><Button variant="ghost" size="icon" onClick={() => void startOutgoingCall("audio")} className="rounded-full border border-white/10 text-white/75 hover:bg-white/10"><Phone className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => void startOutgoingCall("video")} className="rounded-full border border-white/10 text-white/75 hover:bg-white/10"><Video className="h-4 w-4" /></Button></> : null}</div></div>
+            <div id="tour-header" className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4"><div className="min-w-0"><p className="text-xs uppercase tracking-[0.25em] text-cyan-300/70">Modo efemero</p><p className="mt-1 truncate text-sm text-white/45">{formatTypingLabel(typingUsers, "Mensagens expiram em 1 hora por padrao")}</p></div><div className="flex gap-2">{activeConversation.kind === "DIRECT" ? <><Button variant="ghost" size="icon" onClick={() => void startOutgoingCall("audio")} className="rounded-full border border-white/10 text-white/75 hover:bg-white/10"><Phone className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => void startOutgoingCall("video")} className="rounded-full border border-white/10 text-white/75 hover:bg-white/10"><Video className="h-4 w-4" /></Button></> : null}</div></div>
             <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">{visibleMessages.map((message) => <ChatMessageBubble key={message.id} message={message} currentUserId={currentUser.id} conversation={activeConversation} clock={clock} menuOpen={menuMessageId === message.id} onToggleMenu={() => setMenuMessageId((current) => current === message.id ? null : message.id)} onReply={setReplyingTo} onSaveToggle={(item) => void toggleMessageSaved(item.id, !item.isSaved).then((updated) => { patchMessage(updated); void refreshSidebar(); })} onCopy={(item) => void navigator.clipboard.writeText(item.text || item.emoji || item.linkUrl || item.attachments[0]?.url || "").then(() => toast.success("Mensagem copiada."))} onForward={(item) => { setForwardingMessage(item); setShowForwardSheet(true); setMenuMessageId(null); }} onEdit={(item) => { setEditingMessage(item); setReplyingTo(null); setComposerText(item.kind === "LINK" ? item.linkUrl || "" : item.kind === "EMOJI" ? item.emoji || "" : item.text || ""); setMenuMessageId(null); }} onDelete={(messageId) => void deleteMessage(messageId).then((updated) => { patchMessage(updated); setMenuMessageId(null); void refreshSidebar(); })} onReaction={(messageId, emoji) => void reactToMessage(messageId, emoji).then((updated) => { patchMessage(updated); void refreshSidebar(); })} />)}{visibleMessages.length === 0 ? <div className="flex h-full min-h-80 items-center justify-center"><div className="max-w-md rounded-[2rem] border border-dashed border-white/10 bg-white/5 px-6 py-8 text-center"><p className="text-lg font-semibold text-cyan-200">Conversa pronta para uso</p><p className="mt-2 text-sm text-white/50">Texto, emoji, audio, imagem, video, links, chamada e mensagens temporarias.</p></div></div> : null}</div>
             <div id="tour-composer" className="border-t border-white/10 bg-black/20 px-4 py-4">{replyingTo ? <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/8 px-4 py-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Respondendo a {replyingTo.sender.displayName}</p><p className="mt-1 truncate text-sm text-white/70">{replyingTo.text || replyingTo.emoji || replyingTo.linkUrl || messagePreview(replyingTo)}</p></div><Button variant="ghost" size="icon" onClick={() => setReplyingTo(null)} className="rounded-full text-white/70 hover:bg-white/5"><X className="h-4 w-4" /></Button></div> : null}{editingMessage ? <div className="mb-3 flex items-start justify-between gap-3 rounded-2xl border border-amber-300/20 bg-amber-300/8 px-4 py-3"><div className="min-w-0"><p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-200">Editando mensagem</p><p className="mt-1 truncate text-sm text-white/70">{messagePreview(editingMessage)}</p></div><Button variant="ghost" size="icon" onClick={() => { setEditingMessage(null); setComposerText(""); }} className="rounded-full text-white/70 hover:bg-white/5"><X className="h-4 w-4" /></Button></div> : null}{selectedFiles.length > 0 ? <div className="mb-3 flex flex-wrap gap-2">{selectedFiles.map((file) => <span key={`${file.name}-${file.lastModified}`} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs">{file.name}</span>)}</div> : null}<div className="flex flex-col gap-3 lg:flex-row lg:items-end"><div className="flex flex-1 items-end gap-2 rounded-[1.7rem] border border-white/10 bg-slate-950/80 p-3"><Button variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} className="rounded-full text-cyan-300 hover:bg-white/5"><Paperclip className="h-5 w-5" /></Button><Button variant="ghost" size="icon" onClick={() => setShowEmojiPicker(true)} className="rounded-full text-cyan-300 hover:bg-white/5"><SmilePlus className="h-5 w-5" /></Button><Textarea value={composerText} onChange={(event) => queueTyping(event.target.value)} placeholder="Mensagem, emoji, link, legenda ou resposta..." className="min-h-12 border-none bg-transparent px-0 text-white shadow-none focus-visible:ring-0" /><Button variant="ghost" size="icon" onClick={() => void (async () => { if (recording) { recorderRef.current?.stop(); setRecording(false); return; } try { const stream = await navigator.mediaDevices.getUserMedia({ audio: true }); const recorder = new MediaRecorder(stream); recorderChunksRef.current = []; recorderRef.current = recorder; recorder.ondataavailable = (event) => { if (event.data.size > 0) recorderChunksRef.current.push(event.data); }; recorder.onstop = () => { const blob = new Blob(recorderChunksRef.current, { type: "audio/webm" }); setSelectedFiles((current) => [...current, new File([blob], `audio-${Date.now()}.webm`, { type: "audio/webm" })]); stream.getTracks().forEach((track) => track.stop()); }; recorder.start(); setRecording(true); } catch { toast.error("Nao foi possivel acessar o microfone."); } })()} className={`rounded-full hover:bg-white/5 ${recording ? "text-red-400" : "text-cyan-300"}`}><Mic className="h-5 w-5" /></Button><input ref={fileInputRef} type="file" multiple className="hidden" onChange={(event) => setSelectedFiles((current) => [...current, ...Array.from(event.target.files || [])])} /></div><Button onClick={() => void handleSend()} disabled={pending || (!composerText.trim() && selectedFiles.length === 0 && !editingMessage)} className="h-12 rounded-full bg-emerald-400 px-6 font-semibold text-slate-950 hover:bg-emerald-300">{pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}{editingMessage ? "Salvar edicao" : "Enviar"}</Button></div></div>
           </> : <div className="flex h-full min-h-[75vh] items-center justify-center px-6 text-center"><div className="max-w-xl"><p className="text-xs uppercase tracking-[0.3em] text-cyan-300/70">Sinal</p><h1 className="mt-4 text-4xl font-semibold">Chat efemero com chamadas, recibos e salvar individual</h1><p className="mt-4 text-white/55">Selecione uma conversa ou crie um grupo. O fluxo prioriza mensagens temporarias, presenca em tempo real e chamada direta.</p><div className="mt-6 flex flex-wrap justify-center gap-3"><Button asChild className="rounded-full bg-cyan-300 text-slate-950 hover:bg-cyan-200"><Link href={withBasePath("/")}>Ver landing</Link></Button><Button variant="ghost" onClick={() => setShowGroupComposer(true)} className="rounded-full border border-white/10 text-white hover:bg-white/5">Criar primeiro grupo</Button></div></div></div>}

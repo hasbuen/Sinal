@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { loginUser, setBackendToken } from "@/lib/backend-client";
+import { withBasePath } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,12 +41,15 @@ export default function PaginaLogin() {
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#0f766e22,transparent_30%),linear-gradient(180deg,#030712,#111827)] px-4">
       <Card className="w-full max-w-md border-white/10 bg-slate-950/70 text-white shadow-2xl backdrop-blur">
         <CardHeader className="space-y-6">
-          <Link href="/" className="text-sm text-white/55 transition hover:text-white">
-            ← Voltar para landing
+          <Link
+            href={withBasePath("/")}
+            className="text-sm text-white/55 transition hover:text-white"
+          >
+            {"< Voltar para landing"}
           </Link>
           <CardTitle className="flex items-center justify-center gap-3 text-center text-3xl font-bold text-emerald-300">
             <Image
-              src="/icons/icon-transparent.png"
+              src={withBasePath("/icons/icon-transparent.png")}
               alt="Sinal"
               width={44}
               height={44}
@@ -81,7 +85,10 @@ export default function PaginaLogin() {
           </Button>
           <p className="text-center text-sm text-white/55">
             Ainda nao tem conta?{" "}
-            <Link href="/cadastro" className="font-semibold text-emerald-300 hover:underline">
+            <Link
+              href={withBasePath("/cadastro")}
+              className="font-semibold text-emerald-300 hover:underline"
+            >
               Criar agora
             </Link>
           </p>

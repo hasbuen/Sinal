@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { registerUser, setBackendToken } from "@/lib/backend-client";
+import { withBasePath } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,12 +49,15 @@ export default function PaginaCadastro() {
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#164e6322,transparent_30%),linear-gradient(180deg,#020617,#0f172a)] px-4">
       <Card className="w-full max-w-md rounded-[2rem] border-white/10 bg-slate-950/75 text-white shadow-2xl backdrop-blur">
         <CardHeader className="space-y-6">
-          <Link href="/" className="text-sm text-white/55 transition hover:text-white">
-            ← Voltar para landing
+          <Link
+            href={withBasePath("/")}
+            className="text-sm text-white/55 transition hover:text-white"
+          >
+            {"< Voltar para landing"}
           </Link>
           <CardTitle className="flex items-center justify-center gap-3 text-center text-3xl font-bold text-cyan-300">
             <Image
-              src="/icons/icon-transparent.png"
+              src={withBasePath("/icons/icon-transparent.png")}
               alt="Sinal"
               width={44}
               height={44}
@@ -101,7 +105,10 @@ export default function PaginaCadastro() {
           </Button>
           <p className="text-center text-sm text-white/55">
             Ja tem acesso?{" "}
-            <Link href="/login" className="font-semibold text-cyan-300 hover:underline">
+            <Link
+              href={withBasePath("/login")}
+              className="font-semibold text-cyan-300 hover:underline"
+            >
               Fazer login
             </Link>
           </p>

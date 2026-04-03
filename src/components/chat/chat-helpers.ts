@@ -5,8 +5,18 @@ import type {
   BackendUser,
 } from "@/lib/backend-client";
 
-export const quickReactions = ["👍", "❤️", "😂", "🔥"];
-export const quickEmojis = ["😀", "🚀", "🎧", "✨"];
+export const quickReactions = [
+  "\u{1F44D}",
+  "\u2764\uFE0F",
+  "\u{1F602}",
+  "\u{1F525}",
+];
+export const quickEmojis = [
+  "\u{1F600}",
+  "\u{1F680}",
+  "\u{1F3A7}",
+  "\u2728",
+];
 
 export const hourFormatter = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
@@ -50,7 +60,7 @@ export function messagePreview(message?: BackendMessage | null) {
   if (!message) return "Sem mensagens ainda";
   if (message.deletedAt) return "Mensagem apagada";
   if (message.kind === "EMOJI") return message.emoji || "Emoji";
-  if (message.attachments[0]) return `📎 ${message.attachments[0].fileName}`;
+  if (message.attachments[0]) return `[arquivo] ${message.attachments[0].fileName}`;
   return message.text || message.linkUrl || "Nova mensagem";
 }
 
@@ -73,6 +83,44 @@ export function getConversationUser(
     ?.user;
 }
 
+export function dedupeConversations(
+  conversations: BackendConversation[],
+  currentUserId: string,
+) {
+  const unique = new Map<string, BackendConversation>();
+
+  for (const conversation of conversations) {
+    const directUser = getConversationUser(conversation, currentUserId);
+    const key =
+      conversation.kind === "DIRECT" && directUser
+        ? `DIRECT:${directUser.id}`
+        : `GROUP:${conversation.id}`;
+    const previous = unique.get(key);
+
+    if (!previous) {
+      unique.set(key, conversation);
+      continue;
+    }
+
+    const previousTs =
+      previous.latestMessage?.createdAt || previous.lastMessageAt || previous.id;
+    const currentTs =
+      conversation.latestMessage?.createdAt ||
+      conversation.lastMessageAt ||
+      conversation.id;
+
+    if (currentTs > previousTs) {
+      unique.set(key, conversation);
+    }
+  }
+
+  return Array.from(unique.values()).sort((a, b) => {
+    const aTs = a.latestMessage?.createdAt || a.lastMessageAt || a.id;
+    const bTs = b.latestMessage?.createdAt || b.lastMessageAt || b.id;
+    return bTs.localeCompare(aTs);
+  });
+}
+
 export function timeUntilExpiry(message: BackendMessage, now: number) {
   if (message.isSaved || !message.expiresAt) return null;
   const diff = new Date(message.expiresAt).getTime() - now;
@@ -90,6 +138,25 @@ export function formatPresenceLabel(presence?: BackendPresence | null) {
       new Date(presence.lastSeenAt),
     )}`;
   }
+  return "Offline";
+}
+
+export function formatUserStatus(
+  user?: BackendUser | null,
+  presence?: BackendPresence | null,
+) {
+  if (presence?.online) return "Online";
+
+  const lastSeenAt = presence?.lastSeenAt || user?.lastSeenAt;
+  if (lastSeenAt) {
+    const ageMs = Date.now() - new Date(lastSeenAt).getTime();
+    if (ageMs <= 45_000) {
+      return "Online";
+    }
+
+    return `Visto ${dateTimeFormatter.format(new Date(lastSeenAt))}`;
+  }
+
   return "Offline";
 }
 

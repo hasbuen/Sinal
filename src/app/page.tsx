@@ -1,5 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
+import { withBasePath } from "@/lib/utils";
 
 const highlights = [
   "Mensagens somem em 1 hora por padrao",
@@ -14,7 +15,7 @@ export default function Home() {
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Image
-              src="/icons/icon-transparent.png"
+              src={withBasePath("/icons/icon-transparent.png")}
               alt="Sinal"
               width={44}
               height={44}
@@ -30,13 +31,13 @@ export default function Home() {
           </div>
           <nav className="hidden gap-3 md:flex">
             <Link
-              href="/login"
+              href={withBasePath("/login")}
               className="rounded-full border border-white/10 px-5 py-2 text-sm text-white/80 transition hover:border-emerald-400/40 hover:text-white"
             >
               Entrar
             </Link>
             <Link
-              href="/cadastro"
+              href={withBasePath("/cadastro")}
               className="rounded-full bg-emerald-400 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-300"
             >
               Criar conta
@@ -54,14 +55,15 @@ export default function Home() {
                 Conversas com clima de mensageria real, mas com memoria curta por padrao.
               </h2>
               <p className="max-w-2xl text-lg text-white/70">
-                O Sinal combina chat moderno, audio, video, midia, grupos e app desktop com uma regra simples:
-                toda mensagem expira em uma hora, a menos que o proprio usuario escolha salvar.
+                O Sinal combina chat moderno, audio, video, midia, grupos e app
+                desktop com uma regra simples: toda mensagem expira em uma hora, a
+                menos que o proprio usuario escolha salvar.
               </p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href="/login"
+                href={withBasePath("/login")}
                 className="inline-flex items-center justify-center rounded-full bg-white px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-100"
               >
                 Abrir app

@@ -58,8 +58,8 @@ export default function OnboardingTour() {
         {
           element: "#tour-header",
           popover: {
-            title: "Conversa efemera",
-            description: "Toda mensagem nasce com expiracao de 1 hora. Agora o cabecalho tambem concentra presenca online e chamada de voz ou video.",
+            title: "Acoes rapidas",
+            description: "Toda mensagem nasce com expiracao de 1 hora. A barra superior concentra o modo efemero e os atalhos de chamada.",
           },
         },
         {

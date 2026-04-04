@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Lock, Mail, UserRound } from "lucide-react";
+import { Chrome, Lock, Mail, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import {
   exchangeAppwriteJwt,
@@ -16,13 +16,16 @@ import {
   createAppwriteJwt,
   getAppwriteCurrentUser,
   isAppwriteEnabled,
+  isAppwriteGoogleOAuthEnabled,
+  OAuthProvider,
   registerWithAppwriteEmailPassword,
+  startAppwriteOAuthLogin,
 } from "@/lib/appwrite-client";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { withBasePath } from "@/lib/utils";
-import { toAppHref } from "@/lib/runtime";
+import { isEmbeddedAppBrowser, toAppHref } from "@/lib/runtime";
 
 export default function PaginaCadastro() {
   const router = useRouter();
@@ -32,6 +35,8 @@ export default function PaginaCadastro() {
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
   const appwriteEnabled = isAppwriteEnabled();
+  const googleOAuthEnabled = isAppwriteGoogleOAuthEnabled();
+  const embedded = isEmbeddedAppBrowser();
 
   useEffect(() => {
     if (getBackendToken()) {
@@ -105,6 +110,20 @@ export default function PaginaCadastro() {
     } finally {
       setCarregando(false);
     }
+  }
+
+  function cadastrarComGoogle() {
+    if (!appwriteEnabled) {
+      toast.error("Configure o Appwrite para liberar cadastro com Google.");
+      return;
+    }
+
+    if (!googleOAuthEnabled) {
+      toast.error("Google ainda nao foi configurado no Appwrite.");
+      return;
+    }
+
+    startAppwriteOAuthLogin(OAuthProvider.Google);
   }
 
   return (
@@ -211,6 +230,33 @@ export default function PaginaCadastro() {
               ? "Cadastrar no Appwrite"
               : "Cadastrar"}
         </Button>
+
+        {appwriteEnabled && !embedded ? (
+          <>
+            <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.25em] text-[#667781] dark:text-white/40">
+              <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
+              Google
+              <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full rounded-full border-black/10"
+              disabled={!googleOAuthEnabled}
+              onClick={cadastrarComGoogle}
+            >
+              <Chrome className="h-4 w-4" />
+              {googleOAuthEnabled ? "Cadastrar com Google" : "Google em configuracao"}
+            </Button>
+          </>
+        ) : null}
+
+        {appwriteEnabled && embedded ? (
+          <p className="text-center text-xs text-[#667781] dark:text-white/45">
+            Cadastro com Google funciona melhor no navegador. No APK e no desktop nativo, use e-mail e senha.
+          </p>
+        ) : null}
       </div>
     </AuthShell>
   );

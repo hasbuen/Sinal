@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Chrome, Github, Lock, Mail } from "lucide-react";
+import { Chrome, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import {
   exchangeAppwriteJwt,
@@ -16,6 +16,7 @@ import {
   createAppwriteJwt,
   getAppwriteCurrentUser,
   isAppwriteEnabled,
+  isAppwriteGoogleOAuthEnabled,
   loginWithAppwriteEmailPassword,
   OAuthProvider,
   startAppwriteOAuthLogin,
@@ -32,6 +33,7 @@ export default function PaginaLogin() {
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
   const appwriteEnabled = isAppwriteEnabled();
+  const googleOAuthEnabled = isAppwriteGoogleOAuthEnabled();
   const embedded = isEmbeddedAppBrowser();
 
   useEffect(() => {
@@ -95,6 +97,11 @@ export default function PaginaLogin() {
   function handleSocialLogin(provider: OAuthProvider) {
     if (!appwriteEnabled) {
       toast.error("Configure o Appwrite para liberar login social.");
+      return;
+    }
+
+    if (provider === OAuthProvider.Google && !googleOAuthEnabled) {
+      toast.error("Google ainda nao foi configurado no Appwrite.");
       return;
     }
 
@@ -183,28 +190,20 @@ export default function PaginaLogin() {
           <>
             <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.25em] text-[#667781] dark:text-white/40">
               <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
-              social
+              Google
               <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3">
               <Button
                 type="button"
                 variant="outline"
                 className="h-11 rounded-full border-black/10"
+                disabled={!googleOAuthEnabled}
                 onClick={() => handleSocialLogin(OAuthProvider.Google)}
               >
                 <Chrome className="h-4 w-4" />
-                Google
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 rounded-full border-black/10"
-                onClick={() => handleSocialLogin(OAuthProvider.Github)}
-              >
-                <Github className="h-4 w-4" />
-                GitHub
+                {googleOAuthEnabled ? "Entrar com Google" : "Google em configuracao"}
               </Button>
             </div>
           </>

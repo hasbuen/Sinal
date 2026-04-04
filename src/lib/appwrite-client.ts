@@ -27,11 +27,17 @@ const APPWRITE_GROUPS_COLLECTION_ID =
   process.env.NEXT_PUBLIC_APPWRITE_GROUPS_COLLECTION_ID || "groups";
 const APPWRITE_MEDIA_BUCKET_ID =
   process.env.NEXT_PUBLIC_APPWRITE_MEDIA_BUCKET_ID || "chat-media";
+const APPWRITE_GOOGLE_OAUTH_ENABLED =
+  process.env.NEXT_PUBLIC_APPWRITE_GOOGLE_OAUTH_ENABLED === "true";
 
 let clientSingleton: Client | null = null;
 
 export function isAppwriteEnabled() {
   return Boolean(APPWRITE_ENDPOINT && APPWRITE_PROJECT_ID);
+}
+
+export function isAppwriteGoogleOAuthEnabled() {
+  return APPWRITE_GOOGLE_OAUTH_ENABLED;
 }
 
 function getAppwriteClient() {

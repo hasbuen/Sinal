@@ -60,6 +60,7 @@ const publicApiOrigin =
 const blobReadWriteToken = readEnv("BLOB_READ_WRITE_TOKEN");
 const appwriteAdminEmails = parseCsv(readEnv("APPWRITE_ADMIN_EMAILS"));
 const defaultAppwriteProjectId = "69d0695b00063d876b0d";
+const defaultAppwriteDatabaseId = "sinal";
 
 export const appConfig = {
   nodeEnv,
@@ -76,14 +77,14 @@ export const appConfig = {
   publicApiOrigin,
   blobReadWriteToken,
   appwrite: {
-    endpoint: readEnv("APPWRITE_ENDPOINT", "https://cloud.appwrite.io/v1"),
+    endpoint: readEnv("APPWRITE_ENDPOINT", "https://nyc.cloud.appwrite.io/v1"),
     projectId: readEnv("APPWRITE_PROJECT_ID", defaultAppwriteProjectId),
     apiKey: readEnv("APPWRITE_API_KEY"),
-    databaseId: readEnv("APPWRITE_DATABASE_ID"),
-    usersCollectionId: readEnv("APPWRITE_USERS_COLLECTION_ID"),
-    messagesCollectionId: readEnv("APPWRITE_MESSAGES_COLLECTION_ID"),
-    groupsCollectionId: readEnv("APPWRITE_GROUPS_COLLECTION_ID"),
-    mediaBucketId: readEnv("APPWRITE_MEDIA_BUCKET_ID"),
+    databaseId: readEnv("APPWRITE_DATABASE_ID", defaultAppwriteDatabaseId),
+    usersCollectionId: readEnv("APPWRITE_USERS_COLLECTION_ID", "users"),
+    messagesCollectionId: readEnv("APPWRITE_MESSAGES_COLLECTION_ID", "messages"),
+    groupsCollectionId: readEnv("APPWRITE_GROUPS_COLLECTION_ID", "groups"),
+    mediaBucketId: readEnv("APPWRITE_MEDIA_BUCKET_ID", "chat-media"),
     adminEmails: appwriteAdminEmails,
   },
 };

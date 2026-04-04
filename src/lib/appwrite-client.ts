@@ -14,19 +14,19 @@ import { toPublicCallbackHref } from "@/lib/runtime";
 
 const DEFAULT_APPWRITE_PROJECT_ID = "69d0695b00063d876b0d";
 const APPWRITE_ENDPOINT =
-  process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1";
+  process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "https://nyc.cloud.appwrite.io/v1";
 const APPWRITE_PROJECT_ID =
   process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || DEFAULT_APPWRITE_PROJECT_ID;
 const APPWRITE_DATABASE_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || "";
+  process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || "sinal";
 const APPWRITE_USERS_COLLECTION_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID || "";
+  process.env.NEXT_PUBLIC_APPWRITE_USERS_COLLECTION_ID || "users";
 const APPWRITE_MESSAGES_COLLECTION_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID || "";
+  process.env.NEXT_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID || "messages";
 const APPWRITE_GROUPS_COLLECTION_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_GROUPS_COLLECTION_ID || "";
+  process.env.NEXT_PUBLIC_APPWRITE_GROUPS_COLLECTION_ID || "groups";
 const APPWRITE_MEDIA_BUCKET_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_MEDIA_BUCKET_ID || "";
+  process.env.NEXT_PUBLIC_APPWRITE_MEDIA_BUCKET_ID || "chat-media";
 
 let clientSingleton: Client | null = null;
 

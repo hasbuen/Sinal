@@ -315,14 +315,18 @@ export class AppwriteService {
             ? JSON.stringify(message.metadata)
             : null,
         attachments:
-          message.attachments?.map((attachment) => ({
-            kind: attachment.kind,
-            url: attachment.url,
-            mimeType: attachment.mimeType,
-            fileName: attachment.fileName,
-            sizeBytes: attachment.sizeBytes,
-            thumbnailUrl: attachment.thumbnailUrl || null,
-          })) || [],
+          message.attachments && message.attachments.length > 0
+            ? JSON.stringify(
+                message.attachments.map((attachment) => ({
+                  kind: attachment.kind,
+                  url: attachment.url,
+                  mimeType: attachment.mimeType,
+                  fileName: attachment.fileName,
+                  sizeBytes: attachment.sizeBytes,
+                  thumbnailUrl: attachment.thumbnailUrl || null,
+                })),
+              )
+            : null,
         createdAt: message.createdAt.toISOString(),
         updatedAt: message.updatedAt.toISOString(),
         expiresAt: message.expiresAt?.toISOString() || null,

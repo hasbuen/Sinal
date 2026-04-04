@@ -6,66 +6,115 @@ import { appConfig } from "../config/app.config";
 export class RedisService implements OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name);
   private readonly client: Redis | null;
+  private available = false;
 
   constructor() {
-    this.client = appConfig.redisUrl ? new Redis(appConfig.redisUrl) : null;
+    if (!appConfig.redisUrl) {
+      this.client = null;
+      this.logger.log("Redis desativado: REDIS_URL ausente.");
+      return;
+    }
 
-    if (this.client) {
-      this.client.on("error", (error) => {
-        this.logger.warn(`Redis error: ${error.message}`);
-      });
+    this.client = new Redis(appConfig.redisUrl, {
+      connectTimeout: 5_000,
+      enableReadyCheck: true,
+      maxRetriesPerRequest: 1,
+      lazyConnect: false,
+      retryStrategy: (attempt) => {
+        if (attempt > 6) {
+          this.logger.warn("Redis excedeu o limite de reconexao. Seguindo em modo degradado.");
+          return null;
+        }
+
+        return Math.min(attempt * 400, 3_000);
+      },
+    });
+
+    this.client.on("ready", () => {
+      this.available = true;
+      this.logger.log("Redis conectado.");
+    });
+
+    this.client.on("reconnecting", () => {
+      this.available = false;
+      this.logger.warn("Redis reconectando...");
+    });
+
+    this.client.on("close", () => {
+      this.available = false;
+      this.logger.warn("Conexao Redis fechada.");
+    });
+
+    this.client.on("end", () => {
+      this.available = false;
+      this.logger.warn("Redis indisponivel.");
+    });
+
+    this.client.on("error", (error) => {
+      this.available = false;
+      this.logger.warn(`Redis error: ${error.message}`);
+    });
+  }
+
+  private async safe<T>(operation: () => Promise<T>, fallback: T) {
+    if (!this.client || !this.available) {
+      return fallback;
+    }
+
+    try {
+      return await operation();
+    } catch (error) {
+      this.available = false;
+      this.logger.warn(
+        `Redis degradado: ${error instanceof Error ? error.message : "erro desconhecido"}`,
+      );
+      return fallback;
     }
   }
 
   async setPresence(userId: string, payload: string, ttlSeconds = 60) {
-    if (!this.client) {
-      return;
-    }
-
-    await this.client.set(`presence:${userId}`, payload, "EX", ttlSeconds);
+    await this.safe(
+      () => this.client!.set(`presence:${userId}`, payload, "EX", ttlSeconds),
+      "OK",
+    );
   }
 
   async getPresence(userId: string) {
-    if (!this.client) {
-      return null;
-    }
-
-    return this.client.get(`presence:${userId}`);
+    return this.safe(() => this.client!.get(`presence:${userId}`), null);
   }
 
   async setTyping(conversationId: string, userId: string, isTyping: boolean) {
-    if (!this.client) {
-      return;
-    }
-
-    const key = `typing:${conversationId}`;
     if (isTyping) {
-      await this.client.sadd(key, userId);
-      await this.client.expire(key, 10);
+      await this.safe(async () => {
+        const key = `typing:${conversationId}`;
+        await this.client!.sadd(key, userId);
+        await this.client!.expire(key, 10);
+        return true;
+      }, false);
       return;
     }
 
-    await this.client.srem(key, userId);
+    await this.safe(
+      () => this.client!.srem(`typing:${conversationId}`, userId),
+      0,
+    );
   }
 
   async getTypingUsers(conversationId: string) {
-    if (!this.client) {
-      return [];
-    }
-
-    return this.client.smembers(`typing:${conversationId}`);
+    return this.safe(() => this.client!.smembers(`typing:${conversationId}`), []);
   }
 
   async enqueue(queueName: string, payload: Record<string, unknown>) {
-    if (!this.client) {
-      return;
-    }
-
-    await this.client.lpush(`queue:${queueName}`, JSON.stringify(payload));
-    await this.client.ltrim(`queue:${queueName}`, 0, 499);
+    await this.safe(async () => {
+      const key = `queue:${queueName}`;
+      await this.client!.lpush(key, JSON.stringify(payload));
+      await this.client!.ltrim(key, 0, 499);
+      return true;
+    }, false);
   }
 
   async onModuleDestroy() {
-    await this.client?.quit();
+    this.available = false;
+    await this.client?.quit().catch(() => undefined);
   }
 }

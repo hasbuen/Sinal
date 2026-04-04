@@ -17,12 +17,12 @@ const highlights = [
   {
     icon: MessageCircleMore,
     title: "Chats e grupos",
-    text: "Lista de conversas, respostas, reacoes, edicao e envio de midia.",
+    text: "Converse, reaja, responda e compartilhe midia em uma unica tela.",
   },
   {
     icon: LockKeyhole,
     title: "Entrada rapida",
-    text: "Abra o app e entre direto nas suas conversas, sem etapas desnecessarias.",
+    text: "Abra o app e volte para suas conversas sem etapas desnecessarias.",
   },
   {
     icon: ShieldCheck,

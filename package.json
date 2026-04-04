@@ -2,7 +2,7 @@
   "name": "sinal",
   "description": "Um aplicativo de chat e mensagens em tempo real para conexoes rapidas e seguras.",
   "author": "Julio Cesar O. Bueno <https://github.com/hasbuen>",
-  "version": "0.2.12",
+  "version": "0.2.14",
   "main": "electron/main.cjs",
   "private": true,
   "scripts": {
@@ -14,8 +14,8 @@
     "typecheck": "tsc --noEmit",
     "electron:icon": "node tools/generate-electron-icon.cjs",
     "desktop:dev": "concurrently -k \"npm:dev\" \"wait-on http://localhost:3000 && electron .\"",
-    "desktop:build": "npm run electron:icon && electron-builder --win nsis",
-    "desktop:release": "npm run electron:icon && electron-builder --win nsis --publish always",
+    "desktop:build": "npm run build:app && npm run electron:icon && electron-builder --win nsis",
+    "desktop:release": "npm run build:app && npm run electron:icon && electron-builder --win nsis --publish always",
     "backend:dev": "npm --prefix backend run dev",
     "backend:build": "npm --prefix backend run build",
     "backend:typecheck": "npm --prefix backend run typecheck",
@@ -74,6 +74,12 @@
     "files": [
       "electron/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "out",
+        "to": "out"
+      }
     ],
     "directories": {
       "output": "release/electron",

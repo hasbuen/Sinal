@@ -110,7 +110,7 @@ export default function PaginaLogin() {
     <AuthShell
       eyebrow="Entrar"
       title="Acesse sua caixa de conversas"
-      description="Entre com sua conta para abrir suas conversas no navegador, desktop ou Android."
+      description="Entre com sua conta e volte direto para suas conversas."
       footer={
         <p>
           Ainda nao tem conta?{" "}
@@ -194,7 +194,7 @@ export default function PaginaLogin() {
 
         {appwriteEnabled && googleOAuthEnabled && embedded ? (
           <p className="text-center text-xs text-[#667781] dark:text-white/45">
-            Login com Google fica disponivel no navegador. Aqui, use e-mail e senha.
+            No app, use e-mail e senha.
           </p>
         ) : null}
       </div>

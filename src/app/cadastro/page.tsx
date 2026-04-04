@@ -102,9 +102,7 @@ export default function PaginaCadastro() {
       toast.success("Conta criada com sucesso.");
       router.replace(toAppHref("/chat"));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Falha ao cadastrar.",
-      );
+      toast.error(error instanceof Error ? error.message : "Falha ao cadastrar.");
     } finally {
       setCarregando(false);
     }
@@ -128,7 +126,7 @@ export default function PaginaCadastro() {
     <AuthShell
       eyebrow="Cadastro"
       title="Crie sua conta e entre no chat"
-      description="Crie sua conta em poucos segundos para começar a conversar."
+      description="Crie sua conta em poucos segundos para comecar a conversar."
       footer={
         <p>
           Ja tem acesso?{" "}
@@ -237,7 +235,7 @@ export default function PaginaCadastro() {
 
         {appwriteEnabled && googleOAuthEnabled && embedded ? (
           <p className="text-center text-xs text-[#667781] dark:text-white/45">
-            Cadastro com Google fica disponivel no navegador. Aqui, use e-mail e senha.
+            No app, use e-mail e senha.
           </p>
         ) : null}
       </div>

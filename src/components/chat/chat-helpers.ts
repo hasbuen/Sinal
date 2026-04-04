@@ -9,12 +9,18 @@ export const quickReactions = [
   "\u{1F44D}",
   "\u2764\uFE0F",
   "\u{1F602}",
+  "\u{1F62E}",
+  "\u{1F622}",
+  "\u{1F64F}",
   "\u{1F525}",
 ];
 export const quickEmojis = [
   "\u{1F600}",
+  "\u{1F389}",
+  "\u{1F44B}",
   "\u{1F680}",
   "\u{1F3A7}",
+  "\u{1F4F7}",
   "\u2728",
 ];
 

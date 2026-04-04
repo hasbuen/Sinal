@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -82,6 +83,7 @@ import {
   quickEmojis,
 } from "./chat-helpers";
 import { toAppHref } from "@/lib/runtime";
+import { withBasePath } from "@/lib/utils";
 
 const OnboardingTour = dynamic(() => import("@/components/OnboardingTour"), {
   ssr: false,
@@ -765,10 +767,24 @@ export default function ChatWorkspace({
 
   if (booting) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#ECE5DD] text-[#111B21] dark:bg-[#111B21] dark:text-white">
-        <div className="flex items-center gap-3 rounded-full bg-white px-5 py-3 shadow-sm dark:bg-[#202c33]">
-          <Loader2 className="h-5 w-5 animate-spin text-[#25D366]" />
-          Sincronizando conversa...
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(37,211,102,0.18),transparent_30%),linear-gradient(160deg,#06131c_18%,#09141f_100%)] px-6 text-white">
+        <div className="flex w-full max-w-sm flex-col items-center rounded-[2rem] border border-white/10 bg-white/[0.04] px-8 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
+          <div className="rounded-[1.8rem] bg-emerald-300/12 p-4 shadow-[0_0_40px_rgba(37,211,102,0.22)]">
+            <Image
+              src={withBasePath("/icons/icon-transparent.png")}
+              alt="Sinal"
+              width={64}
+              height={64}
+              priority
+              className="rounded-2xl"
+            />
+          </div>
+          <p className="mt-6 text-xs uppercase tracking-[0.34em] text-emerald-100/65">Sinal</p>
+          <h1 className="mt-3 text-3xl font-semibold">Abrindo suas conversas</h1>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-sm text-white/78">
+            <Loader2 className="h-4 w-4 animate-spin text-[#25D366]" />
+            Sincronizando agora
+          </div>
         </div>
       </div>
     );
@@ -786,7 +802,7 @@ export default function ChatWorkspace({
             </div>
             <div>
               <p className="text-lg font-semibold">Sinal</p>
-              <p className="text-xs text-white/75">Mensagens temporarias com expiração em 1h</p>
+              <p className="text-xs text-white/75">Conversa pronta para abrir, responder e seguir.</p>
             </div>
           </div>
 
@@ -1327,8 +1343,26 @@ export default function ChatWorkspace({
                   </div>
                 ) : null}
 
-                <div className="flex items-end gap-2">
-                  <div className="flex flex-1 items-end gap-1 rounded-[1.8rem] bg-white px-2 py-2 shadow-sm dark:bg-[#2a3942]">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    {quickEmojis.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() =>
+                          queueTyping(
+                            `${composerText}${composerText.trim().length > 0 ? " " : ""}${emoji}`,
+                          )
+                        }
+                        className="rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:border-[#25D366]/40 hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-end gap-2">
+                    <div className="flex flex-1 items-end gap-1 rounded-[1.8rem] bg-white px-2 py-2 shadow-sm dark:bg-[#2a3942]">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1396,24 +1430,25 @@ export default function ChatWorkspace({
                         ])
                       }
                     />
-                  </div>
+                    </div>
 
-                  <Button
-                    onClick={() => void handleSend()}
-                    disabled={
-                      pending ||
-                      (!composerText.trim() &&
-                        selectedFiles.length === 0 &&
-                        !editingMessage)
-                    }
-                    className="h-12 w-12 rounded-full bg-[#25D366] p-0 text-[#111B21] hover:bg-[#1fbe5c]"
-                  >
-                    {pending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </Button>
+                    <Button
+                      onClick={() => void handleSend()}
+                      disabled={
+                        pending ||
+                        (!composerText.trim() &&
+                          selectedFiles.length === 0 &&
+                          !editingMessage)
+                      }
+                      className="h-12 w-12 rounded-full bg-[#25D366] p-0 text-[#111B21] hover:bg-[#1fbe5c]"
+                    >
+                      {pending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </>

@@ -43,6 +43,30 @@ function walk(directoryPath) {
   }
 }
 
+function createAppRouterAliases(directoryPath) {
+  for (const entry of fs.readdirSync(directoryPath, { withFileTypes: true })) {
+    const targetPath = path.join(directoryPath, entry.name);
+
+    if (!entry.isDirectory()) {
+      continue;
+    }
+
+    if (entry.name.startsWith("__next.")) {
+      for (const nestedEntry of fs.readdirSync(targetPath, { withFileTypes: true })) {
+        if (!nestedEntry.isFile()) {
+          continue;
+        }
+
+        const sourcePath = path.join(targetPath, nestedEntry.name);
+        const aliasPath = path.join(directoryPath, `${entry.name}.${nestedEntry.name}`);
+        fs.copyFileSync(sourcePath, aliasPath);
+      }
+    }
+
+    createAppRouterAliases(targetPath);
+  }
+}
+
 if (!fs.existsSync(outDir)) {
   console.error("Diretorio out nao encontrado. Rode o build web antes.");
   process.exit(1);
@@ -50,6 +74,7 @@ if (!fs.existsSync(outDir)) {
 
 fs.rmSync(nestedDir, { recursive: true, force: true });
 walk(outDir);
+createAppRouterAliases(outDir);
 
 console.log("[native-webdir] Base path removido dos assets exportados.");
 console.log("[native-webdir] Root index mantido no fluxo App Router para navegacao nativa.");

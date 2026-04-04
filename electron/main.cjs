@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
@@ -5,8 +6,11 @@ const { autoUpdater } = require("electron-updater");
 const isDev = !app.isPackaged;
 const remoteAppUrl =
   process.env.ELECTRON_APP_URL || "https://hasbuen.github.io/Sinal/login/";
+const isUnpackedDesktop = app.isPackaged && process.execPath.includes("win-unpacked");
 
 let mainWindow = null;
+
+app.disableHardwareAcceleration();
 
 function getIconPath() {
   const buildDir = path.join(__dirname, "build");
@@ -15,6 +19,25 @@ function getIconPath() {
   }
 
   return path.join(buildDir, "icon.png");
+}
+
+function getLocalAppEntry() {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "out", "login", "index.html");
+  }
+
+  return path.join(app.getAppPath(), "out", "login", "index.html");
+}
+
+async function loadDesktopSurface() {
+  const localEntry = getLocalAppEntry();
+
+  if (fs.existsSync(localEntry)) {
+    await mainWindow.loadFile(localEntry);
+    return;
+  }
+
+  await mainWindow.loadURL(remoteAppUrl);
 }
 
 function sendUpdaterStatus(type, detail) {
@@ -29,6 +52,10 @@ function sendUpdaterStatus(type, detail) {
 }
 
 function configureAutoUpdate() {
+  if (isUnpackedDesktop) {
+    return;
+  }
+
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
 
@@ -86,14 +113,26 @@ function createWindow() {
     return;
   }
 
-  mainWindow.loadURL(remoteAppUrl);
+  mainWindow.webContents.on("did-fail-load", () => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      return;
+    }
+
+    if (mainWindow.webContents.getURL().startsWith("file://")) {
+      return;
+    }
+
+    void loadDesktopSurface().catch(() => undefined);
+  }
+
+  void loadDesktopSurface().catch(() => undefined);
 }
 
 app.whenReady().then(() => {
   createWindow();
   configureAutoUpdate();
 
-  if (!isDev) {
+  if (!isDev && !isUnpackedDesktop) {
     void autoUpdater.checkForUpdatesAndNotify();
   }
 
@@ -111,8 +150,8 @@ ipcMain.handle("desktop:get-info", () => ({
 }));
 
 ipcMain.handle("desktop:check-updates", async () => {
-  if (isDev) {
-    return { ok: false, reason: "dev-mode" };
+  if (isDev || isUnpackedDesktop) {
+    return { ok: false, reason: isDev ? "dev-mode" : "unpacked-build" };
   }
 
   await autoUpdater.checkForUpdates();

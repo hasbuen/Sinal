@@ -192,7 +192,7 @@ export default function AppUpdateBanner() {
     );
   }
 
-  if (!latestRelease || compareVersions(CURRENT_APP_VERSION, latestRelease.version) >= 0) {
+  if (!latestRelease || compareVersions(CURRENT_APP_VERSION, latestRelease.version) <= 0) {
     return null;
   }
 

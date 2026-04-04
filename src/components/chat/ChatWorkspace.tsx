@@ -625,11 +625,17 @@ export default function ChatWorkspace({
         return;
       }
 
-      const attachments: BackendAttachment[] = [];
-      for (const file of selectedFiles) {
-        const uploaded = await uploadMedia(file);
-        attachments.push({ ...uploaded, url: resolveBackendAssetUrl(uploaded.url) });
-      }
+        const attachments: BackendAttachment[] = [];
+        for (const file of selectedFiles) {
+          const uploaded = await uploadMedia(file);
+          attachments.push({
+            ...uploaded,
+            url: resolveBackendAssetUrl(uploaded.url),
+            thumbnailUrl: uploaded.thumbnailUrl
+              ? resolveBackendAssetUrl(uploaded.thumbnailUrl)
+              : uploaded.thumbnailUrl,
+          });
+        }
       const kind = inferMessageKind(text, attachments);
       const created = await sendMessage({
         conversationId: activeConversationId,

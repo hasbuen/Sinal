@@ -29,9 +29,18 @@ NEXT_PUBLIC_REALTIME_TRANSPORT=socketio
 NEXT_PUBLIC_SOCKET_IO_URL=http://localhost:4000
 NEXT_PUBLIC_BASE_PATH=
 NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-NEXT_PUBLIC_APPWRITE_PROJECT_ID=
+NEXT_PUBLIC_APPWRITE_PROJECT_ID=69d0695b00063d876b0d
 NEXT_PUBLIC_APPWRITE_DATABASE_ID=
+NEXT_PUBLIC_APPWRITE_MEDIA_BUCKET_ID=chat-media
 ```
+
+Configuracao recomendada no Appwrite `Platforms`:
+
+- `Web`: hostname `hasbuen.github.io`
+- `Web (local)`: hostname `localhost`
+- `Android`: package `com.hasbuen.sinal`
+- `OAuth success/failure`: a sessao volta para `https://hasbuen.github.io/Sinal/login/`
+- `Storage bucket`: `chat-media`
 
 ## Backend
 
@@ -61,9 +70,11 @@ npm run backend:typecheck
 - Redis para presenca e typing
 - Socket.IO para realtime quando o backend roda em runtime Node persistente
 - SQLite para cache local de snapshots
-- Upload multipart com Vercel Blob em producao
+- Upload multipart com Appwrite Storage como alvo principal e fallback Blob/local
 - Tutorial lazy com `driver.js`
-- PWA + Capacitor Android
+- Capacitor Android com APK nativo
+- Atualizacao de release no desktop via `electron-updater`
+- Banner de update para web e Android apontando para a release mais nova
 
 ## Deploy
 
@@ -71,7 +82,7 @@ npm run backend:typecheck
 - Backend: Vercel em projeto separado com root em `backend/`
 - Banco MongoDB gratis: Atlas
 - Redis: servico separado barato ou gratis
-- Arquivos: Vercel Blob
+- Arquivos: Appwrite Storage com fallback para Blob/local
 
 Observacao tecnica: Vercel funciona bem para frontend, HTTP e upload, mas nao e o lugar ideal para Socket.IO com conexoes long-lived. O projeto agora suporta tres modos de realtime no frontend:
 

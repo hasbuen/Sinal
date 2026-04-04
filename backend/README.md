@@ -44,7 +44,7 @@ Fluxo recomendado:
 1. Criar um projeto Vercel separado apontando para a pasta `backend/`.
 2. Definir as variaveis do `.env.example`, principalmente `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_ORIGIN`, `PUBLIC_API_ORIGIN`, `BLOB_READ_WRITE_TOKEN` e `APPWRITE_*`.
 3. Manter MongoDB no Atlas e Redis em servico separado.
-4. Criar um Blob Store no projeto para arquivos de midia.
+4. Definir `APPWRITE_MEDIA_BUCKET_ID`. O backend agora cria o bucket no Appwrite sob demanda no primeiro upload, se ele ainda nao existir.
 5. Executar `npm run prisma:push` no primeiro deploy.
 6. Fazer um novo deploy depois de salvar as variaveis, porque CORS e origem publica sao lidos no boot.
 
@@ -73,4 +73,4 @@ Observacao tecnica: em Vercel, mantenha o frontend em `polling`. O transporte `s
 - `users`: busca de usuarios
 - `conversations`: diretas, grupos, membros, leitura
 - `messages`: envio, reacoes, typing, subscription
-- `uploads`: upload multipart com Vercel Blob em producao e fallback local em desenvolvimento
+- `uploads`: upload multipart com Appwrite Storage como alvo principal, Blob como fallback e rota publica de proxy para view/preview

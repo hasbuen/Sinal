@@ -12,10 +12,11 @@ import {
 } from "appwrite";
 import { toPublicCallbackHref } from "@/lib/runtime";
 
+const DEFAULT_APPWRITE_PROJECT_ID = "69d0695b00063d876b0d";
 const APPWRITE_ENDPOINT =
-  process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "";
+  process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "https://cloud.appwrite.io/v1";
 const APPWRITE_PROJECT_ID =
-  process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || "";
+  process.env.NEXT_PUBLIC_APPWRITE_PROJECT_ID || DEFAULT_APPWRITE_PROJECT_ID;
 const APPWRITE_DATABASE_ID =
   process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID || "";
 const APPWRITE_USERS_COLLECTION_ID =

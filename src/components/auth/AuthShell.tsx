@@ -1,11 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import { LockKeyhole, MessageCircleMore, ShieldCheck, Smartphone } from "lucide-react";
 import { withBasePath } from "@/lib/utils";
-import { toAppHref } from "@/lib/runtime";
 
 type AuthShellProps = {
   eyebrow: string;
@@ -24,7 +22,7 @@ const highlights = [
   {
     icon: LockKeyhole,
     title: "Entrada rapida",
-    text: "Acesse no navegador, desktop ou Android sem cair na landing do release.",
+    text: "Acesse o fluxo real do produto com login direto, sem desvio para portal publico.",
   },
   {
     icon: ShieldCheck,
@@ -51,13 +49,6 @@ export function AuthShell({
       <div className="-mt-28 px-4 pb-10 md:-mt-36">
         <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-[#f0f2f5] shadow-[0_22px_80px_rgba(17,27,33,0.22)] dark:bg-[#111b21] lg:grid-cols-[1.05fr_0.95fr]">
           <section className="hidden bg-[linear-gradient(180deg,#0b141a_0%,#111b21_100%)] p-10 text-white lg:flex lg:flex-col">
-            <Link
-              href={toAppHref("/")}
-              className="mb-10 inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-white/72 transition hover:bg-white/8 hover:text-white"
-            >
-              Voltar ao portal
-            </Link>
-
             <div className="flex items-center gap-4">
               <div className="rounded-[1.4rem] bg-[#00a884]/16 p-3 shadow-[0_0_40px_rgba(0,168,132,0.22)]">
                 <Image

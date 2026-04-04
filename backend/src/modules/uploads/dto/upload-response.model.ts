@@ -3,6 +3,9 @@ import { MediaKind } from "../../conversations/models/chat.enums";
 
 @ObjectType()
 export class UploadResponseModel {
+  @Field(() => String, { nullable: true })
+  id?: string;
+
   @Field(() => MediaKind)
   kind!: MediaKind;
 
@@ -17,4 +20,7 @@ export class UploadResponseModel {
 
   @Field(() => Int)
   sizeBytes!: number;
+
+  @Field(() => String, { nullable: true })
+  thumbnailUrl?: string;
 }

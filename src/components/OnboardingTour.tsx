@@ -30,8 +30,8 @@ export default function OnboardingTour() {
         {
           element: "#tour-install",
           popover: {
-            title: "Instalacao",
-            description: "Instale o app como PWA para abrir da tela inicial ou empacotar no Android.",
+            title: "Atualizacoes",
+            description: "Desktop verifica release automaticamente, Android avisa quando sai APK novo e o navegador recarrega a versao mais recente.",
           },
         },
         {

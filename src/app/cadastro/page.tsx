@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Lock, Mail, UserRound } from "lucide-react";
+import { Lock, Mail, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import {
   exchangeAppwriteJwt,
@@ -114,7 +114,7 @@ export default function PaginaCadastro() {
       description={
         appwriteEnabled
           ? "O cadastro passa pelo Appwrite e a conta local e sincronizada automaticamente para abrir o chat, o painel admin e os espelhos em MongoDB."
-          : "A entrada do produto precisa parecer produto. O cadastro agora cai direto na experiencia do app, com foco em conversa, nao em release."
+          : "O cadastro abre a experiencia real do produto com foco em conversa, sem retorno para portal publico."
       }
       footer={
         <p>
@@ -126,14 +126,7 @@ export default function PaginaCadastro() {
       }
     >
       <div className="mb-6 flex items-center justify-between">
-        <Link
-          href={toAppHref("/")}
-          className="inline-flex items-center gap-2 text-sm text-[#667781] transition hover:text-[#111b21] dark:text-white/58 dark:hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Portal publico
-        </Link>
-        <div className="hidden items-center gap-3 rounded-full bg-[#e7fef5] px-4 py-2 text-xs font-medium text-[#075e54] dark:bg-[#123229] dark:text-[#8ff3d1] md:flex">
+        <div className="inline-flex items-center gap-3 rounded-full bg-[#e7fef5] px-4 py-2 text-xs font-medium text-[#075e54] dark:bg-[#123229] dark:text-[#8ff3d1]">
           <Image
             src={withBasePath("/favicon.png")}
             alt="Sinal"

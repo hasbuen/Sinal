@@ -59,6 +59,7 @@ const publicApiOrigin =
   readEnv("PUBLIC_API_ORIGIN") || `http://localhost:${port}`;
 const blobReadWriteToken = readEnv("BLOB_READ_WRITE_TOKEN");
 const appwriteAdminEmails = parseCsv(readEnv("APPWRITE_ADMIN_EMAILS"));
+const defaultAppwriteProjectId = "69d0695b00063d876b0d";
 
 export const appConfig = {
   nodeEnv,
@@ -75,8 +76,8 @@ export const appConfig = {
   publicApiOrigin,
   blobReadWriteToken,
   appwrite: {
-    endpoint: readEnv("APPWRITE_ENDPOINT"),
-    projectId: readEnv("APPWRITE_PROJECT_ID"),
+    endpoint: readEnv("APPWRITE_ENDPOINT", "https://cloud.appwrite.io/v1"),
+    projectId: readEnv("APPWRITE_PROJECT_ID", defaultAppwriteProjectId),
     apiKey: readEnv("APPWRITE_API_KEY"),
     databaseId: readEnv("APPWRITE_DATABASE_ID"),
     usersCollectionId: readEnv("APPWRITE_USERS_COLLECTION_ID"),

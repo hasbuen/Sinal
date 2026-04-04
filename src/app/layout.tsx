@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Toaster } from "sonner";
+import AppUpdateBanner from "@/components/AppUpdateBanner";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { getBasePath } from "@/lib/utils";
 import "./globals.css";
@@ -21,7 +22,6 @@ export const metadata: Metadata = {
   title: "Sinal",
   description: "Um aplicativo de chat e mensagens em tempo real para conexoes rapidas e seguras.",
   authors: [{ name: "Julio Cesar O. Bueno", url: "https://github.com/hasbuen" }],
-  manifest: `${basePath}/manifest.json`,
   icons: {
     icon: [
       { url: `${basePath}/favicon.png`, type: "image/png", sizes: "64x64" },
@@ -45,11 +45,11 @@ export default function RootLayout({
     >
       <head>
         <link rel="icon" type="image/png" sizes="64x64" href={`${basePath}/favicon.png`} />
-        <link rel="manifest" href={`${basePath}/manifest.json`} />
         <meta name="theme-color" content="#059669" />
       </head>
       <body className="min-h-screen w-screen bg-[#1e1f2b] antialiased">
         <ServiceWorkerRegistration />
+        <AppUpdateBanner />
         {children}
         <Toaster richColors position="top-center" />
       </body>

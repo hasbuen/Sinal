@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Chrome, Github, Lock, Mail } from "lucide-react";
+import { Chrome, Github, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import {
   exchangeAppwriteJwt,
@@ -107,8 +107,8 @@ export default function PaginaLogin() {
       title="Acesse sua caixa de conversas"
       description={
         appwriteEnabled
-          ? "Email e senha passam pelo Appwrite e o backend local recebe um token sincronizado para abrir o chat, no navegador, desktop e APK."
-          : "Entre direto no app com a linguagem visual de mensageria. A landing publica continua no navegador, mas Android e Desktop agora caem no fluxo do produto."
+          ? "Email e senha passam pelo Appwrite e o backend local recebe um token sincronizado para abrir o chat no navegador, desktop e Android."
+          : "Entre direto no app com fluxo de mensageria, sem depender de pagina publica para abrir conversa."
       }
       footer={
         <p>
@@ -120,14 +120,7 @@ export default function PaginaLogin() {
       }
     >
       <div className="mb-6 flex items-center justify-between">
-        <Link
-          href={toAppHref("/")}
-          className="inline-flex items-center gap-2 text-sm text-[#667781] transition hover:text-[#111b21] dark:text-white/58 dark:hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Portal publico
-        </Link>
-        <div className="hidden items-center gap-3 rounded-full bg-[#e7fef5] px-4 py-2 text-xs font-medium text-[#075e54] dark:bg-[#123229] dark:text-[#8ff3d1] md:flex">
+        <div className="inline-flex items-center gap-3 rounded-full bg-[#e7fef5] px-4 py-2 text-xs font-medium text-[#075e54] dark:bg-[#123229] dark:text-[#8ff3d1]">
           <Image
             src={withBasePath("/favicon.png")}
             alt="Sinal"

@@ -12,7 +12,7 @@ import {
 import { appConfig } from "../../config/app.config";
 import { MediaKind } from "../conversations/models/chat.enums";
 
-const { InputFile } = require("node-appwrite/dist/inputFile.js") as {
+const { InputFile } = require("node-appwrite/file") as {
   InputFile: {
     fromBuffer(parts: Buffer, name: string): any;
   };

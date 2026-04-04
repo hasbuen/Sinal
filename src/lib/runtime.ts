@@ -20,5 +20,13 @@ export function isEmbeddedAppBrowser() {
 }
 
 export function toAppHref(path: string) {
+  if (!path.startsWith("/")) {
+    return `/${path}`;
+  }
+
+  return path;
+}
+
+export function toPublicCallbackHref(path: string) {
   return withBasePath(path);
 }

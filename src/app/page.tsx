@@ -17,7 +17,9 @@ import { withBasePath } from "@/lib/utils";
 import packageMeta from "../../package.json";
 
 const browserRoute = "/login/";
+const registerRoute = "/cadastro/";
 const browserPath = withBasePath(browserRoute);
+const registerPath = withBasePath(registerRoute);
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://hasbuen.github.io/Sinal")
   .replace(/\/+$/, "");
 const browserAppUrl = new URL(browserPath, `${siteUrl}/`).toString();
@@ -156,7 +158,7 @@ export default function Home() {
                 <ArrowRight className="size-4" />
               </Link>
               <Link
-                href={withBasePath("/cadastro/")}
+                href={registerRoute}
                 className="inline-flex items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-300/10 px-6 py-3 font-semibold text-emerald-100 transition hover:border-emerald-200/60 hover:bg-emerald-300/15"
               >
                 Criar conta
@@ -208,7 +210,7 @@ export default function Home() {
               <div className="mt-6 space-y-4">
                 {[
                   ["Web publica", browserAppUrl],
-                  ["Cadastro web", new URL(withBasePath("/cadastro/"), `${siteUrl}/`).toString()],
+                  ["Cadastro web", new URL(registerPath, `${siteUrl}/`).toString()],
                   ["Instalador Windows", desktopDownloadUrl],
                   ["APK Android", androidDownloadUrl],
                 ].map(([label, value]) => (

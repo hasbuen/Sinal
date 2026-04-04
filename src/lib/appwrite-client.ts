@@ -10,7 +10,7 @@ import {
   Teams,
   type Models,
 } from "appwrite";
-import { toAppHref } from "@/lib/runtime";
+import { toPublicCallbackHref } from "@/lib/runtime";
 
 const APPWRITE_ENDPOINT =
   process.env.NEXT_PUBLIC_APPWRITE_ENDPOINT || "";
@@ -114,8 +114,14 @@ export async function logoutAppwrite() {
 
 export function startAppwriteOAuthLogin(provider: OAuthProvider) {
   const account = getAppwriteAccount();
-  const success = new URL(toAppHref("/login"), window.location.origin).toString();
-  const failure = new URL(toAppHref("/login"), window.location.origin).toString();
+  const success = new URL(
+    toPublicCallbackHref("/login"),
+    window.location.origin,
+  ).toString();
+  const failure = new URL(
+    toPublicCallbackHref("/login"),
+    window.location.origin,
+  ).toString();
   account.createOAuth2Session(provider, success, failure);
 }
 

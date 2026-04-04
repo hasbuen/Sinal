@@ -7,6 +7,7 @@
     "dev": "tsx watch src/main.ts",
     "build": "node -e \"const fs = require('fs'); fs.rmSync('dist', { recursive: true, force: true }); fs.rmSync('tsconfig.build.tsbuildinfo', { force: true });\" && tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
+    "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "typecheck": "tsc --noEmit"
@@ -22,6 +23,8 @@
     "@nestjs/jwt": "^11.0.2",
     "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.1.17",
+    "@nestjs/platform-socket.io": "^11.1.18",
+    "@nestjs/websockets": "^11.1.18",
     "@prisma/client": "^6.19.3",
     "@types/express": "^5.0.6",
     "@vercel/blob": "^2.3.3",
@@ -35,11 +38,13 @@
     "graphql-ws": "^6.0.8",
     "ioredis": "^5.10.1",
     "multer": "^2.1.1",
+    "node-appwrite": "^23.1.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "prisma": "^6.19.3",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
+    "socket.io": "^4.8.3",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

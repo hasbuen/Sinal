@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  Bookmark,
-  BookmarkCheck,
   Check,
   CheckCheck,
   Copy,
@@ -30,7 +28,6 @@ type Props = {
   menuOpen: boolean;
   onToggleMenu: () => void;
   onReply: (message: BackendMessage) => void;
-  onSaveToggle: (message: BackendMessage) => void;
   onCopy: (message: BackendMessage) => void;
   onForward: (message: BackendMessage) => void;
   onEdit: (message: BackendMessage) => void;
@@ -46,7 +43,6 @@ export function ChatMessageBubble({
   menuOpen,
   onToggleMenu,
   onReply,
-  onSaveToggle,
   onCopy,
   onForward,
   onEdit,
@@ -56,63 +52,37 @@ export function ChatMessageBubble({
   const mine = message.sender.id === currentUserId;
   const deleted = Boolean(message.deletedAt);
   const status = mine ? receiptState(message, conversation, currentUserId) : "sent";
+  const expiryLabel = timeUntilExpiry(message, clock);
 
   return (
-    <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+    <div className={`flex ${mine ? "justify-end" : "justify-start"} animate-in fade-in-0`}>
       <div
-        className={`relative max-w-[92%] overflow-hidden rounded-[1.75rem] border px-4 py-3 shadow-[0_18px_50px_rgba(0,0,0,0.22)] backdrop-blur sm:max-w-[78%] ${
+        className={`relative max-w-[92%] rounded-[1.2rem] px-3 py-2 shadow-sm transition-all sm:max-w-[78%] ${
           mine
-            ? "border-emerald-300/25 bg-[linear-gradient(180deg,rgba(37,211,102,0.18),rgba(20,33,28,0.88))]"
-            : "border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(13,18,28,0.92))]"
+            ? "bg-[#DCF8C6] text-[#111B21] dark:bg-[#144d37] dark:text-white"
+            : "bg-white text-[#111B21] dark:bg-[#202c33] dark:text-white"
         }`}
       >
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/15" />
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
-            {mine ? "Voce" : message.sender.displayName}
+        {!mine ? (
+          <p className="pr-10 text-[11px] font-semibold text-[#075E54] dark:text-[#7fe7bc]">
+            {message.sender.displayName}
           </p>
-          <div className="flex items-center gap-2">
-            {message.isSaved ? (
-              <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] uppercase tracking-[0.15em] text-emerald-200">
-                Salva
-              </span>
-            ) : timeUntilExpiry(message, clock) ? (
-              <span className="rounded-full bg-black/20 px-2 py-1 text-[10px] uppercase tracking-[0.15em] text-white/55">
-                {timeUntilExpiry(message, clock)}
-              </span>
-            ) : null}
-            <span className="text-xs text-white/35">
-              {hourFormatter.format(new Date(message.createdAt))}
-            </span>
-            {mine ? (
-              status === "read" ? (
-                <CheckCheck className="h-3.5 w-3.5 text-cyan-300" />
-              ) : status === "delivered" ? (
-                <CheckCheck className="h-3.5 w-3.5 text-white/55" />
-              ) : (
-                <Check className="h-3.5 w-3.5 text-white/45" />
-              )
-            ) : null}
-            <button
-              type="button"
-              onClick={onToggleMenu}
-              className="rounded-full border border-white/10 p-1 text-white/55 transition hover:bg-white/10"
-            >
-              <Menu className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        </div>
+        ) : null}
 
         {message.forwardedFrom ? (
-          <div className="mt-3 rounded-2xl border border-fuchsia-400/20 bg-fuchsia-400/10 px-3 py-2 text-xs text-fuchsia-100/80">
+          <div className="mt-1 rounded-2xl bg-black/5 px-3 py-2 text-xs text-black/70 dark:bg-white/5 dark:text-white/70">
             Encaminhada de {message.forwardedFrom.sender.displayName}
           </div>
         ) : null}
 
         {message.replyTo ? (
-          <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/65">
-            <p className="font-semibold text-cyan-200">
-              Respondendo a {message.replyTo.sender.displayName}
+          <button
+            type="button"
+            onClick={() => onReply(message.replyTo!)}
+            className="mt-1 w-full rounded-2xl border-l-4 border-[#25D366] bg-black/5 px-3 py-2 text-left text-xs text-black/70 transition hover:bg-black/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10"
+          >
+            <p className="font-semibold text-[#075E54] dark:text-[#7fe7bc]">
+              {message.replyTo.sender.displayName}
             </p>
             <p className="mt-1 truncate">
               {message.replyTo.text ||
@@ -120,11 +90,11 @@ export function ChatMessageBubble({
                 message.replyTo.linkUrl ||
                 messagePreview(message.replyTo)}
             </p>
-          </div>
+          </button>
         ) : null}
 
         {deleted ? (
-          <p className="mt-3 text-sm italic text-white/55">
+          <p className="mt-1 text-sm italic text-black/55 dark:text-white/55">
             {message.text || "Mensagem apagada"}
           </p>
         ) : (
@@ -134,26 +104,27 @@ export function ChatMessageBubble({
                 href={message.linkUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-3 block rounded-2xl border border-cyan-300/20 bg-black/20 px-4 py-3 text-cyan-200"
+                className="mt-2 block rounded-2xl bg-black/5 px-3 py-3 text-sm font-medium text-[#075E54] dark:bg-white/5 dark:text-[#7fe7bc]"
               >
                 {message.linkTitle || message.linkUrl}
               </a>
             ) : null}
 
             {message.kind === "EMOJI" && message.emoji ? (
-              <p className="mt-3 text-4xl">{message.emoji}</p>
+              <p className="mt-1 text-4xl leading-none">{message.emoji}</p>
             ) : null}
 
             {message.text ? (
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-white/90">
+              <p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-6">
                 {message.text}
               </p>
             ) : null}
 
             {message.attachments.length > 0 ? (
-              <div className="mt-3 grid gap-3">
+              <div className="mt-2 grid gap-2">
                 {message.attachments.map((attachment) => {
                   const src = resolveBackendAssetUrl(attachment.url);
+
                   if (attachment.kind === "IMAGE") {
                     return (
                       <a
@@ -199,7 +170,7 @@ export function ChatMessageBubble({
                       href={src}
                       target="_blank"
                       rel="noreferrer"
-                      className="block rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-white/85"
+                      className="block rounded-2xl bg-black/5 px-4 py-3 text-sm dark:bg-white/5"
                     >
                       {attachment.fileName}
                     </a>
@@ -211,67 +182,58 @@ export function ChatMessageBubble({
         )}
 
         {!deleted ? (
-          <>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {message.reactions.map((reaction) => (
-                <button
-                  key={reaction.id}
-                  type="button"
-                  onClick={() => onReaction(message.id, reaction.emoji)}
-                  className="rounded-full border border-white/10 bg-black/30 px-2 py-1 text-xs"
-                >
-                  {reaction.emoji}
-                </button>
-              ))}
-              {quickReactions.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => onReaction(message.id, emoji)}
-                  className="rounded-full border border-white/10 px-2 py-1 text-xs text-white/70"
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-3 flex flex-wrap gap-2 text-xs text-white/45">
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {message.reactions.map((reaction) => (
               <button
+                key={reaction.id}
                 type="button"
-                onClick={() => onReply(message)}
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-1 hover:bg-white/10"
+                onClick={() => onReaction(message.id, reaction.emoji)}
+                className="rounded-full border border-black/10 bg-white/55 px-2 py-0.5 text-xs dark:border-white/10 dark:bg-black/20"
               >
-                <Reply className="h-3.5 w-3.5" />
-                Responder
+                {reaction.emoji}
               </button>
+            ))}
+            {quickReactions.map((emoji) => (
               <button
+                key={emoji}
                 type="button"
-                onClick={() => onSaveToggle(message)}
-                className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-1 hover:bg-white/10"
+                onClick={() => onReaction(message.id, emoji)}
+                className="rounded-full px-2 py-0.5 text-xs text-black/50 transition hover:bg-black/5 dark:text-white/55 dark:hover:bg-white/10"
               >
-                {message.isSaved ? (
-                  <BookmarkCheck className="h-3.5 w-3.5 text-emerald-300" />
-                ) : (
-                  <Bookmark className="h-3.5 w-3.5" />
-                )}
-                {message.isSaved ? "Guardada" : "Salvar"}
+                {emoji}
               </button>
-            </div>
-          </>
+            ))}
+          </div>
         ) : null}
 
-        {message.editedAt && !deleted ? (
-          <p className="mt-2 text-[11px] uppercase tracking-[0.16em] text-white/35">
-            Editada
-          </p>
-        ) : null}
+        <div className="mt-1 flex items-end justify-end gap-1.5 pl-8 text-[11px] text-black/50 dark:text-white/45">
+          {message.editedAt && !deleted ? <span>editada</span> : null}
+          {expiryLabel ? <span>{expiryLabel}</span> : null}
+          <span>{hourFormatter.format(new Date(message.createdAt))}</span>
+          {mine ? (
+            status === "read" ? (
+              <CheckCheck className="h-3.5 w-3.5 text-[#34B7F1]" />
+            ) : status === "delivered" ? (
+              <CheckCheck className="h-3.5 w-3.5" />
+            ) : (
+              <Check className="h-3.5 w-3.5" />
+            )
+          ) : null}
+          <button
+            type="button"
+            onClick={onToggleMenu}
+            className="rounded-full p-1 transition hover:bg-black/5 dark:hover:bg-white/10"
+          >
+            <Menu className="h-3.5 w-3.5" />
+          </button>
+        </div>
 
         {menuOpen ? (
-          <div className="absolute right-3 top-11 z-20 w-48 rounded-2xl border border-white/10 bg-[#07111d] p-2 shadow-2xl">
+          <div className="absolute right-2 top-full z-20 mt-1 w-48 rounded-2xl bg-white p-2 text-[#111B21] shadow-2xl dark:bg-[#233138] dark:text-white">
             <button
               type="button"
               onClick={() => onReply(message)}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-white/75 hover:bg-white/10"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
             >
               <Reply className="h-4 w-4" />
               Responder
@@ -279,7 +241,7 @@ export function ChatMessageBubble({
             <button
               type="button"
               onClick={() => onCopy(message)}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-white/75 hover:bg-white/10"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
             >
               <Copy className="h-4 w-4" />
               Copiar
@@ -287,7 +249,7 @@ export function ChatMessageBubble({
             <button
               type="button"
               onClick={() => onForward(message)}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-white/75 hover:bg-white/10"
+              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
             >
               <Forward className="h-4 w-4" />
               Encaminhar
@@ -297,7 +259,7 @@ export function ChatMessageBubble({
                 <button
                   type="button"
                   onClick={() => onEdit(message)}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-white/75 hover:bg-white/10"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
                 >
                   <Pencil className="h-4 w-4" />
                   Editar
@@ -305,7 +267,7 @@ export function ChatMessageBubble({
                 <button
                   type="button"
                   onClick={() => onDelete(message.id)}
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-rose-200 hover:bg-rose-400/10"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10"
                 >
                   <Trash2 className="h-4 w-4" />
                   Apagar

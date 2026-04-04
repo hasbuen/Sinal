@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { AppwriteService } from "../../appwrite/appwrite.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { CreateDirectConversationInput } from "./dto/create-direct-conversation.input";
 import { CreateGroupConversationInput } from "./dto/create-group-conversation.input";
@@ -11,6 +12,7 @@ import {
 } from "./models/chat.enums";
 import { RedisService } from "../../redis/redis.service";
 import { messagePubSub, presencePubSub } from "../messages/chat.events";
+import { RealtimeGateway } from "../../realtime/realtime.gateway";
 
 const conversationInclude = {
   members: {
@@ -50,31 +52,28 @@ export class ConversationsService {
     private readonly prisma: PrismaService,
     private readonly sqliteCache: CacheSqliteService,
     private readonly redisService: RedisService,
+    private readonly realtimeGateway: RealtimeGateway,
+    private readonly appwriteService: AppwriteService,
   ) {}
 
   private getVisibleMessages<
     T extends {
       expiresAt?: Date | null;
-      savedByIds?: string[] | null;
     },
-  >(messages: T[], currentUserId: string) {
+  >(messages: T[], _currentUserId: string) {
     const now = Date.now();
     return messages.filter((message) => {
       if (!message.expiresAt) {
         return true;
       }
 
-      return (
-        message.expiresAt.getTime() > now ||
-        (message.savedByIds ?? []).includes(currentUserId)
-      );
+      return message.expiresAt.getTime() > now;
     });
   }
 
   private toConversationPayload<
     T extends {
       messages: Array<{
-        savedByIds?: string[] | null;
         expiresAt?: Date | null;
       }>;
     },
@@ -86,7 +85,7 @@ export class ConversationsService {
     const latestMessage = visibleMessages[0]
       ? {
           ...visibleMessages[0],
-          isSaved: (visibleMessages[0].savedByIds ?? []).includes(currentUserId),
+          isSaved: false,
         }
       : null;
 
@@ -161,6 +160,18 @@ export class ConversationsService {
     userId: string,
     payload: PresencePayload,
   ) {
+    await this.redisService.enqueue("presence", {
+      conversationId,
+      ...payload,
+      createdAt: new Date().toISOString(),
+    });
+    this.realtimeGateway.emitPresence({
+      conversationId,
+      userId,
+      online: payload.online,
+      lastSeenAt: payload.lastSeenAt ? new Date(payload.lastSeenAt) : null,
+      activeConversationId: payload.activeConversationId ?? null,
+    });
     await presencePubSub.publish("presence.changed", {
       presenceChanged: {
         userId,
@@ -283,6 +294,8 @@ export class ConversationsService {
       include: conversationInclude,
     });
 
+    await this.appwriteService.syncGroupMirror(conversation);
+
     return {
       ...conversation,
       latestMessage: null,
@@ -318,6 +331,10 @@ export class ConversationsService {
       where: { id: input.conversationId },
       include: conversationInclude,
     });
+
+    if (conversation.kind === "GROUP") {
+      await this.appwriteService.syncGroupMirror(conversation);
+    }
 
     return this.toConversationPayload(conversation, currentUserId);
   }

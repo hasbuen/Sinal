@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { compare, hash } from "bcryptjs";
+import { AppwriteService } from "../../appwrite/appwrite.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { RegisterInput } from "./dto/register.input";
 import { LoginInput } from "./dto/login.input";
@@ -14,12 +15,15 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly appwriteService: AppwriteService,
   ) {}
 
   async register(input: RegisterInput) {
+    const email = input.email.trim().toLowerCase();
+    const username = input.username.trim().toLowerCase();
     const existing = await this.prisma.user.findFirst({
       where: {
-        OR: [{ email: input.email }, { username: input.username }],
+        OR: [{ email }, { username }],
       },
     });
 
@@ -30,9 +34,9 @@ export class AuthService {
     const passwordHash = await hash(input.password, 10);
     const user = await this.prisma.user.create({
       data: {
-        email: input.email,
-        username: input.username,
-        displayName: input.displayName,
+        email,
+        username,
+        displayName: input.displayName.trim(),
         passwordHash,
       },
     });
@@ -41,8 +45,9 @@ export class AuthService {
   }
 
   async login(input: LoginInput) {
+    const email = input.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
-      where: { email: input.email },
+      where: { email },
     });
 
     if (!user || !(await compare(input.password, user.passwordHash))) {
@@ -56,6 +61,21 @@ export class AuthService {
     return this.prisma.user.findUnique({
       where: { id: userId },
     });
+  }
+
+  async exchangeAppwriteJwt(appwriteJwt: string) {
+    const user = await this.appwriteService.exchangeUserJwt(appwriteJwt);
+    return this.buildAuthPayload(user.id);
+  }
+
+  async verifyAccessToken(accessToken: string) {
+    const payload = await this.jwtService.verifyAsync<{
+      sub: string;
+      email: string;
+      username: string;
+    }>(accessToken);
+
+    return this.validateUser(payload.sub);
   }
 
   private async buildAuthPayload(userId: string) {

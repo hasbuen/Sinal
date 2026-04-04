@@ -3,13 +3,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Lock, Mail, UserRound } from "lucide-react";
 import { toast } from "sonner";
-import { registerUser, setBackendToken } from "@/lib/backend-client";
-import { withBasePath } from "@/lib/utils";
+import {
+  exchangeAppwriteJwt,
+  getBackendToken,
+  registerUser,
+  setBackendToken,
+} from "@/lib/backend-client";
+import {
+  createAppwriteJwt,
+  getAppwriteCurrentUser,
+  isAppwriteEnabled,
+  registerWithAppwriteEmailPassword,
+} from "@/lib/appwrite-client";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { withBasePath } from "@/lib/utils";
+import { toAppHref } from "@/lib/runtime";
 
 export default function PaginaCadastro() {
   const router = useRouter();
@@ -18,24 +31,73 @@ export default function PaginaCadastro() {
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const appwriteEnabled = isAppwriteEnabled();
+
+  useEffect(() => {
+    if (getBackendToken()) {
+      router.replace(toAppHref("/chat"));
+      return;
+    }
+
+    if (!appwriteEnabled) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function bootstrapAppwriteSession() {
+      try {
+        await getAppwriteCurrentUser();
+        const jwt = await createAppwriteJwt();
+        const auth = await exchangeAppwriteJwt(jwt);
+        if (cancelled) return;
+        setBackendToken(auth.accessToken);
+        router.replace(toAppHref("/chat"));
+      } catch {
+        // Sem sessao Appwrite ativa.
+      }
+    }
+
+    void bootstrapAppwriteSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appwriteEnabled, router]);
 
   async function cadastrar() {
-    if (!displayName || !username || !email || !senha) {
-      toast.error("Preencha nome, usuario, e-mail e senha.");
+    if (!displayName || !email || !senha || (!appwriteEnabled && !username)) {
+      toast.error(
+        appwriteEnabled
+          ? "Preencha nome, e-mail e senha."
+          : "Preencha nome, usuario, e-mail e senha.",
+      );
       return;
     }
 
     try {
       setCarregando(true);
-      const auth = await registerUser({
-        displayName,
-        username,
-        email,
-        password: senha,
-      });
+      const auth = appwriteEnabled
+        ? await (async () => {
+            await registerWithAppwriteEmailPassword({
+              name: displayName,
+              email,
+              password: senha,
+            });
+            const jwt = await createAppwriteJwt();
+            return exchangeAppwriteJwt(jwt);
+          })()
+        : await registerUser({
+            displayName,
+            username,
+            email,
+            password: senha,
+          });
       setBackendToken(auth.accessToken);
-      toast.success("Conta criada no MongoDB.");
-      router.replace("/dashboard");
+      toast.success(
+        appwriteEnabled ? "Conta criada no Appwrite." : "Conta criada no MongoDB.",
+      );
+      router.replace(toAppHref("/chat"));
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Falha ao cadastrar.",
@@ -46,74 +108,117 @@ export default function PaginaCadastro() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#164e6322,transparent_30%),linear-gradient(180deg,#020617,#0f172a)] px-4">
-      <Card className="w-full max-w-md rounded-[2rem] border-white/10 bg-slate-950/75 text-white shadow-2xl backdrop-blur">
-        <CardHeader className="space-y-6">
-          <Link
-            href="/"
-            className="text-sm text-white/55 transition hover:text-white"
-          >
-            {"< Voltar para landing"}
+    <AuthShell
+      eyebrow="Cadastro"
+      title="Crie sua conta e entre no chat"
+      description={
+        appwriteEnabled
+          ? "O cadastro passa pelo Appwrite e a conta local e sincronizada automaticamente para abrir o chat, o painel admin e os espelhos em MongoDB."
+          : "A entrada do produto precisa parecer produto. O cadastro agora cai direto na experiencia do app, com foco em conversa, nao em release."
+      }
+      footer={
+        <p>
+          Ja tem acesso?{" "}
+          <Link href={toAppHref("/login")} className="font-semibold text-[#00a884] hover:underline">
+            Fazer login
           </Link>
-          <CardTitle className="flex items-center justify-center gap-3 text-center text-3xl font-bold text-cyan-300">
-            <Image
-              src={withBasePath("/icons/icon-transparent.png")}
-              alt="Sinal"
-              width={44}
-              height={44}
-              className="rounded-2xl"
-            />
-            <span>Criar conta</span>
-          </CardTitle>
-          <p className="text-center text-sm text-white/60">
-            Cadastro direto no backend NestJS com Prisma e MongoDB.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </p>
+      }
+    >
+      <div className="mb-6 flex items-center justify-between">
+        <Link
+          href={toAppHref("/")}
+          className="inline-flex items-center gap-2 text-sm text-[#667781] transition hover:text-[#111b21] dark:text-white/58 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Portal publico
+        </Link>
+        <div className="hidden items-center gap-3 rounded-full bg-[#e7fef5] px-4 py-2 text-xs font-medium text-[#075e54] dark:bg-[#123229] dark:text-[#8ff3d1] md:flex">
+          <Image
+            src={withBasePath("/favicon.png")}
+            alt="Sinal"
+            width={20}
+            height={20}
+            className="rounded-full"
+          />
+          {appwriteEnabled ? "Appwrite + chat" : "Nova conta"}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {appwriteEnabled ? (
+          <div className="rounded-[1.4rem] border border-[#d8f4e8] bg-[#f2fff9] px-4 py-3 text-sm text-[#075e54] dark:border-[#21463a] dark:bg-[#10281f] dark:text-[#92f4d2]">
+            A conta nasce no Appwrite; o backend espelha usuario no MongoDB e libera o token do chat.
+          </div>
+        ) : null}
+
+        <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
+          <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
+            <UserRound className="h-3.5 w-3.5" />
+            Nome exibido
+          </label>
           <Input
-            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
+            className="h-12 rounded-[1rem] border-0 bg-white text-[#111b21] placeholder:text-[#8696a0] dark:bg-[#202c33] dark:text-white"
             placeholder="Nome exibido"
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
           />
+        </div>
+
+        {!appwriteEnabled ? (
+          <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
+            <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
+              @ Usuario
+            </label>
+            <Input
+              className="h-12 rounded-[1rem] border-0 bg-white text-[#111b21] placeholder:text-[#8696a0] dark:bg-[#202c33] dark:text-white"
+              placeholder="Usuario"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+        ) : null}
+
+        <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
+          <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
+            <Mail className="h-3.5 w-3.5" />
+            E-mail
+          </label>
           <Input
-            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
-            placeholder="Usuario"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <Input
-            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
-            placeholder="E-mail"
+            className="h-12 rounded-[1rem] border-0 bg-white text-[#111b21] placeholder:text-[#8696a0] dark:bg-[#202c33] dark:text-white"
+            placeholder="seuemail@dominio.com"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+        </div>
+
+        <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
+          <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
+            <Lock className="h-3.5 w-3.5" />
+            Senha
+          </label>
           <Input
             type="password"
-            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
+            className="h-12 rounded-[1rem] border-0 bg-white text-[#111b21] placeholder:text-[#8696a0] dark:bg-[#202c33] dark:text-white"
             placeholder="Senha"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
           />
-          <Button
-            onClick={() => void cadastrar()}
-            disabled={carregando}
-            className="w-full bg-cyan-300 font-bold text-slate-950 hover:bg-cyan-200"
-          >
-            {carregando ? "Criando conta..." : "Cadastrar"}
-          </Button>
-          <p className="text-center text-sm text-white/55">
-            Ja tem acesso?{" "}
-            <Link
-              href="/login"
-              className="font-semibold text-cyan-300 hover:underline"
-            >
-              Fazer login
-            </Link>
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+
+        <Button
+          onClick={() => void cadastrar()}
+          disabled={carregando}
+          className="h-12 w-full rounded-full bg-[#00a884] text-base font-semibold text-white hover:bg-[#019574]"
+        >
+          {carregando
+            ? "Criando conta..."
+            : appwriteEnabled
+              ? "Cadastrar no Appwrite"
+              : "Cadastrar"}
+        </Button>
+      </div>
+    </AuthShell>
   );
 }

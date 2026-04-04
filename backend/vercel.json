@@ -1,0 +1,8 @@
+{
+  "buildCommand": "",
+  "functions": {
+    "api/[...all].ts": {
+      "maxDuration": 30
+    }
+  }
+}

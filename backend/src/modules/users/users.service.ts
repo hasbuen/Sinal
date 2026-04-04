@@ -1,10 +1,14 @@
 import { Injectable } from "@nestjs/common";
+import { AppwriteService } from "../../appwrite/appwrite.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { UpdateProfileInput } from "./dto/update-profile.input";
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly appwriteService: AppwriteService,
+  ) {}
 
   async search(currentUserId: string, term?: string) {
     return this.prisma.user.findMany({
@@ -24,7 +28,7 @@ export class UsersService {
   }
 
   async updateProfile(currentUserId: string, input: UpdateProfileInput) {
-    return this.prisma.user.update({
+    const user = await this.prisma.user.update({
       where: { id: currentUserId },
       data: {
         displayName: input.displayName?.trim() || undefined,
@@ -32,5 +36,8 @@ export class UsersService {
         avatarUrl: input.avatarUrl?.trim() || undefined,
       },
     });
+
+    await this.appwriteService.syncUserMirror(user);
+    return user;
   }
 }

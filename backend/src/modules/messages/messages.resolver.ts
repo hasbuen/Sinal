@@ -16,7 +16,6 @@ import { SendMessageInput } from "./dto/send-message.input";
 import { ReactToMessageInput } from "./dto/react-to-message.input";
 import { ConversationMessagesInput } from "./dto/conversation-messages.input";
 import { TypingInput } from "./dto/typing.input";
-import { ToggleMessageSavedInput } from "./dto/toggle-message-saved.input";
 import { EditMessageInput } from "./dto/edit-message.input";
 import { DeleteMessageInput } from "./dto/delete-message.input";
 import { ForwardMessageInput } from "./dto/forward-message.input";
@@ -54,15 +53,6 @@ export class MessagesResolver {
     @Args("input") input: ReactToMessageInput,
   ) {
     return this.messagesService.reactToMessage(user.id, input);
-  }
-
-  @UseGuards(GqlAuthGuard)
-  @Mutation(() => MessageModel)
-  toggleMessageSaved(
-    @CurrentUser() user: UserModel,
-    @Args("input") input: ToggleMessageSavedInput,
-  ) {
-    return this.messagesService.toggleMessageSaved(user.id, input);
   }
 
   @UseGuards(GqlAuthGuard)

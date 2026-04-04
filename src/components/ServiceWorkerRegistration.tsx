@@ -2,9 +2,14 @@
 
 import { useEffect } from "react";
 import { withBasePath } from "@/lib/utils";
+import { isEmbeddedAppBrowser } from "@/lib/runtime";
 
 export default function ServiceWorkerRegistration() {
   useEffect(() => {
+    if (isEmbeddedAppBrowser()) {
+      return;
+    }
+
     if (!("serviceWorker" in navigator)) {
       return;
     }

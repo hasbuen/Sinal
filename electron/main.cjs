@@ -4,7 +4,7 @@ const { autoUpdater } = require("electron-updater");
 
 const isDev = !app.isPackaged;
 const remoteAppUrl =
-  process.env.ELECTRON_APP_URL || "https://hasbuen.github.io/Sinal/";
+  process.env.ELECTRON_APP_URL || "https://hasbuen.github.io/Sinal/login/";
 
 let mainWindow = null;
 
@@ -81,7 +81,7 @@ function createWindow() {
   });
 
   if (isDev) {
-    mainWindow.loadURL("http://localhost:3000");
+    mainWindow.loadURL("http://localhost:3000/login");
     mainWindow.webContents.openDevTools({ mode: "detach" });
     return;
   }

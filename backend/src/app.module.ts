@@ -11,6 +11,8 @@ import { UsersModule } from "./modules/users/users.module";
 import { ConversationsModule } from "./modules/conversations/conversations.module";
 import { MessagesModule } from "./modules/messages/messages.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
+import { RealtimeModule } from "./realtime/realtime.module";
+import { AppwriteModule } from "./appwrite/appwrite.module";
 
 @Module({
   imports: [
@@ -71,6 +73,8 @@ import { UploadsModule } from "./modules/uploads/uploads.module";
     ConversationsModule,
     MessagesModule,
     UploadsModule,
+    RealtimeModule,
+    AppwriteModule,
   ],
 })
 export class AppModule {}

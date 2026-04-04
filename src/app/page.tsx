@@ -10,6 +10,7 @@ import {
   TimerReset,
 } from "lucide-react";
 import DownloadQrCard from "@/components/DownloadQrCard";
+import AppPlatformRedirect from "@/components/AppPlatformRedirect";
 import { withBasePath } from "@/lib/utils";
 import packageMeta from "../../package.json";
 
@@ -76,6 +77,7 @@ const distributionOptions = [
 export default function Home() {
   return (
     <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.23),transparent_28%),radial-gradient(circle_at_right,rgba(14,165,233,0.16),transparent_24%),linear-gradient(145deg,#020617_12%,#07111f_48%,#041814_100%)] text-white">
+      <AppPlatformRedirect />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:84px_84px] opacity-20" />
 
       <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-6 py-8 lg:px-8">

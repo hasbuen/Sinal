@@ -56,6 +56,15 @@ export class RedisService implements OnModuleDestroy {
     return this.client.smembers(`typing:${conversationId}`);
   }
 
+  async enqueue(queueName: string, payload: Record<string, unknown>) {
+    if (!this.client) {
+      return;
+    }
+
+    await this.client.lpush(`queue:${queueName}`, JSON.stringify(payload));
+    await this.client.ltrim(`queue:${queueName}`, 0, 499);
+  }
+
   async onModuleDestroy() {
     await this.client?.quit();
   }

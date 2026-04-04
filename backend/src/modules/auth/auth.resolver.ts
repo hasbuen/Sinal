@@ -22,6 +22,11 @@ export class AuthResolver {
     return this.authService.login(input);
   }
 
+  @Mutation(() => AuthResponseModel)
+  appwriteExchangeToken(@Args("jwt") jwt: string) {
+    return this.authService.exchangeAppwriteJwt(jwt);
+  }
+
   @UseGuards(GqlAuthGuard)
   @Query(() => UserModel)
   me(@CurrentUser() user: UserModel) {

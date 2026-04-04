@@ -3,19 +3,68 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, Chrome, Github, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
-import { loginUser, setBackendToken } from "@/lib/backend-client";
-import { withBasePath } from "@/lib/utils";
+import {
+  exchangeAppwriteJwt,
+  getBackendToken,
+  loginUser,
+  setBackendToken,
+} from "@/lib/backend-client";
+import {
+  createAppwriteJwt,
+  getAppwriteCurrentUser,
+  isAppwriteEnabled,
+  loginWithAppwriteEmailPassword,
+  OAuthProvider,
+  startAppwriteOAuthLogin,
+} from "@/lib/appwrite-client";
+import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { withBasePath } from "@/lib/utils";
+import { isEmbeddedAppBrowser, toAppHref } from "@/lib/runtime";
 
 export default function PaginaLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [carregando, setCarregando] = useState(false);
+  const appwriteEnabled = isAppwriteEnabled();
+  const embedded = isEmbeddedAppBrowser();
+
+  useEffect(() => {
+    if (getBackendToken()) {
+      router.replace(toAppHref("/chat"));
+      return;
+    }
+
+    if (!appwriteEnabled) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function bootstrapAppwriteSession() {
+      try {
+        await getAppwriteCurrentUser();
+        const jwt = await createAppwriteJwt();
+        const auth = await exchangeAppwriteJwt(jwt);
+        if (cancelled) return;
+        setBackendToken(auth.accessToken);
+        router.replace(toAppHref("/chat"));
+      } catch {
+        // Sem sessao Appwrite ativa ainda.
+      }
+    }
+
+    void bootstrapAppwriteSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appwriteEnabled, router]);
 
   async function entrar() {
     if (!email || !senha) {
@@ -25,75 +74,155 @@ export default function PaginaLogin() {
 
     try {
       setCarregando(true);
-      const auth = await loginUser(email, senha);
+      const auth = appwriteEnabled
+        ? await (async () => {
+            await loginWithAppwriteEmailPassword(email, senha);
+            const jwt = await createAppwriteJwt();
+            return exchangeAppwriteJwt(jwt);
+          })()
+        : await loginUser(email, senha);
       setBackendToken(auth.accessToken);
-      router.replace("/dashboard");
+      router.replace(toAppHref("/chat"));
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Erro ao entrar no backend.",
+        error instanceof Error ? error.message : "Erro ao entrar no Appwrite.",
       );
     } finally {
       setCarregando(false);
     }
   }
 
+  function handleSocialLogin(provider: OAuthProvider) {
+    if (!appwriteEnabled) {
+      toast.error("Configure o Appwrite para liberar login social.");
+      return;
+    }
+
+    startAppwriteOAuthLogin(provider);
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,#0f766e22,transparent_30%),linear-gradient(180deg,#030712,#111827)] px-4">
-      <Card className="w-full max-w-md border-white/10 bg-slate-950/70 text-white shadow-2xl backdrop-blur">
-        <CardHeader className="space-y-6">
-          <Link
-            href="/"
-            className="text-sm text-white/55 transition hover:text-white"
-          >
-            {"< Voltar para landing"}
+    <AuthShell
+      eyebrow="Entrar"
+      title="Acesse sua caixa de conversas"
+      description={
+        appwriteEnabled
+          ? "Email e senha passam pelo Appwrite e o backend local recebe um token sincronizado para abrir o chat, no navegador, desktop e APK."
+          : "Entre direto no app com a linguagem visual de mensageria. A landing publica continua no navegador, mas Android e Desktop agora caem no fluxo do produto."
+      }
+      footer={
+        <p>
+          Ainda nao tem conta?{" "}
+          <Link href={toAppHref("/cadastro")} className="font-semibold text-[#00a884] hover:underline">
+            Criar agora
           </Link>
-          <CardTitle className="flex items-center justify-center gap-3 text-center text-3xl font-bold text-emerald-300">
-            <Image
-              src={withBasePath("/icons/icon-transparent.png")}
-              alt="Sinal"
-              width={44}
-              height={44}
-              className="rounded-2xl"
-            />
-            <span>Sinal</span>
-          </CardTitle>
-          <p className="text-center text-sm text-white/60">
-            Login via backend NestJS com JWT e GraphQL.
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
+        </p>
+      }
+    >
+      <div className="mb-6 flex items-center justify-between">
+        <Link
+          href={toAppHref("/")}
+          className="inline-flex items-center gap-2 text-sm text-[#667781] transition hover:text-[#111b21] dark:text-white/58 dark:hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Portal publico
+        </Link>
+        <div className="hidden items-center gap-3 rounded-full bg-[#e7fef5] px-4 py-2 text-xs font-medium text-[#075e54] dark:bg-[#123229] dark:text-[#8ff3d1] md:flex">
+          <Image
+            src={withBasePath("/favicon.png")}
+            alt="Sinal"
+            width={20}
+            height={20}
+            className="rounded-full"
+          />
+          {appwriteEnabled ? "Appwrite ativo" : "Login seguro"}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {appwriteEnabled ? (
+          <div className="rounded-[1.4rem] border border-[#d8f4e8] bg-[#f2fff9] px-4 py-3 text-sm text-[#075e54] dark:border-[#21463a] dark:bg-[#10281f] dark:text-[#92f4d2]">
+            Sessao sincronizada com Appwrite, MongoDB, Redis e cache local do app.
+          </div>
+        ) : null}
+
+        <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
+          <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
+            <Mail className="h-3.5 w-3.5" />
+            E-mail
+          </label>
           <Input
-            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
-            placeholder="Digite seu e-mail"
+            className="h-12 rounded-[1rem] border-0 bg-white text-[#111b21] placeholder:text-[#8696a0] dark:bg-[#202c33] dark:text-white"
+            placeholder="seuemail@dominio.com"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
+        </div>
+
+        <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
+          <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
+            <Lock className="h-3.5 w-3.5" />
+            Senha
+          </label>
           <Input
             type="password"
-            className="border-white/10 bg-black/40 text-white placeholder:text-white/35"
+            className="h-12 rounded-[1rem] border-0 bg-white text-[#111b21] placeholder:text-[#8696a0] dark:bg-[#202c33] dark:text-white"
             placeholder="Digite sua senha"
             value={senha}
             onChange={(e) => setSenha(e.target.value)}
           />
-          <Button
-            onClick={() => void entrar()}
-            disabled={carregando}
-            className="w-full bg-emerald-400 font-bold text-slate-950 hover:bg-emerald-300"
-          >
-            {carregando ? "Entrando..." : "Entrar"}
-          </Button>
-          <p className="text-center text-sm text-white/55">
-            Ainda nao tem conta?{" "}
-            <Link
-              href="/cadastro"
-              className="font-semibold text-emerald-300 hover:underline"
-            >
-              Criar agora
-            </Link>
+        </div>
+
+        <Button
+          onClick={() => void entrar()}
+          disabled={carregando}
+          className="h-12 w-full rounded-full bg-[#00a884] text-base font-semibold text-white hover:bg-[#019574]"
+        >
+          {carregando
+            ? "Entrando..."
+            : appwriteEnabled
+              ? "Entrar com Appwrite"
+              : "Entrar"}
+        </Button>
+
+        {appwriteEnabled && !embedded ? (
+          <>
+            <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.25em] text-[#667781] dark:text-white/40">
+              <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
+              social
+              <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-full border-black/10"
+                onClick={() => handleSocialLogin(OAuthProvider.Google)}
+              >
+                <Chrome className="h-4 w-4" />
+                Google
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-full border-black/10"
+                onClick={() => handleSocialLogin(OAuthProvider.Github)}
+              >
+                <Github className="h-4 w-4" />
+                GitHub
+              </Button>
+            </div>
+          </>
+        ) : null}
+
+        {appwriteEnabled && embedded ? (
+          <p className="text-center text-xs text-[#667781] dark:text-white/45">
+            Login social fica melhor no navegador. No APK e no desktop nativo, use e-mail e senha.
           </p>
-        </CardContent>
-      </Card>
-    </div>
+        ) : null}
+      </div>
+    </AuthShell>
   );
 }

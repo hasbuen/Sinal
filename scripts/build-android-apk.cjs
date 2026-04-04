@@ -200,7 +200,7 @@ console.log(`[android] JAVA_HOME=${javaHome}`);
 console.log(`[android] ANDROID_HOME=${androidSdk}`);
 console.log(`[android] Build variant=${variant}`);
 
-runCommand(commandName("npm"), ["run", "build"], repoRoot, env);
+runCommand(commandName("npm"), ["run", "build:app"], repoRoot, env);
 runCommand(commandName("npx"), ["cap", "sync", "android"], repoRoot, env);
 runCommand(gradleExecutable(), [gradleTask], androidDir, env);
 

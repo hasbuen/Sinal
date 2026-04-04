@@ -3,6 +3,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { SignOptions } from "jsonwebtoken";
 import { appConfig } from "../../config/app.config";
+import { AppwriteModule } from "../../appwrite/appwrite.module";
 import { AuthResolver } from "./auth.resolver";
 import { AuthService } from "./auth.service";
 import { JwtStrategy } from "./jwt.strategy";
@@ -10,6 +11,7 @@ import { JwtStrategy } from "./jwt.strategy";
 @Module({
   imports: [
     PassportModule,
+    AppwriteModule,
     JwtModule.register({
       secret: appConfig.jwtSecret,
       signOptions: {
@@ -18,6 +20,6 @@ import { JwtStrategy } from "./jwt.strategy";
     }),
   ],
   providers: [AuthResolver, AuthService, JwtStrategy],
-  exports: [AuthService],
+  exports: [AuthService, JwtModule],
 })
 export class AuthModule {}

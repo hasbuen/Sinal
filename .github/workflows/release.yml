@@ -35,13 +35,11 @@ jobs:
         run: npm run desktop:release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_APP_URL: https://hasbuen.github.io/Sinal/
+          ELECTRON_APP_URL: https://hasbuen.github.io/Sinal/login/
 
       - name: Build Android APK
         run: npm run android:build
         env:
-          NEXT_PUBLIC_BASE_PATH: /Sinal
-          NEXT_PUBLIC_SITE_URL: https://hasbuen.github.io/Sinal
           NEXT_PUBLIC_API_URL: https://sinal-api.vercel.app/api/graphql
           NEXT_PUBLIC_BACKEND_ORIGIN: https://sinal-api.vercel.app
           NEXT_PUBLIC_ENABLE_WEBSOCKETS: "false"

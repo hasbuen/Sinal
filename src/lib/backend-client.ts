@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient, type Client, type SubscribePayload } from "graphql-ws";
+import { io, type Socket } from "socket.io-client";
 
 const LOCAL_BACKEND_ORIGIN = "http://localhost:4000";
 const PRODUCTION_BACKEND_ORIGIN = "https://sinal-api.vercel.app";
@@ -16,16 +17,23 @@ function isLocalRuntime() {
 const BACKEND_ORIGIN =
   process.env.NEXT_PUBLIC_BACKEND_ORIGIN ||
   (isLocalRuntime() ? LOCAL_BACKEND_ORIGIN : PRODUCTION_BACKEND_ORIGIN);
-const WEBSOCKETS_ENABLED =
-  process.env.NEXT_PUBLIC_ENABLE_WEBSOCKETS === "true" || isLocalRuntime();
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL || `${BACKEND_ORIGIN}/api/graphql`;
 const API_WS_URL = API_URL.replace(/^http/i, (protocol) =>
   protocol.toLowerCase() === "https" ? "wss" : "ws",
 );
+const SOCKET_IO_URL = process.env.NEXT_PUBLIC_SOCKET_IO_URL || BACKEND_ORIGIN;
+const REALTIME_TRANSPORT =
+  process.env.NEXT_PUBLIC_REALTIME_TRANSPORT ||
+  (isLocalRuntime()
+    ? "socketio"
+    : process.env.NEXT_PUBLIC_ENABLE_WEBSOCKETS === "true"
+      ? "graphql-ws"
+      : "polling");
 const TOKEN_KEY = "sinal-access-token";
 
 let wsClient: Client | null = null;
+let socketClient: Socket | null = null;
 
 type GraphQLResponse<T> = {
   data?: T;
@@ -40,6 +48,33 @@ export type BackendUser = {
   avatarUrl?: string | null;
   bio?: string | null;
   lastSeenAt?: string | null;
+};
+
+export type AppwriteDashboard = {
+  configured: boolean;
+  appwriteUserCount: number;
+  appwriteGroupCount: number;
+  mongoEnabled: boolean;
+  redisEnabled: boolean;
+  sqliteEnabled: boolean;
+  mirrorCollections: string[];
+};
+
+export type AppwriteAdminUser = {
+  id: string;
+  name: string;
+  email?: string | null;
+  status: boolean;
+  emailVerification: boolean;
+  labels: string[];
+  lastSeenAt?: string | null;
+};
+
+export type AppwriteAdminGroup = {
+  id: string;
+  name: string;
+  total: number;
+  roles: string[];
 };
 
 export type BackendConversationMember = {
@@ -261,7 +296,7 @@ const conversationFields = `
 `;
 
 function getWsClient() {
-  if (!WEBSOCKETS_ENABLED) {
+  if (REALTIME_TRANSPORT !== "graphql-ws") {
     return null;
   }
 
@@ -279,6 +314,68 @@ function getWsClient() {
   }
 
   return wsClient;
+}
+
+function getSocketClient() {
+  if (typeof window === "undefined" || REALTIME_TRANSPORT !== "socketio") {
+    return null;
+  }
+
+  if (!socketClient) {
+    socketClient = io(SOCKET_IO_URL, {
+      autoConnect: false,
+      transports: ["websocket", "polling"],
+      withCredentials: true,
+    });
+  }
+
+  socketClient.auth = getBackendToken()
+    ? { token: `Bearer ${getBackendToken()}` }
+    : {};
+
+  if (!socketClient.connected) {
+    socketClient.connect();
+  }
+
+  return socketClient;
+}
+
+function subscribeToSocketConversationEvent<TPayload>(
+  conversationId: string,
+  eventName: string,
+  onData: (payload: TPayload) => void,
+  onError?: (error: Error) => void,
+) {
+  const client = getSocketClient();
+  if (!client) {
+    return null;
+  }
+
+  const handler = (payload: TPayload & { conversationId?: string }) => {
+    if (payload?.conversationId && payload.conversationId !== conversationId) {
+      return;
+    }
+
+    onData(payload);
+  };
+
+  const errorHandler = (error: { message?: string } | Error) => {
+    onError?.(
+      error instanceof Error
+        ? error
+        : new Error(error.message || "Socket.IO realtime error."),
+    );
+  };
+
+  client.emit("conversation:join", { conversationId });
+  client.on(eventName, handler);
+  client.on("connect_error", errorHandler);
+
+  return () => {
+    client.off(eventName, handler);
+    client.off("connect_error", errorHandler);
+    client.emit("conversation:leave", { conversationId });
+  };
 }
 
 function parseGraphQlError(error: unknown) {
@@ -307,6 +404,13 @@ export function setBackendToken(token: string) {
   }
 
   window.localStorage.setItem(TOKEN_KEY, token);
+
+  if (socketClient) {
+    socketClient.auth = { token: `Bearer ${token}` };
+    if (!socketClient.connected) {
+      socketClient.connect();
+    }
+  }
 }
 
 export function clearBackendToken() {
@@ -315,6 +419,7 @@ export function clearBackendToken() {
   }
 
   window.localStorage.removeItem(TOKEN_KEY);
+  socketClient?.disconnect();
 }
 
 export function resolveBackendAssetUrl(url?: string | null) {
@@ -411,7 +516,7 @@ export function gqlSubscribe<TData>(
 }
 
 export function supportsWebSocketRealtime() {
-  return WEBSOCKETS_ENABLED;
+  return REALTIME_TRANSPORT !== "polling";
 }
 
 export async function loginUser(email: string, password: string) {
@@ -443,6 +548,32 @@ export async function loginUser(email: string, password: string) {
   );
 
   return data.login;
+}
+
+export async function exchangeAppwriteJwt(jwt: string) {
+  const data = await gqlRequest<{
+    appwriteExchangeToken: { accessToken: string; user: BackendUser };
+  }>(
+    `
+      mutation AppwriteExchangeToken($jwt: String!) {
+        appwriteExchangeToken(jwt: $jwt) {
+          accessToken
+          user {
+            id
+            email
+            username
+            displayName
+            avatarUrl
+            bio
+            lastSeenAt
+          }
+        }
+      }
+    `,
+    { jwt },
+  );
+
+  return data.appwriteExchangeToken;
 }
 
 export async function registerUser(input: {
@@ -513,6 +644,84 @@ export async function getUsers(term?: string) {
   );
 
   return data.users;
+}
+
+export async function getAppwriteDashboard() {
+  const data = await gqlRequest<{ appwriteDashboard: AppwriteDashboard }>(`
+    query AppwriteDashboard {
+      appwriteDashboard {
+        configured
+        appwriteUserCount
+        appwriteGroupCount
+        mongoEnabled
+        redisEnabled
+        sqliteEnabled
+        mirrorCollections
+      }
+    }
+  `);
+
+  return data.appwriteDashboard;
+}
+
+export async function getAppwriteUsers(search?: string) {
+  const data = await gqlRequest<{ appwriteUsers: AppwriteAdminUser[] }>(
+    `
+      query AppwriteUsers($search: String) {
+        appwriteUsers(search: $search) {
+          id
+          name
+          email
+          status
+          emailVerification
+          labels
+          lastSeenAt
+        }
+      }
+    `,
+    search ? { search } : undefined,
+  );
+
+  return data.appwriteUsers;
+}
+
+export async function getAppwriteGroups(search?: string) {
+  const data = await gqlRequest<{ appwriteGroups: AppwriteAdminGroup[] }>(
+    `
+      query AppwriteGroups($search: String) {
+        appwriteGroups(search: $search) {
+          id
+          name
+          total
+          roles
+        }
+      }
+    `,
+    search ? { search } : undefined,
+  );
+
+  return data.appwriteGroups;
+}
+
+export async function createAppwriteGroup(input: {
+  name: string;
+  memberUserIds: string[];
+}) {
+  const data = await gqlRequest<{ appwriteCreateGroup: AppwriteAdminGroup }>(
+    `
+      mutation AppwriteCreateGroup($input: CreateAppwriteGroupInput!) {
+        appwriteCreateGroup(input: $input) {
+          id
+          name
+          total
+          roles
+        }
+      }
+    `,
+    { input },
+  );
+
+  return data.appwriteCreateGroup;
 }
 
 export async function getConversations() {
@@ -644,26 +853,6 @@ export async function reactToMessage(messageId: string, emoji: string) {
   );
 
   return data.reactToMessage;
-}
-
-export async function toggleMessageSaved(messageId: string, saved: boolean) {
-  const data = await gqlRequest<{ toggleMessageSaved: BackendMessage }>(
-    `
-      mutation ToggleMessageSaved($input: ToggleMessageSavedInput!) {
-        toggleMessageSaved(input: $input) {
-          ${messageFields}
-        }
-      }
-    `,
-    {
-      input: {
-        messageId,
-        saved,
-      },
-    },
-  );
-
-  return data.toggleMessageSaved;
 }
 
 export async function editMessage(input: {
@@ -828,6 +1017,17 @@ export function subscribeToMessageEvents(
   onData: (event: BackendMessageEvent) => void,
   onError?: (error: Error) => void,
 ) {
+  const disposeSocket = subscribeToSocketConversationEvent<BackendMessageEvent>(
+    conversationId,
+    "message:event",
+    onData,
+    onError,
+  );
+
+  if (disposeSocket) {
+    return disposeSocket;
+  }
+
   return gqlSubscribe<{ messageEvent: BackendMessageEvent }>(
     `
       subscription MessageEvent($conversationId: ID!) {
@@ -851,6 +1051,17 @@ export function subscribeToPresence(
   onData: (presence: BackendPresence) => void,
   onError?: (error: Error) => void,
 ) {
+  const disposeSocket = subscribeToSocketConversationEvent<BackendPresence>(
+    conversationId,
+    "presence:update",
+    onData,
+    onError,
+  );
+
+  if (disposeSocket) {
+    return disposeSocket;
+  }
+
   return gqlSubscribe<{ presenceChanged: BackendPresence }>(
     `
       subscription PresenceChanged($conversationId: ID!) {
@@ -875,6 +1086,17 @@ export function subscribeToCallSignals(
   onData: (signal: BackendCallSignal) => void,
   onError?: (error: Error) => void,
 ) {
+  const disposeSocket = subscribeToSocketConversationEvent<BackendCallSignal>(
+    conversationId,
+    "call:signal",
+    onData,
+    onError,
+  );
+
+  if (disposeSocket) {
+    return disposeSocket;
+  }
+
   return gqlSubscribe<{ callSignal: BackendCallSignal }>(
     `
       subscription CallSignal($conversationId: ID!) {

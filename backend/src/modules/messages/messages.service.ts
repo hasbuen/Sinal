@@ -5,12 +5,12 @@ import {
   Prisma,
 } from "@prisma/client";
 import { PrismaService } from "../../prisma/prisma.service";
+import { AppwriteService } from "../../appwrite/appwrite.service";
 import { ConversationsService } from "../conversations/conversations.service";
 import { SendMessageInput } from "./dto/send-message.input";
 import { ReactToMessageInput } from "./dto/react-to-message.input";
 import { ConversationMessagesInput } from "./dto/conversation-messages.input";
 import { TypingInput } from "./dto/typing.input";
-import { ToggleMessageSavedInput } from "./dto/toggle-message-saved.input";
 import { EditMessageInput } from "./dto/edit-message.input";
 import { DeleteMessageInput } from "./dto/delete-message.input";
 import { ForwardMessageInput } from "./dto/forward-message.input";
@@ -23,6 +23,7 @@ import {
   MessageKind,
 } from "../conversations/models/chat.enums";
 import { callPubSub, messagePubSub } from "./chat.events";
+import { RealtimeGateway } from "../../realtime/realtime.gateway";
 
 const messageInclude = {
   sender: true,
@@ -61,7 +62,6 @@ type PrismaMessagePayload = {
   linkTitle?: string | null;
   linkDescription?: string | null;
   expiresAt?: Date | null;
-  savedByIds?: string[] | null;
   deliveredToIds?: string[] | null;
   readByIds?: string[] | null;
   attachments?: unknown[];
@@ -79,6 +79,8 @@ export class MessagesService {
     private readonly conversationsService: ConversationsService,
     private readonly redisService: RedisService,
     private readonly sqliteCache: CacheSqliteService,
+    private readonly realtimeGateway: RealtimeGateway,
+    private readonly appwriteService: AppwriteService,
   ) {}
 
   private toPrismaMessageKind(
@@ -141,25 +143,23 @@ export class MessagesService {
     }
   }
 
-  private getVisibleMessageWhere(currentUserId: string, conversationId?: string) {
+  private getVisibleMessageWhere(_currentUserId: string, conversationId?: string) {
     return {
       ...(conversationId ? { conversationId } : {}),
       OR: [
         { expiresAt: { equals: null } },
         { expiresAt: { gt: new Date() } },
-        { savedByIds: { has: currentUserId } },
       ],
     };
   }
 
   private mapMessageForUser<T extends PrismaMessagePayload>(
     message: T,
-    currentUserId: string,
+    _currentUserId: string,
   ) {
-    const savedByIds = message.savedByIds ?? [];
     return {
       ...message,
-      isSaved: savedByIds.includes(currentUserId),
+      isSaved: false,
       deliveredToIds: message.deliveredToIds ?? [],
       readByIds: message.readByIds ?? [],
     };
@@ -170,6 +170,17 @@ export class MessagesService {
     messageId: string,
     event: MessageEventType,
   ) {
+    await this.redisService.enqueue("messages", {
+      conversationId,
+      messageId,
+      event,
+      createdAt: new Date().toISOString(),
+    });
+    this.realtimeGateway.emitMessageEvent({
+      conversationId,
+      messageId,
+      event,
+    });
     await messagePubSub.publish("message.event", {
       messageEvent: {
         messageId,
@@ -372,6 +383,7 @@ export class MessagesService {
       message.conversationId,
       JSON.stringify(message),
     );
+    await this.appwriteService.syncMessageMirror(message);
 
     await this.publishMessageEvent(
       input.conversationId,
@@ -417,46 +429,7 @@ export class MessagesService {
       where: { id: input.messageId },
       include: messageInclude,
     });
-
-    await this.publishMessageEvent(
-      message.conversationId,
-      message.id,
-      MessageEventType.UPDATED,
-    );
-
-    return this.mapMessageForUser(updated as PrismaMessagePayload, currentUserId);
-  }
-
-  async toggleMessageSaved(currentUserId: string, input: ToggleMessageSavedInput) {
-    const message = await this.prisma.message.findUniqueOrThrow({
-      where: { id: input.messageId },
-    });
-
-    await this.conversationsService.assertMembership(
-      message.conversationId,
-      currentUserId,
-    );
-
-    const savedByIds = new Set(message.savedByIds ?? []);
-    if (input.saved) {
-      savedByIds.add(currentUserId);
-    } else {
-      savedByIds.delete(currentUserId);
-    }
-
-    const updated = await this.prisma.message.update({
-      where: { id: input.messageId },
-      data: {
-        savedByIds: Array.from(savedByIds),
-      },
-      include: messageInclude,
-    });
-
-    this.sqliteCache.cacheMessage(
-      updated.id,
-      updated.conversationId,
-      JSON.stringify(updated),
-    );
+    await this.appwriteService.syncMessageMirror(updated);
 
     await this.publishMessageEvent(
       message.conversationId,
@@ -499,6 +472,7 @@ export class MessagesService {
       },
       include: messageInclude,
     });
+    await this.appwriteService.syncMessageMirror(updated);
 
     await this.publishMessageEvent(
       message.conversationId,
@@ -524,6 +498,7 @@ export class MessagesService {
     }
 
     const updated = await this.normalizeDeletedMessage(currentUserId, message.id);
+    await this.appwriteService.syncMessageMirror(updated);
     await this.publishMessageEvent(
       message.conversationId,
       message.id,
@@ -593,6 +568,7 @@ export class MessagesService {
         lastMessageAt: message.createdAt,
       },
     });
+    await this.appwriteService.syncMessageMirror(message);
 
     await this.publishMessageEvent(
       input.conversationId,
@@ -642,6 +618,12 @@ export class MessagesService {
       payload: input.payload ?? null,
       createdAt: new Date(),
     };
+
+    await this.redisService.enqueue("calls", {
+      ...payload,
+      createdAt: payload.createdAt.toISOString(),
+    });
+    this.realtimeGateway.emitCallSignal(payload);
 
     await callPubSub.publish("call.signal", {
       callSignal: payload,

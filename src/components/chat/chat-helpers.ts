@@ -122,7 +122,7 @@ export function dedupeConversations(
 }
 
 export function timeUntilExpiry(message: BackendMessage, now: number) {
-  if (message.isSaved || !message.expiresAt) return null;
+  if (!message.expiresAt) return null;
   const diff = new Date(message.expiresAt).getTime() - now;
   if (diff <= 0) return "Expirando...";
   const minutes = Math.floor(diff / 60000);

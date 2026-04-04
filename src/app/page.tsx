@@ -2,9 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  Blocks,
+  LockKeyhole,
   Globe,
   Laptop2,
-  ShieldCheck,
+  ServerCog,
   Smartphone,
   Sparkles,
   TimerReset,
@@ -25,38 +27,43 @@ const androidDownloadUrl = `${latestReleaseUrl}/download/sinal-android.apk`;
 
 const highlights = [
   {
+    title: "Appwrite na entrada",
+    text: "Cadastro, login social e sessao principal agora passam por Appwrite antes de abrir o chat.",
+    icon: LockKeyhole,
+  },
+  {
+    title: "Infra em camadas",
+    text: "MongoDB, Redis e SQLite continuam ativos para espelho, presenca, fila curta e cache local.",
+    icon: ServerCog,
+  },
+  {
+    title: "APK e desktop de verdade",
+    text: "As superficies nativas entram no fluxo do produto e caem direto em login ou chat, nao na landing.",
+    icon: Blocks,
+  },
+  {
     title: "Expiracao real",
     text: "As mensagens desaparecem depois de 1 hora por padrao, sem lotar a conversa para sempre.",
     icon: TimerReset,
-  },
-  {
-    title: "Controle individual",
-    text: "Cada usuario decide o que quer salvar, sem travar o fluxo efemero do restante do grupo.",
-    icon: ShieldCheck,
-  },
-  {
-    title: "Mesmo produto em 3 superficies",
-    text: "Entre no navegador, instale no Windows ou baixe o APK direto da release publica.",
-    icon: Sparkles,
   },
 ];
 
 const distributionOptions = [
   {
     eyebrow: "Navegador",
-    title: "Abrir no browser",
+    title: "Entrar pelo navegador",
     description:
-      "Fluxo mais rapido para testar agora. O QR code leva direto para o login web publico.",
+      "A superficie web publica abre direto no fluxo do produto com Appwrite e entrada no chat.",
     href: browserAppUrl,
-    hrefLabel: "Entrar no navegador",
-    caption: "Escaneie para abrir a versao web",
+    hrefLabel: "Abrir web",
+    caption: "Escaneie para entrar no app web",
     icon: Globe,
   },
   {
     eyebrow: "Windows",
-    title: "Desktop com instalador",
+    title: "Desktop nativo",
     description:
-      "Baixe o instalador do release publico para usar o app Electron com atualizacao automatica.",
+      "Baixe o instalador Windows e entre no chat sem passar pela landing dentro do app.",
     href: desktopDownloadUrl,
     hrefLabel: "Baixar desktop",
     caption: "Escaneie para baixar o instalador",
@@ -64,9 +71,9 @@ const distributionOptions = [
   },
   {
     eyebrow: "Android",
-    title: "APK direta do release",
+    title: "APK nativo",
     description:
-      "Baixe o APK direto da release publica no GitHub. Sem Play Store no meio do caminho.",
+      "Baixe o APK direto da release publica e abra o fluxo nativo de login/chat no Android.",
     href: androidDownloadUrl,
     hrefLabel: "Baixar APK",
     caption: "Escaneie para baixar no Android",
@@ -95,7 +102,7 @@ export default function Home() {
               <p className="text-[0.65rem] uppercase tracking-[0.38em] text-emerald-200/70">
                 Sinal {packageMeta.version}
               </p>
-              <h1 className="text-lg font-semibold">Distribuicao publica pronta para web, desktop e Android</h1>
+              <h1 className="text-lg font-semibold">Mensageria pronta para navegador, desktop e Android</h1>
             </div>
           </div>
 
@@ -125,27 +132,34 @@ export default function Home() {
           <div className="space-y-8">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-100">
               <Sparkles className="size-4" />
-              Landing publica com entrada direta por plataforma
+              Landing publica alinhada com Appwrite, chat e binarios nativos
             </div>
 
             <div className="space-y-5">
               <h2 className="max-w-4xl text-5xl font-semibold leading-[1.02] tracking-tight md:text-7xl">
-                Uma home que ja vira portal de acesso, instalacao e release.
+                Entre no app certo, pela superficie certa.
               </h2>
               <p className="max-w-2xl text-lg leading-8 text-white/68">
-                O Sinal agora apresenta a superficie publica do produto e entrega os
-                tres caminhos de entrada em um unico lugar: navegador, instalador
-                Windows e APK Android com QR code para acesso imediato.
+                O Sinal agora apresenta o produto como produto: autenticacao com
+                Appwrite, chat em tempo real e entrada direta por navegador,
+                instalador Windows e APK Android. A landing continua publica, mas
+                desktop e APK abrem o fluxo real de login e conversa.
               </p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Link
                 href={browserRoute}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-100"
               >
                 Abrir no navegador
                 <ArrowRight className="size-4" />
+              </Link>
+              <Link
+                href={withBasePath("/cadastro/")}
+                className="inline-flex items-center justify-center rounded-full border border-emerald-300/30 bg-emerald-300/10 px-6 py-3 font-semibold text-emerald-100 transition hover:border-emerald-200/60 hover:bg-emerald-300/15"
+              >
+                Criar conta
               </Link>
               <Link
                 href={latestReleaseUrl}
@@ -155,7 +169,7 @@ export default function Home() {
               </Link>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {highlights.map(({ title, text, icon: Icon }) => (
                 <div
                   key={title}
@@ -194,6 +208,7 @@ export default function Home() {
               <div className="mt-6 space-y-4">
                 {[
                   ["Web publica", browserAppUrl],
+                  ["Cadastro web", new URL(withBasePath("/cadastro/"), `${siteUrl}/`).toString()],
                   ["Instalador Windows", desktopDownloadUrl],
                   ["APK Android", androidDownloadUrl],
                 ].map(([label, value]) => (
@@ -209,6 +224,11 @@ export default function Home() {
                     </p>
                   </div>
                 ))}
+              </div>
+
+              <div className="mt-5 rounded-[1.8rem] border border-emerald-300/15 bg-emerald-300/8 p-4 text-sm text-emerald-50/90">
+                Appwrite faz a autenticacao e a superficie publica. MongoDB, Redis e SQLite
+                continuam segurando espelho operacional, presenca e cache local do produto.
               </div>
             </div>
           </div>

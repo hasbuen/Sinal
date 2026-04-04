@@ -50,7 +50,7 @@ export default function PaginaCadastro() {
       <Card className="w-full max-w-md rounded-[2rem] border-white/10 bg-slate-950/75 text-white shadow-2xl backdrop-blur">
         <CardHeader className="space-y-6">
           <Link
-            href={withBasePath("/")}
+            href="/"
             className="text-sm text-white/55 transition hover:text-white"
           >
             {"< Voltar para landing"}
@@ -106,7 +106,7 @@ export default function PaginaCadastro() {
           <p className="text-center text-sm text-white/55">
             Ja tem acesso?{" "}
             <Link
-              href={withBasePath("/login")}
+              href="/login"
               className="font-semibold text-cyan-300 hover:underline"
             >
               Fazer login

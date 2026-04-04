@@ -42,7 +42,7 @@ export default function PaginaLogin() {
       <Card className="w-full max-w-md border-white/10 bg-slate-950/70 text-white shadow-2xl backdrop-blur">
         <CardHeader className="space-y-6">
           <Link
-            href={withBasePath("/")}
+            href="/"
             className="text-sm text-white/55 transition hover:text-white"
           >
             {"< Voltar para landing"}
@@ -86,7 +86,7 @@ export default function PaginaLogin() {
           <p className="text-center text-sm text-white/55">
             Ainda nao tem conta?{" "}
             <Link
-              href={withBasePath("/cadastro")}
+              href="/cadastro"
               className="font-semibold text-emerald-300 hover:underline"
             >
               Criar agora

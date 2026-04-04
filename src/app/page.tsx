@@ -13,7 +13,8 @@ import DownloadQrCard from "@/components/DownloadQrCard";
 import { withBasePath } from "@/lib/utils";
 import packageMeta from "../../package.json";
 
-const browserPath = withBasePath("/login/");
+const browserRoute = "/login/";
+const browserPath = withBasePath(browserRoute);
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://hasbuen.github.io/Sinal")
   .replace(/\/+$/, "");
 const browserAppUrl = new URL(browserPath, `${siteUrl}/`).toString();
@@ -98,7 +99,7 @@ export default function Home() {
 
           <nav className="flex flex-wrap items-center gap-2 text-sm">
             <Link
-              href={browserPath}
+              href={browserRoute}
               className="rounded-full border border-white/12 px-4 py-2 text-white/78 transition hover:border-emerald-300/40 hover:text-white"
             >
               Navegador
@@ -138,7 +139,7 @@ export default function Home() {
 
             <div className="flex flex-col gap-3 sm:flex-row">
               <Link
-                href={browserPath}
+                href={browserRoute}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-semibold text-slate-950 transition hover:bg-emerald-100"
               >
                 Abrir no navegador

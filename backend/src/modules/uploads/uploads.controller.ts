@@ -41,8 +41,13 @@ export class UploadsController {
     @Req() request: Request,
     @Res() response: Response,
   ) {
-    const file = await this.uploadsService.getAppwriteFile(fileId);
-    return this.replyWithRange(request, response, file.buffer, file.mimeType, file.name);
+    try {
+      const file = await this.uploadsService.getAppwriteFile(fileId);
+      return this.replyWithRange(request, response, file.buffer, file.mimeType, file.name);
+    } catch {
+      response.status(204).end();
+      return;
+    }
   }
 
   @Get("appwrite/:fileId/preview")
@@ -51,10 +56,14 @@ export class UploadsController {
     @Param("fileId") fileId: string,
     @Res() response: Response,
   ) {
-    const preview = await this.uploadsService.getAppwritePreview(fileId);
-    response.setHeader("Content-Type", "image/png");
-    response.setHeader("Content-Length", preview.length.toString());
-    response.send(preview);
+    try {
+      const preview = await this.uploadsService.getAppwritePreview(fileId);
+      response.setHeader("Content-Type", "image/png");
+      response.setHeader("Content-Length", preview.length.toString());
+      response.send(preview);
+    } catch {
+      response.status(204).end();
+    }
   }
 
   private replyWithRange(

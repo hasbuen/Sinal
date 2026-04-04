@@ -1,5 +1,11 @@
 {
   "buildCommand": "",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/[...all]"
+    }
+  ],
   "functions": {
     "api/[...all].ts": {
       "maxDuration": 30

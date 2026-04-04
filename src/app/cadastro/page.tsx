@@ -99,9 +99,7 @@ export default function PaginaCadastro() {
             password: senha,
           });
       setBackendToken(auth.accessToken);
-      toast.success(
-        appwriteEnabled ? "Conta criada no Appwrite." : "Conta criada no MongoDB.",
-      );
+      toast.success("Conta criada com sucesso.");
       router.replace(toAppHref("/chat"));
     } catch (error) {
       toast.error(
@@ -114,12 +112,12 @@ export default function PaginaCadastro() {
 
   function cadastrarComGoogle() {
     if (!appwriteEnabled) {
-      toast.error("Configure o Appwrite para liberar cadastro com Google.");
+      toast.error("Cadastro com Google indisponivel agora.");
       return;
     }
 
     if (!googleOAuthEnabled) {
-      toast.error("Google ainda nao foi configurado no Appwrite.");
+      toast.error("Cadastro com Google indisponivel agora.");
       return;
     }
 
@@ -130,11 +128,7 @@ export default function PaginaCadastro() {
     <AuthShell
       eyebrow="Cadastro"
       title="Crie sua conta e entre no chat"
-      description={
-        appwriteEnabled
-          ? "O cadastro passa pelo Appwrite e a conta local e sincronizada automaticamente para abrir o chat, o painel admin e os espelhos em MongoDB."
-          : "O cadastro abre a experiencia real do produto com foco em conversa, sem retorno para portal publico."
-      }
+      description="Crie sua conta em poucos segundos para começar a conversar."
       footer={
         <p>
           Ja tem acesso?{" "}
@@ -153,17 +147,11 @@ export default function PaginaCadastro() {
             height={20}
             className="rounded-full"
           />
-          {appwriteEnabled ? "Appwrite + chat" : "Nova conta"}
+          Nova conta
         </div>
       </div>
 
       <div className="space-y-4">
-        {appwriteEnabled ? (
-          <div className="rounded-[1.4rem] border border-[#d8f4e8] bg-[#f2fff9] px-4 py-3 text-sm text-[#075e54] dark:border-[#21463a] dark:bg-[#10281f] dark:text-[#92f4d2]">
-            A conta nasce no Appwrite; o backend espelha usuario no MongoDB e libera o token do chat.
-          </div>
-        ) : null}
-
         <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
           <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
             <UserRound className="h-3.5 w-3.5" />
@@ -224,14 +212,10 @@ export default function PaginaCadastro() {
           disabled={carregando}
           className="h-12 w-full rounded-full bg-[#00a884] text-base font-semibold text-white hover:bg-[#019574]"
         >
-          {carregando
-            ? "Criando conta..."
-            : appwriteEnabled
-              ? "Cadastrar no Appwrite"
-              : "Cadastrar"}
+          {carregando ? "Criando conta..." : "Cadastrar"}
         </Button>
 
-        {appwriteEnabled && !embedded ? (
+        {appwriteEnabled && googleOAuthEnabled && !embedded ? (
           <>
             <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.25em] text-[#667781] dark:text-white/40">
               <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
@@ -243,18 +227,17 @@ export default function PaginaCadastro() {
               type="button"
               variant="outline"
               className="h-11 w-full rounded-full border-black/10"
-              disabled={!googleOAuthEnabled}
               onClick={cadastrarComGoogle}
             >
               <Chrome className="h-4 w-4" />
-              {googleOAuthEnabled ? "Cadastrar com Google" : "Google em configuracao"}
+              Continuar com Google
             </Button>
           </>
         ) : null}
 
-        {appwriteEnabled && embedded ? (
+        {appwriteEnabled && googleOAuthEnabled && embedded ? (
           <p className="text-center text-xs text-[#667781] dark:text-white/45">
-            Cadastro com Google funciona melhor no navegador. No APK e no desktop nativo, use e-mail e senha.
+            Cadastro com Google fica disponivel no navegador. Aqui, use e-mail e senha.
           </p>
         ) : null}
       </div>

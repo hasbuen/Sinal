@@ -29,13 +29,13 @@ const androidDownloadUrl = `${latestReleaseUrl}/download/sinal-android.apk`;
 
 const highlights = [
   {
-    title: "Appwrite na entrada",
-    text: "Cadastro, login social e sessao principal agora passam por Appwrite antes de abrir o chat.",
+    title: "Entrada direta",
+    text: "Abra pelo navegador, desktop ou Android e caia direto no fluxo de conversa.",
     icon: LockKeyhole,
   },
   {
-    title: "Infra em camadas",
-    text: "MongoDB, Redis e SQLite continuam ativos para espelho, presenca, fila curta e cache local.",
+    title: "Conversa sem atrito",
+    text: "Login rapido, mensagens efemeras e midia em uma experiencia mais limpa.",
     icon: ServerCog,
   },
   {
@@ -134,7 +134,7 @@ export default function Home() {
           <div className="space-y-8">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-100">
               <Sparkles className="size-4" />
-              Landing publica alinhada com Appwrite, chat e binarios nativos
+              Navegador, desktop e Android na mesma release
             </div>
 
             <div className="space-y-5">
@@ -142,10 +142,10 @@ export default function Home() {
                 Entre no app certo, pela superficie certa.
               </h2>
               <p className="max-w-2xl text-lg leading-8 text-white/68">
-                O Sinal agora apresenta o produto como produto: autenticacao com
-                Appwrite, chat em tempo real e entrada direta por navegador,
-                instalador Windows e APK Android. A landing continua publica, mas
-                desktop e APK abrem o fluxo real de login e conversa.
+                O Sinal agora abre o caminho certo em cada superficie: navegador
+                para acesso imediato, instalador Windows para desktop nativo e
+                APK Android para uso direto no aparelho. Sem desvio para landing
+                dentro dos aplicativos.
               </p>
             </div>
 
@@ -229,8 +229,8 @@ export default function Home() {
               </div>
 
               <div className="mt-5 rounded-[1.8rem] border border-emerald-300/15 bg-emerald-300/8 p-4 text-sm text-emerald-50/90">
-                Appwrite faz a autenticacao e a superficie publica. MongoDB, Redis e SQLite
-                continuam segurando espelho operacional, presenca e cache local do produto.
+                Escolha sua plataforma, entre com sua conta e continue a conversa
+                do ponto em que parou.
               </div>
             </div>
           </div>

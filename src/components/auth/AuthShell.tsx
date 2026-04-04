@@ -22,7 +22,7 @@ const highlights = [
   {
     icon: LockKeyhole,
     title: "Entrada rapida",
-    text: "Acesse o fluxo real do produto com login direto, sem desvio para portal publico.",
+    text: "Abra o app e entre direto nas suas conversas, sem etapas desnecessarias.",
   },
   {
     icon: ShieldCheck,

@@ -86,9 +86,7 @@ export default function PaginaLogin() {
       setBackendToken(auth.accessToken);
       router.replace(toAppHref("/chat"));
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Erro ao entrar no Appwrite.",
-      );
+      toast.error(error instanceof Error ? error.message : "Erro ao entrar.");
     } finally {
       setCarregando(false);
     }
@@ -96,12 +94,12 @@ export default function PaginaLogin() {
 
   function handleSocialLogin(provider: OAuthProvider) {
     if (!appwriteEnabled) {
-      toast.error("Configure o Appwrite para liberar login social.");
+      toast.error("Login social indisponivel agora.");
       return;
     }
 
     if (provider === OAuthProvider.Google && !googleOAuthEnabled) {
-      toast.error("Google ainda nao foi configurado no Appwrite.");
+      toast.error("Login com Google indisponivel agora.");
       return;
     }
 
@@ -112,11 +110,7 @@ export default function PaginaLogin() {
     <AuthShell
       eyebrow="Entrar"
       title="Acesse sua caixa de conversas"
-      description={
-        appwriteEnabled
-          ? "Email e senha passam pelo Appwrite e o backend local recebe um token sincronizado para abrir o chat no navegador, desktop e Android."
-          : "Entre direto no app com fluxo de mensageria, sem depender de pagina publica para abrir conversa."
-      }
+      description="Entre com sua conta para abrir suas conversas no navegador, desktop ou Android."
       footer={
         <p>
           Ainda nao tem conta?{" "}
@@ -135,17 +129,11 @@ export default function PaginaLogin() {
             height={20}
             className="rounded-full"
           />
-          {appwriteEnabled ? "Appwrite ativo" : "Login seguro"}
+          Conta segura
         </div>
       </div>
 
       <div className="space-y-4">
-        {appwriteEnabled ? (
-          <div className="rounded-[1.4rem] border border-[#d8f4e8] bg-[#f2fff9] px-4 py-3 text-sm text-[#075e54] dark:border-[#21463a] dark:bg-[#10281f] dark:text-[#92f4d2]">
-            Sessao sincronizada com Appwrite, MongoDB, Redis e cache local do app.
-          </div>
-        ) : null}
-
         <div className="rounded-[1.5rem] bg-[#f7f8fa] p-3 dark:bg-[#0b141a]">
           <label className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#667781] dark:text-white/45">
             <Mail className="h-3.5 w-3.5" />
@@ -179,14 +167,10 @@ export default function PaginaLogin() {
           disabled={carregando}
           className="h-12 w-full rounded-full bg-[#00a884] text-base font-semibold text-white hover:bg-[#019574]"
         >
-          {carregando
-            ? "Entrando..."
-            : appwriteEnabled
-              ? "Entrar com Appwrite"
-              : "Entrar"}
+          {carregando ? "Entrando..." : "Entrar"}
         </Button>
 
-        {appwriteEnabled && !embedded ? (
+        {appwriteEnabled && googleOAuthEnabled && !embedded ? (
           <>
             <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.25em] text-[#667781] dark:text-white/40">
               <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
@@ -199,19 +183,18 @@ export default function PaginaLogin() {
                 type="button"
                 variant="outline"
                 className="h-11 rounded-full border-black/10"
-                disabled={!googleOAuthEnabled}
                 onClick={() => handleSocialLogin(OAuthProvider.Google)}
               >
                 <Chrome className="h-4 w-4" />
-                {googleOAuthEnabled ? "Entrar com Google" : "Google em configuracao"}
+                Continuar com Google
               </Button>
             </div>
           </>
         ) : null}
 
-        {appwriteEnabled && embedded ? (
+        {appwriteEnabled && googleOAuthEnabled && embedded ? (
           <p className="text-center text-xs text-[#667781] dark:text-white/45">
-            Login social fica melhor no navegador. No APK e no desktop nativo, use e-mail e senha.
+            Login com Google fica disponivel no navegador. Aqui, use e-mail e senha.
           </p>
         ) : null}
       </div>

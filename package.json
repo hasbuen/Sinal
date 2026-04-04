@@ -2,7 +2,7 @@
   "name": "sinal",
   "description": "Um aplicativo de chat e mensagens em tempo real para conexoes rapidas e seguras.",
   "author": "Julio Cesar O. Bueno <https://github.com/hasbuen>",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "main": "electron/main.cjs",
   "private": true,
   "scripts": {
@@ -21,7 +21,9 @@
     "backend:prisma:push": "npm --prefix backend run prisma:push",
     "android:sync": "npx cap sync android",
     "android:open": "npx cap open android",
-    "android:build": "cd android && gradlew.bat assembleDebug"
+    "android:build": "node scripts/build-android-apk.cjs debug",
+    "android:build:release": "node scripts/build-android-apk.cjs release",
+    "android:release:asset": "node scripts/prepare-android-release-asset.cjs"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.0",
@@ -39,6 +41,7 @@
     "graphql-ws": "^6.0.6",
     "lucide-react": "^0.543.0",
     "next": "^16.2.2",
+    "qrcode": "^1.5.4",
     "react": "^19.2.4",
     "react-colorful": "^5.6.1",
     "react-dom": "^19.2.4",
@@ -49,6 +52,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "concurrently": "^9.2.1",
@@ -82,7 +86,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "electron/build/icon.ico"
+      "icon": "electron/build/icon.ico",
+      "artifactName": "Sinal-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,

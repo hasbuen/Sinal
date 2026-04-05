@@ -113,6 +113,34 @@ export class RedisService implements OnModuleDestroy {
     }, false);
   }
 
+  async getJson<T>(key: string) {
+    const raw = await this.safe(() => this.client!.get(key), null);
+    if (!raw) {
+      return null;
+    }
+
+    try {
+      return JSON.parse(raw) as T;
+    } catch {
+      return null;
+    }
+  }
+
+  async setJson(key: string, payload: unknown, ttlSeconds = 30) {
+    await this.safe(
+      () => this.client!.set(key, JSON.stringify(payload), "EX", ttlSeconds),
+      "OK",
+    );
+  }
+
+  async deleteKeys(keys: string[]) {
+    if (keys.length === 0) {
+      return;
+    }
+
+    await this.safe(() => this.client!.del(...keys), 0);
+  }
+
   async onModuleDestroy() {
     this.available = false;
     await this.client?.quit().catch(() => undefined);

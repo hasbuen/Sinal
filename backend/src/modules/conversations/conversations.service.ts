@@ -56,6 +56,28 @@ export class ConversationsService {
     private readonly appwriteService: AppwriteService,
   ) {}
 
+  private conversationsCacheKey(userId: string) {
+    return `cache:conversations:${userId}`;
+  }
+
+  private messageCacheKey(conversationId: string, limit = 100) {
+    return `cache:messages:${conversationId}:limit:${limit}`;
+  }
+
+  private async invalidateConversationCachesForMembers(conversationId: string) {
+    const members = await this.prisma.conversationMember.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+
+    await this.redisService.deleteKeys([
+      this.messageCacheKey(conversationId),
+      ...members.map((member: { userId: string }) =>
+        this.conversationsCacheKey(member.userId),
+      ),
+    ]);
+  }
+
   private getVisibleMessages<
     T extends {
       expiresAt?: Date | null;
@@ -208,6 +230,14 @@ export class ConversationsService {
   }
 
   async findForUser(userId: string) {
+    const cached = await this.redisService.getJson<Array<Record<string, unknown>>>(
+      this.conversationsCacheKey(userId),
+    );
+
+    if (cached) {
+      return cached;
+    }
+
     const conversations = await this.prisma.conversation.findMany({
       where: {
         members: {
@@ -226,9 +256,12 @@ export class ConversationsService {
       this.sqliteCache.cacheConversation(conversation.id, JSON.stringify(conversation));
     });
 
-    return conversations.map((conversation: (typeof conversations)[number]) =>
+    const payload = conversations.map((conversation: (typeof conversations)[number]) =>
       this.toConversationPayload(conversation, userId),
     );
+
+    await this.redisService.setJson(this.conversationsCacheKey(userId), payload, 20);
+    return payload;
   }
 
   async createDirectConversation(
@@ -267,6 +300,8 @@ export class ConversationsService {
       include: conversationInclude,
     });
 
+    await this.invalidateConversationCachesForMembers(conversation.id);
+
     return {
       ...conversation,
       latestMessage: null,
@@ -295,6 +330,7 @@ export class ConversationsService {
     });
 
     await this.appwriteService.syncGroupMirror(conversation);
+    await this.invalidateConversationCachesForMembers(conversation.id);
 
     return {
       ...conversation,
@@ -336,6 +372,8 @@ export class ConversationsService {
       await this.appwriteService.syncGroupMirror(conversation);
     }
 
+    await this.invalidateConversationCachesForMembers(conversation.id);
+
     return this.toConversationPayload(conversation, currentUserId);
   }
 
@@ -351,6 +389,7 @@ export class ConversationsService {
       },
     });
     await this.syncMessageReceipts(currentUserId, conversationId, true);
+    await this.invalidateConversationCachesForMembers(conversationId);
     return true;
   }
 

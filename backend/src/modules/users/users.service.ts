@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { AppwriteService } from "../../appwrite/appwrite.service";
 import { PrismaService } from "../../prisma/prisma.service";
 import { UpdateProfileInput } from "./dto/update-profile.input";
+import { UpdateUserSettingsInput } from "./dto/update-user-settings.input";
+import { mergeUserSettings, normalizeUserSettings } from "./user-settings";
 
 @Injectable()
 export class UsersService {
@@ -39,5 +41,27 @@ export class UsersService {
 
     await this.appwriteService.syncUserMirror(user);
     return user;
+  }
+
+  getUserSettings(user: { userSettings?: unknown; settings?: unknown }) {
+    return normalizeUserSettings(user.settings ?? user.userSettings);
+  }
+
+  async updateUserSettings(currentUserId: string, input: UpdateUserSettingsInput) {
+    const current = await this.prisma.user.findUniqueOrThrow({
+      where: { id: currentUserId },
+      select: { id: true, userSettings: true },
+    });
+    const nextSettings = mergeUserSettings(current.userSettings, input);
+
+    const user = await this.prisma.user.update({
+      where: { id: currentUserId },
+      data: {
+        userSettings: nextSettings,
+      },
+    });
+
+    await this.appwriteService.syncUserMirror(user);
+    return nextSettings;
   }
 }

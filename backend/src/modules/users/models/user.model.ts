@@ -1,4 +1,5 @@
 import { Field, ID, ObjectType } from "@nestjs/graphql";
+import { UserSettingsModel } from "./user-settings.model";
 
 @ObjectType()
 export class UserModel {
@@ -19,6 +20,9 @@ export class UserModel {
 
   @Field(() => String, { nullable: true })
   bio?: string | null;
+
+  @Field(() => UserSettingsModel)
+  settings!: UserSettingsModel;
 
   @Field(() => Date, { nullable: true })
   lastSeenAt?: Date | null;

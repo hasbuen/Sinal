@@ -48,6 +48,20 @@ export type BackendUser = {
   avatarUrl?: string | null;
   bio?: string | null;
   lastSeenAt?: string | null;
+  settings?: BackendUserSettings;
+};
+
+export type BackendUserSettings = {
+  theme: "system" | "light" | "dark";
+  accentTone: "ocean" | "ember" | "forest";
+  wallpaper: "aurora" | "graphite" | "sand" | "none";
+  compactMode: boolean;
+  enterToSend: boolean;
+  autoDownloadMedia: boolean;
+  readReceipts: boolean;
+  soundEnabled: boolean;
+  desktopNotifications: boolean;
+  messagePreview: boolean;
 };
 
 export type AppwriteDashboard = {
@@ -535,6 +549,18 @@ export async function loginUser(email: string, password: string) {
             avatarUrl
             bio
             lastSeenAt
+            settings {
+              theme
+              accentTone
+              wallpaper
+              compactMode
+              enterToSend
+              autoDownloadMedia
+              readReceipts
+              soundEnabled
+              desktopNotifications
+              messagePreview
+            }
           }
         }
       }
@@ -566,6 +592,18 @@ export async function exchangeAppwriteJwt(jwt: string) {
             avatarUrl
             bio
             lastSeenAt
+            settings {
+              theme
+              accentTone
+              wallpaper
+              compactMode
+              enterToSend
+              autoDownloadMedia
+              readReceipts
+              soundEnabled
+              desktopNotifications
+              messagePreview
+            }
           }
         }
       }
@@ -597,6 +635,18 @@ export async function registerUser(input: {
             avatarUrl
             bio
             lastSeenAt
+            settings {
+              theme
+              accentTone
+              wallpaper
+              compactMode
+              enterToSend
+              autoDownloadMedia
+              readReceipts
+              soundEnabled
+              desktopNotifications
+              messagePreview
+            }
           }
         }
       }
@@ -618,6 +668,18 @@ export async function getCurrentUser() {
         avatarUrl
         bio
         lastSeenAt
+        settings {
+          theme
+          accentTone
+          wallpaper
+          compactMode
+          enterToSend
+          autoDownloadMedia
+          readReceipts
+          soundEnabled
+          desktopNotifications
+          messagePreview
+        }
       }
     }
   `);
@@ -1118,6 +1180,36 @@ export function subscribeToCallSignals(
   );
 }
 
+export function subscribeToIncomingCallSignals(
+  onData: (signal: BackendCallSignal) => void,
+  onError?: (error: Error) => void,
+) {
+  const client = getSocketClient();
+  if (!client) {
+    return () => {};
+  }
+
+  const handler = (payload: BackendCallSignal) => {
+    onData(payload);
+  };
+
+  const errorHandler = (error: { message?: string } | Error) => {
+    onError?.(
+      error instanceof Error
+        ? error
+        : new Error(error.message || "Socket.IO realtime error."),
+    );
+  };
+
+  client.on("call:signal", handler);
+  client.on("connect_error", errorHandler);
+
+  return () => {
+    client.off("call:signal", handler);
+    client.off("connect_error", errorHandler);
+  };
+}
+
 export async function uploadMedia(file: File) {
   const formData = new FormData();
   formData.append("file", file);
@@ -1155,6 +1247,18 @@ export async function updateProfile(input: {
           avatarUrl
           bio
           lastSeenAt
+          settings {
+            theme
+            accentTone
+            wallpaper
+            compactMode
+            enterToSend
+            autoDownloadMedia
+            readReceipts
+            soundEnabled
+            desktopNotifications
+            messagePreview
+          }
         }
       }
     `,
@@ -1162,4 +1266,28 @@ export async function updateProfile(input: {
   );
 
   return data.updateProfile;
+}
+
+export async function updateUserSettings(input: Partial<BackendUserSettings>) {
+  const data = await gqlRequest<{ updateUserSettings: BackendUserSettings }>(
+    `
+      mutation UpdateUserSettings($input: UpdateUserSettingsInput!) {
+        updateUserSettings(input: $input) {
+          theme
+          accentTone
+          wallpaper
+          compactMode
+          enterToSend
+          autoDownloadMedia
+          readReceipts
+          soundEnabled
+          desktopNotifications
+          messagePreview
+        }
+      }
+    `,
+    { input },
+  );
+
+  return data.updateUserSettings;
 }

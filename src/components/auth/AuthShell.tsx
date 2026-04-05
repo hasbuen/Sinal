@@ -44,13 +44,13 @@ export function AuthShell({
   footer,
 }: AuthShellProps) {
   return (
-    <main className="min-h-screen bg-[#d9dbd5] text-[#111b21] dark:bg-[#0b141a] dark:text-white">
-      <div className="h-40 bg-[#00a884] md:h-52" />
+    <main className="min-h-screen bg-[linear-gradient(180deg,#e8f2f4,#edf0f2)] text-[#111b21] dark:bg-[#08131b] dark:text-white">
+      <div className="h-40 bg-[linear-gradient(135deg,#14b8a6,#0f172a)] md:h-52" />
       <div className="-mt-28 px-4 pb-10 md:-mt-36">
-        <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-[#f0f2f5] shadow-[0_22px_80px_rgba(17,27,33,0.22)] dark:bg-[#111b21] lg:grid-cols-[1.05fr_0.95fr]">
-          <section className="hidden bg-[linear-gradient(180deg,#0b141a_0%,#111b21_100%)] p-10 text-white lg:flex lg:flex-col">
+        <div className="mx-auto grid max-w-6xl overflow-hidden rounded-[2rem] bg-[#f0f4f5] shadow-[0_22px_80px_rgba(17,27,33,0.18)] dark:bg-[#111b21] lg:grid-cols-[1.05fr_0.95fr]">
+          <section className="hidden bg-[radial-gradient(circle_at_top,#14b8a624,transparent_28%),linear-gradient(180deg,#08131b_0%,#0f172a_100%)] p-10 text-white lg:flex lg:flex-col">
             <div className="flex items-center gap-4">
-              <div className="rounded-[1.4rem] bg-[#00a884]/16 p-3 shadow-[0_0_40px_rgba(0,168,132,0.22)]">
+              <div className="rounded-[1.4rem] bg-[#14b8a6]/16 p-3 shadow-[0_0_40px_rgba(20,184,166,0.22)]">
                 <Image
                   src={withBasePath("/icons/icon-transparent.png")}
                   alt="Sinal"
@@ -60,7 +60,7 @@ export function AuthShell({
                 />
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.34em] text-[#7ad9c3]">{eyebrow}</p>
+                <p className="text-xs uppercase tracking-[0.34em] text-[#8de8dd]">{eyebrow}</p>
                 <h1 className="mt-2 text-4xl font-semibold leading-tight">{title}</h1>
               </div>
             </div>
@@ -74,7 +74,7 @@ export function AuthShell({
                   className="rounded-[1.5rem] border border-white/8 bg-white/5 p-5 backdrop-blur"
                 >
                   <div className="flex items-start gap-4">
-                    <div className="rounded-2xl bg-[#00a884]/14 p-3 text-[#89f0d6]">
+                    <div className="rounded-2xl bg-[#14b8a6]/14 p-3 text-[#89f0d6]">
                       <Icon className="h-5 w-5" />
                     </div>
                     <div>
@@ -87,7 +87,7 @@ export function AuthShell({
             </div>
           </section>
 
-          <section className="flex min-h-[calc(100vh-10rem)] flex-col justify-center bg-[#efeae2] p-5 dark:bg-[#0f1720] md:p-10">
+          <section className="flex min-h-[calc(100vh-10rem)] flex-col justify-center bg-[#f3efe8] p-5 dark:bg-[#0f1720] md:p-10">
             <div className="mx-auto w-full max-w-md">
               <div className="mb-6 rounded-[1.8rem] border border-black/5 bg-white/80 p-5 shadow-sm dark:border-white/8 dark:bg-[#111b21]/90 lg:hidden">
                 <div className="flex items-center gap-3">
@@ -99,7 +99,7 @@ export function AuthShell({
                     className="rounded-2xl"
                   />
                   <div>
-                    <p className="text-xs uppercase tracking-[0.3em] text-[#00a884]">{eyebrow}</p>
+                    <p className="text-xs uppercase tracking-[0.3em] text-[#14b8a6]">{eyebrow}</p>
                     <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
                   </div>
                 </div>

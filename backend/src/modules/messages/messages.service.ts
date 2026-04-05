@@ -83,6 +83,28 @@ export class MessagesService {
     private readonly appwriteService: AppwriteService,
   ) {}
 
+  private messageCacheKey(conversationId: string, limit = 100) {
+    return `cache:messages:${conversationId}:limit:${limit}`;
+  }
+
+  private conversationCacheKey(userId: string) {
+    return `cache:conversations:${userId}`;
+  }
+
+  private async invalidateConversationCaches(conversationId: string) {
+    const members = await this.prisma.conversationMember.findMany({
+      where: { conversationId },
+      select: { userId: true },
+    });
+
+    await this.redisService.deleteKeys([
+      this.messageCacheKey(conversationId),
+      ...members.map((member: { userId: string }) =>
+        this.conversationCacheKey(member.userId),
+      ),
+    ]);
+  }
+
   private toPrismaMessageKind(
     kind?: MessageKind | PrismaMessageKind | string | null,
   ): PrismaMessageKind {
@@ -298,6 +320,12 @@ export class MessagesService {
     );
     await this.syncMessageReceipts(currentUserId, input.conversationId, false);
 
+    const cacheKey = this.messageCacheKey(input.conversationId, input.limit ?? 100);
+    const cached = await this.redisService.getJson<Array<Record<string, unknown>>>(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
     const messages = await this.prisma.message.findMany({
       where: this.getVisibleMessageWhere(currentUserId, input.conversationId),
       orderBy: {
@@ -315,9 +343,12 @@ export class MessagesService {
       );
     });
 
-    return messages.map((message: (typeof messages)[number]) =>
+    const payload = messages.map((message: (typeof messages)[number]) =>
       this.mapMessageForUser(message as PrismaMessagePayload, currentUserId),
     );
+
+    await this.redisService.setJson(cacheKey, payload, 15);
+    return payload;
   }
 
   async sendMessage(currentUserId: string, input: SendMessageInput) {
@@ -390,6 +421,7 @@ export class MessagesService {
       message.id,
       MessageEventType.ADDED,
     );
+    await this.invalidateConversationCaches(input.conversationId);
 
     return this.mapMessageForUser(message as PrismaMessagePayload, currentUserId);
   }
@@ -436,6 +468,7 @@ export class MessagesService {
       message.id,
       MessageEventType.UPDATED,
     );
+    await this.invalidateConversationCaches(message.conversationId);
 
     return this.mapMessageForUser(updated as PrismaMessagePayload, currentUserId);
   }
@@ -479,6 +512,7 @@ export class MessagesService {
       message.id,
       MessageEventType.UPDATED,
     );
+    await this.invalidateConversationCaches(message.conversationId);
 
     return this.mapMessageForUser(updated as PrismaMessagePayload, currentUserId);
   }
@@ -504,6 +538,7 @@ export class MessagesService {
       message.id,
       MessageEventType.DELETED,
     );
+    await this.invalidateConversationCaches(message.conversationId);
 
     return this.mapMessageForUser(updated as PrismaMessagePayload, currentUserId);
   }
@@ -575,6 +610,7 @@ export class MessagesService {
       message.id,
       MessageEventType.ADDED,
     );
+    await this.invalidateConversationCaches(input.conversationId);
 
     return this.mapMessageForUser(message as PrismaMessagePayload, currentUserId);
   }

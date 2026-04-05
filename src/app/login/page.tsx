@@ -25,7 +25,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { withBasePath } from "@/lib/utils";
-import { isEmbeddedAppBrowser, toAppHref } from "@/lib/runtime";
+import { toAppHref } from "@/lib/runtime";
 
 export default function PaginaLogin() {
   const router = useRouter();
@@ -34,7 +34,6 @@ export default function PaginaLogin() {
   const [carregando, setCarregando] = useState(false);
   const appwriteEnabled = isAppwriteEnabled();
   const googleOAuthEnabled = isAppwriteGoogleOAuthEnabled();
-  const embedded = isEmbeddedAppBrowser();
 
   useEffect(() => {
     if (getBackendToken()) {
@@ -114,14 +113,14 @@ export default function PaginaLogin() {
       footer={
         <p>
           Ainda nao tem conta?{" "}
-          <Link href={toAppHref("/cadastro")} className="font-semibold text-[#00a884] hover:underline">
+          <Link href={toAppHref("/cadastro")} className="font-semibold text-[#14b8a6] hover:underline">
             Criar agora
           </Link>
         </p>
       }
     >
       <div className="mb-6 flex items-center justify-between">
-        <div className="inline-flex items-center gap-3 rounded-full bg-[#e7fef5] px-4 py-2 text-xs font-medium text-[#075e54] dark:bg-[#123229] dark:text-[#8ff3d1]">
+        <div className="inline-flex items-center gap-3 rounded-full bg-[#e6fffb] px-4 py-2 text-xs font-medium text-[#0f766e] dark:bg-[#123229] dark:text-[#8ff3d1]">
           <Image
             src={withBasePath("/favicon.png")}
             alt="Sinal"
@@ -165,12 +164,12 @@ export default function PaginaLogin() {
         <Button
           onClick={() => void entrar()}
           disabled={carregando}
-          className="h-12 w-full rounded-full bg-[#00a884] text-base font-semibold text-white hover:bg-[#019574]"
+          className="h-12 w-full rounded-full bg-[#14b8a6] text-base font-semibold text-white hover:bg-[#0f9f91]"
         >
           {carregando ? "Entrando..." : "Entrar"}
         </Button>
 
-        {appwriteEnabled && googleOAuthEnabled && !embedded ? (
+        {appwriteEnabled && googleOAuthEnabled ? (
           <>
             <div className="flex items-center gap-3 py-1 text-xs uppercase tracking-[0.25em] text-[#667781] dark:text-white/40">
               <span className="h-px flex-1 bg-black/10 dark:bg-white/10" />
@@ -190,12 +189,6 @@ export default function PaginaLogin() {
               </Button>
             </div>
           </>
-        ) : null}
-
-        {appwriteEnabled && googleOAuthEnabled && embedded ? (
-          <p className="text-center text-xs text-[#667781] dark:text-white/45">
-            No app, use e-mail e senha.
-          </p>
         ) : null}
       </div>
     </AuthShell>

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import type { CSSProperties } from "react";
 import {
   startTransition,
   useDeferredValue,
@@ -52,7 +53,7 @@ import {
   sendMessage,
   setPresence,
   setTypingStatus,
-  subscribeToCallSignals,
+  subscribeToIncomingCallSignals,
   subscribeToMessageEvents,
   subscribeToPresence,
   supportsWebSocketRealtime,
@@ -64,9 +65,23 @@ import {
   type BackendPresence,
   type BackendUser,
 } from "@/lib/backend-client";
+import {
+  readBootstrapCache,
+  readMessagesCache,
+  writeBootstrapCache,
+  writeMessagesCache,
+} from "@/lib/chat-cache";
 import { isAppwriteEnabled, logoutAppwrite } from "@/lib/appwrite-client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  accentToneClasses,
+  normalizeUserSettings,
+  readStoredUserSettings,
+  resolveThemeMode,
+  storeUserSettings,
+  wallpaperClass,
+} from "@/lib/user-settings";
 import { ChatCallOverlay, type ChatCallState } from "./ChatCallOverlay";
 import { ChatForwardSheet } from "./ChatForwardSheet";
 import { ChatMessageBubble } from "./ChatMessageBubble";
@@ -92,6 +107,20 @@ const GroupComposer = dynamic(() => import("./GroupComposer"), { ssr: false });
 const EmojiBoard = dynamic(() => import("@/components/EmojisCustom"), {
   ssr: false,
 });
+
+const defaultStoredSettings = readStoredUserSettings();
+const WEBRTC_ICE_SERVERS: RTCIceServer[] = [
+  { urls: "stun:stun.l.google.com:19302" },
+  ...(process.env.NEXT_PUBLIC_WEBRTC_TURN_URL
+    ? [
+        {
+          urls: process.env.NEXT_PUBLIC_WEBRTC_TURN_URL,
+          username: process.env.NEXT_PUBLIC_WEBRTC_TURN_USERNAME,
+          credential: process.env.NEXT_PUBLIC_WEBRTC_TURN_CREDENTIAL,
+        },
+      ]
+    : []),
+];
 
 const defaultCallState: ChatCallState & {
   remoteUserId?: string | null;
@@ -126,7 +155,10 @@ export default function ChatWorkspace({
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recorderChunksRef = useRef<Blob[]>([]);
   const typingTimeoutRef = useRef<number | null>(null);
+  const messageRefreshTimeoutRef = useRef<number | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
+  const pendingIceCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const notificationAudioRef = useRef<HTMLAudioElement | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -164,10 +196,12 @@ export default function ChatWorkspace({
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
   const [activeTab, setActiveTab] = useState<MobileTab>("chats");
-  const [darkMode, setDarkMode] = useState(true);
+  const [userSettings, setUserSettings] = useState(defaultStoredSettings);
+  const [darkMode, setDarkMode] = useState(resolveThemeMode(defaultStoredSettings.theme));
   const deferredSearch = useDeferredValue(searchTerm);
   const websocketRealtime = supportsWebSocketRealtime();
   const appwriteEnabled = isAppwriteEnabled();
+  const accentPalette = accentToneClasses(userSettings.accentTone);
 
   const normalizedConversations = useMemo(
     () =>
@@ -275,6 +309,40 @@ export default function ChatWorkspace({
     );
   }
 
+  function playNotificationCue() {
+    if (
+      !userSettings.soundEnabled ||
+      typeof window === "undefined" ||
+      (!document.hidden && document.hasFocus())
+    ) {
+      return;
+    }
+
+    try {
+      if (!notificationAudioRef.current) {
+        notificationAudioRef.current = new Audio(withBasePath("/assets/notification.mp3"));
+        notificationAudioRef.current.volume = 0.45;
+      }
+
+      notificationAudioRef.current.currentTime = 0;
+      void notificationAudioRef.current.play().catch(() => undefined);
+    } catch {
+      // Ignore audio failures in browsers that block autoplay.
+    }
+  }
+
+  function scheduleConversationRefresh(conversationId: string) {
+    if (messageRefreshTimeoutRef.current) {
+      window.clearTimeout(messageRefreshTimeoutRef.current);
+    }
+
+    messageRefreshTimeoutRef.current = window.setTimeout(() => {
+      void refreshMessages(conversationId);
+      void refreshSidebar();
+      messageRefreshTimeoutRef.current = null;
+    }, 180);
+  }
+
   async function refreshSidebar() {
     const [nextUsers, nextConversations] = await Promise.all([
       getUsers(),
@@ -284,6 +352,12 @@ export default function ChatWorkspace({
       setUsers(nextUsers);
       setConversations(nextConversations);
     });
+    if (currentUser) {
+      writeBootstrapCache(currentUser.id, {
+        users: nextUsers,
+        conversations: nextConversations,
+      });
+    }
   }
 
   async function refreshMessages(conversationId: string) {
@@ -295,6 +369,7 @@ export default function ChatWorkspace({
       setMessages(nextMessages);
       setTypingIds(nextTypingIds);
     });
+    writeMessagesCache(conversationId, nextMessages);
     await markConversationRead(conversationId);
   }
 
@@ -345,6 +420,7 @@ export default function ChatWorkspace({
   }
 
   function cleanupCall() {
+    pendingIceCandidatesRef.current = [];
     peerConnectionRef.current?.close();
     peerConnectionRef.current = null;
     localStreamRef.current?.getTracks().forEach((track) => track.stop());
@@ -372,7 +448,7 @@ export default function ChatWorkspace({
     conversationId: string,
   ) {
     const peer = new RTCPeerConnection({
-      iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+      iceServers: WEBRTC_ICE_SERVERS,
     });
     const nextRemoteStream = new MediaStream();
     remoteStreamRef.current = nextRemoteStream;
@@ -401,6 +477,20 @@ export default function ChatWorkspace({
     peerConnectionRef.current = peer;
     setCallState((current) => ({ ...current, mode, remoteUserId: targetUserId }));
     return peer;
+  }
+
+  async function flushPendingIceCandidates() {
+    if (!peerConnectionRef.current || pendingIceCandidatesRef.current.length === 0) {
+      return;
+    }
+
+    const candidates = [...pendingIceCandidatesRef.current];
+    pendingIceCandidatesRef.current = [];
+    await Promise.all(
+      candidates.map((candidate) =>
+        peerConnectionRef.current?.addIceCandidate(candidate).catch(() => undefined),
+      ),
+    );
   }
 
   async function startOutgoingCall(
@@ -462,6 +552,7 @@ export default function ChatWorkspace({
       );
       stream.getTracks().forEach((track) => peer.addTrack(track, stream));
       await peer.setRemoteDescription(callState.pendingOffer);
+      await flushPendingIceCandidates();
       const answer = await peer.createAnswer();
       await peer.setLocalDescription(answer);
       await sendCallSignal({
@@ -489,6 +580,11 @@ export default function ChatWorkspace({
   }
 
   async function handleSignal(signal: BackendCallSignal) {
+    if (signal.conversationId !== activeConversationId) {
+      setActiveConversationId(signal.conversationId);
+      setActiveTab("chats");
+    }
+
     const sender =
       activeConversation?.members.find((member) => member.user.id === signal.senderId)
         ?.user || users.find((user) => user.id === signal.senderId);
@@ -511,12 +607,42 @@ export default function ChatWorkspace({
       const description = signal.payload?.description as RTCSessionDescriptionInit | undefined;
       if (description) {
         await peerConnectionRef.current.setRemoteDescription(description);
+        await flushPendingIceCandidates();
         setCallState((current) => ({ ...current, phase: "connecting" }));
       }
       return;
     }
-    if (signal.type === "ICE_CANDIDATE" && peerConnectionRef.current) {
-      await peerConnectionRef.current.addIceCandidate(signal.payload as RTCIceCandidateInit);
+    if (signal.type === "ICE_CANDIDATE") {
+      const candidate = signal.payload as RTCIceCandidateInit;
+      if (!candidate) {
+        return;
+      }
+
+      if (
+        !peerConnectionRef.current ||
+        !peerConnectionRef.current.remoteDescription
+      ) {
+        pendingIceCandidatesRef.current.push(candidate);
+        return;
+      }
+
+      await peerConnectionRef.current.addIceCandidate(candidate).catch(() => undefined);
+      return;
+    }
+    if (signal.type === "TOGGLE_AUDIO") {
+      toast(
+        signal.payload?.enabled === false
+          ? `${sender?.displayName || "Contato"} silenciou o microfone.`
+          : `${sender?.displayName || "Contato"} reativou o microfone.`,
+      );
+      return;
+    }
+    if (signal.type === "TOGGLE_VIDEO") {
+      toast(
+        signal.payload?.enabled === false
+          ? `${sender?.displayName || "Contato"} desligou a camera.`
+          : `${sender?.displayName || "Contato"} reativou a camera.`,
+      );
       return;
     }
     if (signal.type === "DECLINED") {
@@ -543,14 +669,43 @@ export default function ChatWorkspace({
   async function bootstrap() {
     try {
       const me = await getCurrentUser();
+      const normalizedSettings = normalizeUserSettings(me.settings);
+      const bootstrapCache = readBootstrapCache(me.id);
+
+      setCurrentUser(me);
+      setUserSettings(normalizedSettings);
+      setDarkMode(resolveThemeMode(normalizedSettings.theme));
+      storeUserSettings(normalizedSettings);
+
+      if (bootstrapCache) {
+        const cachedConversations = dedupeConversations(bootstrapCache.conversations, me.id);
+        setUsers(bootstrapCache.users);
+        setConversations(bootstrapCache.conversations);
+        if (initialConversationId) {
+          const existing = cachedConversations.find(
+            (item) => item.id === initialConversationId,
+          );
+          if (existing) {
+            setActiveConversationId(existing.id);
+          }
+        } else if (cachedConversations[0]) {
+          setActiveConversationId(cachedConversations[0].id);
+        }
+        setBooting(false);
+      }
+
       const [nextUsers, nextConversations] = await Promise.all([
         getUsers(),
         getConversations(),
       ]);
       const visibleConversations = dedupeConversations(nextConversations, me.id);
-      setCurrentUser(me);
       setUsers(nextUsers);
       setConversations(nextConversations);
+      writeBootstrapCache(me.id, {
+        users: nextUsers,
+        conversations: nextConversations,
+      });
+
       if (initialConversationId) {
         const existing = visibleConversations.find(
           (item) => item.id === initialConversationId,
@@ -624,20 +779,27 @@ export default function ChatWorkspace({
         syncConversationPreview(activeConversationId, updated);
         setEditingMessage(null);
         setComposerText("");
+        writeMessagesCache(
+          activeConversationId,
+          messages.map((message) =>
+            message.id === updated.id ? updated : message,
+          ),
+        );
         return;
       }
 
-        const attachments: BackendAttachment[] = [];
-        for (const file of selectedFiles) {
+      const attachments: BackendAttachment[] = await Promise.all(
+        selectedFiles.map(async (file) => {
           const uploaded = await uploadMedia(file);
-          attachments.push({
+          return {
             ...uploaded,
             url: resolveBackendAssetUrl(uploaded.url),
             thumbnailUrl: uploaded.thumbnailUrl
               ? resolveBackendAssetUrl(uploaded.thumbnailUrl)
               : uploaded.thumbnailUrl,
-          });
-        }
+          };
+        }),
+      );
       const kind = inferMessageKind(text, attachments);
       const created = await sendMessage({
         conversationId: activeConversationId,
@@ -654,6 +816,7 @@ export default function ChatWorkspace({
       setReplyingTo(null);
       appendMessage(created);
       syncConversationPreview(activeConversationId, created);
+      writeMessagesCache(activeConversationId, [...messages, created]);
       await setTypingStatus(activeConversationId, false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Falha ao enviar.");
@@ -667,16 +830,24 @@ export default function ChatWorkspace({
   }, [initialConversationId, router]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || userSettings.theme !== "system") return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = () => setDarkMode(media.matches);
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, []);
+  }, [userSettings.theme]);
+
+  useEffect(() => {
+    setDarkMode(resolveThemeMode(userSettings.theme));
+  }, [userSettings]);
 
   useEffect(() => {
     if (!activeConversationId || !currentUser) return;
+    const cachedMessages = readMessagesCache(activeConversationId);
+    if (cachedMessages?.messages?.length) {
+      setMessages(cachedMessages.messages);
+    }
     void refreshMessages(activeConversationId);
     void syncPresence(activeConversationId);
     void setPresence(activeConversationId).catch(() => undefined);
@@ -706,11 +877,13 @@ export default function ChatWorkspace({
   useEffect(() => {
     if (!activeConversationId) return;
     if (!websocketRealtime) return;
-    return subscribeToMessageEvents(activeConversationId, () => {
-      void refreshMessages(activeConversationId);
-      void refreshSidebar();
+    return subscribeToMessageEvents(activeConversationId, (event) => {
+      if (event.event === "ADDED") {
+        playNotificationCue();
+      }
+      scheduleConversationRefresh(activeConversationId);
     });
-  }, [activeConversationId, websocketRealtime]);
+  }, [activeConversationId, userSettings.soundEnabled, websocketRealtime]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -721,9 +894,8 @@ export default function ChatWorkspace({
   }, [activeConversationId, websocketRealtime]);
 
   useEffect(() => {
-    if (!activeConversationId) return;
     if (!websocketRealtime) return;
-    return subscribeToCallSignals(activeConversationId, (signal) => {
+    return subscribeToIncomingCallSignals((signal) => {
       void handleSignal(signal);
     });
   }, [activeConversationId, activeConversation, users, websocketRealtime]);
@@ -765,11 +937,19 @@ export default function ChatWorkspace({
 
   useEffect(() => () => cleanupCall(), []);
 
+  useEffect(() => {
+    return () => {
+      if (messageRefreshTimeoutRef.current) {
+        window.clearTimeout(messageRefreshTimeoutRef.current);
+      }
+    };
+  }, []);
+
   if (booting) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(37,211,102,0.18),transparent_30%),linear-gradient(160deg,#06131c_18%,#09141f_100%)] px-6 text-white">
+      <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,rgba(20,184,166,0.18),transparent_30%),linear-gradient(160deg,#06131c_18%,#09141f_100%)] px-6 text-white">
         <div className="flex w-full max-w-sm flex-col items-center rounded-[2rem] border border-white/10 bg-white/[0.04] px-8 py-10 text-center shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur">
-          <div className="rounded-[1.8rem] bg-emerald-300/12 p-4 shadow-[0_0_40px_rgba(37,211,102,0.22)]">
+          <div className="rounded-[1.8rem] p-4 shadow-[0_0_40px_rgba(20,184,166,0.22)]" style={{ backgroundColor: `${accentPalette.accent}1f` }}>
             <Image
               src={withBasePath("/icons/icon-transparent.png")}
               alt="Sinal"
@@ -779,10 +959,10 @@ export default function ChatWorkspace({
               className="rounded-2xl"
             />
           </div>
-          <p className="mt-6 text-xs uppercase tracking-[0.34em] text-emerald-100/65">Sinal</p>
+          <p className="mt-6 text-xs uppercase tracking-[0.34em] text-white/65">Sinal</p>
           <h1 className="mt-3 text-3xl font-semibold">Abrindo suas conversas</h1>
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-sm text-white/78">
-            <Loader2 className="h-4 w-4 animate-spin text-[#25D366]" />
+            <Loader2 className="h-4 w-4 animate-spin" style={{ color: accentPalette.accent }} />
             Sincronizando agora
           </div>
         </div>
@@ -793,8 +973,17 @@ export default function ChatWorkspace({
   if (!currentUser) return null;
 
   return (
-    <main className={`${darkMode ? "dark" : ""} min-h-screen bg-[#ECE5DD] text-[#111B21] dark:bg-[#0b141a] dark:text-white`}>
-      <div className="sticky top-0 z-30 bg-[#075E54] text-white shadow-md">
+    <main
+      className={`${darkMode ? "dark" : ""} min-h-screen bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
+      style={
+        {
+          "--sinal-accent": accentPalette.accent,
+          "--sinal-accent-soft": accentPalette.accentSoft,
+          "--sinal-accent-strong": accentPalette.accentStrong,
+        } as CSSProperties
+      }
+    >
+      <div className="sticky top-0 z-30 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
         <div className="mx-auto flex max-w-[1480px] items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
@@ -812,7 +1001,14 @@ export default function ChatWorkspace({
               variant="ghost"
               size="icon"
               className="rounded-full text-white hover:bg-white/10"
-              onClick={() => setDarkMode((current) => !current)}
+              onClick={() =>
+                setUserSettings((current) => {
+                  const nextTheme: "light" | "dark" = darkMode ? "light" : "dark";
+                  const next = { ...current, theme: nextTheme };
+                  storeUserSettings(next);
+                  return next;
+                })
+              }
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -885,9 +1081,10 @@ export default function ChatWorkspace({
                   onClick={() => setActiveTab(tab.id)}
                   className={`rounded-full px-3 py-1.5 text-sm transition ${
                     activeTab === tab.id
-                      ? "bg-[#25D366] text-[#111B21]"
+                      ? "text-[#111B21]"
                       : "bg-black/5 text-[#667781] hover:bg-black/10 dark:bg-white/5 dark:text-white/70 dark:hover:bg-white/10"
                   }`}
+                  style={activeTab === tab.id ? { backgroundColor: "var(--sinal-accent)" } : undefined}
                 >
                   {tab.label}
                 </button>
@@ -896,7 +1093,8 @@ export default function ChatWorkspace({
 
             <Button
               onClick={() => setShowGroupComposer(true)}
-              className="rounded-full bg-[#25D366] text-[#111B21] hover:bg-[#1fbe5c]"
+              className="rounded-full text-[#111B21] hover:opacity-90"
+              style={{ backgroundColor: "var(--sinal-accent)" }}
             >
               <Users className="h-4 w-4" />
               Novo grupo
@@ -958,9 +1156,15 @@ export default function ChatWorkspace({
                                 : ""}
                             </span>
                           </div>
-                          <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
-                            {messagePreview(conversation.latestMessage)}
-                          </p>
+                          {userSettings.messagePreview ? (
+                            <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
+                              {messagePreview(conversation.latestMessage)}
+                            </p>
+                          ) : (
+                            <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
+                              Toque para abrir a conversa
+                            </p>
+                          )}
                         </div>
                       </button>
                     );
@@ -1093,7 +1297,9 @@ export default function ChatWorkspace({
                           <div className="min-w-0 flex-1">
                             <p className="truncate font-medium">{other.displayName}</p>
                             <p className="truncate text-sm text-[#667781] dark:text-white/55">
-                              {messagePreview(conversation.latestMessage)}
+                              {userSettings.messagePreview
+                                ? messagePreview(conversation.latestMessage)
+                                : "Abrir para iniciar ou continuar a chamada"}
                             </p>
                           </div>
                           <div className="flex gap-2">
@@ -1208,8 +1414,8 @@ export default function ChatWorkspace({
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.4),transparent_25%)] px-3 py-4 dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_18%)] sm:px-6">
-                <div className="space-y-2">
+              <div className={`flex-1 overflow-y-auto px-3 py-4 sm:px-6 ${wallpaperClass(userSettings.wallpaper)}`}>
+                <div className={userSettings.compactMode ? "space-y-1.5" : "space-y-2"}>
                   {visibleMessages.map((message) => (
                     <ChatMessageBubble
                       key={message.id}
@@ -1354,7 +1560,8 @@ export default function ChatWorkspace({
                             `${composerText}${composerText.trim().length > 0 ? " " : ""}${emoji}`,
                           )
                         }
-                        className="rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:border-[#25D366]/40 hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
+                        className="rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
+                        style={{ borderColor: "color-mix(in srgb, var(--sinal-accent, #14b8a6) 24%, transparent)" }}
                       >
                         {emoji}
                       </button>
@@ -1390,6 +1597,16 @@ export default function ChatWorkspace({
                     <Textarea
                       value={composerText}
                       onChange={(event) => queueTyping(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (
+                          userSettings.enterToSend &&
+                          event.key === "Enter" &&
+                          !event.shiftKey
+                        ) {
+                          event.preventDefault();
+                          void handleSend();
+                        }
+                      }}
                       placeholder="Mensagem"
                       className="min-h-10 border-none bg-transparent px-1 py-2 text-[15px] shadow-none focus-visible:ring-0"
                     />
@@ -1440,7 +1657,8 @@ export default function ChatWorkspace({
                           selectedFiles.length === 0 &&
                           !editingMessage)
                       }
-                      className="h-12 w-12 rounded-full bg-[#25D366] p-0 text-[#111B21] hover:bg-[#1fbe5c]"
+                      className="h-12 w-12 rounded-full p-0 text-[#111B21] hover:opacity-90"
+                      style={{ backgroundColor: "var(--sinal-accent)" }}
                     >
                       {pending ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -1455,18 +1673,19 @@ export default function ChatWorkspace({
           ) : (
             <div className="flex h-full items-center justify-center px-6">
               <div className="max-w-lg rounded-[2rem] bg-white/85 px-8 py-10 text-center shadow-sm dark:bg-[#202c33]">
-                <p className="text-xs uppercase tracking-[0.3em] text-[#075E54] dark:text-[#7fe7bc]">
+                <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--sinal-accent)]">
                   Sinal
                 </p>
-                <h1 className="mt-4 text-3xl font-semibold">Interface inspirada no WhatsApp</h1>
+                <h1 className="mt-4 text-3xl font-semibold">Mensageria com identidade propria</h1>
                 <p className="mt-4 text-[#667781] dark:text-white/55">
-                  Abra uma conversa na lista, use as abas de Chats, Status e Chamadas e mantenha o
-                  fluxo com mensagens efemeras, reacoes, respostas e chamadas.
+                  Abra uma conversa na lista, use as abas de Chats, Status e Chamadas e siga em um
+                  layout unificado entre web, desktop e Android.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   <Button
                     onClick={() => setShowGroupComposer(true)}
-                    className="rounded-full bg-[#25D366] text-[#111B21] hover:bg-[#1fbe5c]"
+                    className="rounded-full text-[#111B21] hover:opacity-90"
+                    style={{ backgroundColor: "var(--sinal-accent)" }}
                   >
                     <Users className="h-4 w-4" />
                     Criar grupo

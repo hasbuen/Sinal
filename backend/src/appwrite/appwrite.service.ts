@@ -221,7 +221,10 @@ export class AppwriteService {
     return localUser;
   }
 
-  async syncUserMirror(localUser: PrismaUser, appwriteUser?: AppwriteAccountUser) {
+  async syncUserMirror(
+    localUser: PrismaUser & { userSettings?: unknown },
+    appwriteUser?: AppwriteAccountUser,
+  ) {
     try {
       await this.upsertDocument(this.config.usersCollectionId, localUser.id, {
         localUserId: localUser.id,
@@ -231,6 +234,7 @@ export class AppwriteService {
         displayName: localUser.displayName,
         avatarUrl: localUser.avatarUrl || null,
         bio: localUser.bio || null,
+        settingsJson: localUser.userSettings ? JSON.stringify(localUser.userSettings) : null,
         status: appwriteUser?.status ?? true,
         emailVerification: appwriteUser?.emailVerification ?? false,
         labels: appwriteUser?.labels ?? [],

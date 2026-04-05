@@ -1,19 +1,20 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 import { Toaster } from "sonner";
 import AppUpdateBanner from "@/components/AppUpdateBanner";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { getBasePath } from "@/lib/utils";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const headingSans = Space_Grotesk({
+  variable: "--font-sinal-sans",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const bodyMono = IBM_Plex_Mono({
+  variable: "--font-sinal-mono",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
 const basePath = getBasePath();
@@ -41,11 +42,11 @@ export default function RootLayout({
   return (
     <html
       lang="pt-BR"
-      className={`${geistSans.variable} ${geistMono.variable}`}
+      className={`${headingSans.variable} ${bodyMono.variable}`}
     >
       <head>
         <link rel="icon" type="image/png" sizes="64x64" href={`${basePath}/favicon.png`} />
-        <meta name="theme-color" content="#059669" />
+        <meta name="theme-color" content="#14b8a6" />
       </head>
       <body className="min-h-screen w-screen bg-[#1e1f2b] antialiased">
         <ServiceWorkerRegistration />

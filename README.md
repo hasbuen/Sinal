@@ -3,6 +3,7 @@
 Aplicacao de mensageria com frontend em Next.js, backend em NestJS e base Android via Capacitor.
 
 Blueprint de migracao para `Flutter + Appwrite`: [docs/flutter-appwrite-whatsapp.md](/d:/Projects/Sinal/docs/flutter-appwrite-whatsapp.md)
+Guia de Google OAuth com Appwrite: [docs/google-appwrite-oauth.md](/d:/Projects/Sinal/docs/google-appwrite-oauth.md)
 
 ## Estrutura
 
@@ -33,6 +34,9 @@ NEXT_PUBLIC_APPWRITE_PROJECT_ID=69d0695b00063d876b0d
 NEXT_PUBLIC_APPWRITE_DATABASE_ID=sinal
 NEXT_PUBLIC_APPWRITE_GOOGLE_OAUTH_ENABLED=false
 NEXT_PUBLIC_APPWRITE_MEDIA_BUCKET_ID=chat-media
+NEXT_PUBLIC_WEBRTC_TURN_URL=
+NEXT_PUBLIC_WEBRTC_TURN_USERNAME=
+NEXT_PUBLIC_WEBRTC_TURN_CREDENTIAL=
 ```
 
 Configuracao recomendada no Appwrite `Platforms`:
@@ -69,6 +73,7 @@ npm run backend:typecheck
 - Prisma 6.x com MongoDB
 - Appwrite para autenticacao, painel admin e espelhos operacionais
 - Redis para presenca e typing
+- Cache Redis para lista de conversas e mensagens recentes
 - Socket.IO para realtime quando o backend roda em runtime Node persistente
 - SQLite para cache local de snapshots
 - Upload multipart com Appwrite Storage como alvo principal e fallback Blob/local

@@ -32,9 +32,8 @@ jobs:
         run: npm ci
 
       - name: Build desktop release
-        run: npm run desktop:release
+        run: npm run desktop:build
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_APP_URL: https://hasbuen.github.io/Sinal/login/
 
       - name: Build Android APK
@@ -46,6 +45,14 @@ jobs:
 
       - name: Prepare Android asset
         run: npm run android:release:asset
+
+      - name: Upload desktop assets to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/electron/Sinal-Setup.exe
+            release/electron/Sinal-Setup.exe.blockmap
+            release/electron/latest.yml
 
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2

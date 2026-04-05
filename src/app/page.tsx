@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowRight,
+  ArrowUpRight,
   CheckCircle2,
   Download,
   Globe,
@@ -89,6 +90,21 @@ const stats = [
   { label: "Login direto", value: "1 toque" },
   { label: "Superficies", value: "3" },
   { label: "Release atual", value: `v${packageMeta.version}` },
+];
+
+const surfacePillars = [
+  {
+    title: "Mesmo fluxo, telas mais consistentes",
+    text: "A entrada web, o desktop e o Android foram organizados para cair no mesmo produto, sem versoes conflitantes da interface.",
+  },
+  {
+    title: "Download e acesso sem friccao",
+    text: "Quem quer entrar rapido usa a web. Quem quer instalar encontra o instalador Windows e o APK direto da release.",
+  },
+  {
+    title: "Visual proprio",
+    text: "A base visual foi afastada do padrao do WhatsApp, com tipografia, tons e ritmo mais alinhados ao Sinal.",
+  },
 ];
 
 export default function Home() {
@@ -190,6 +206,18 @@ export default function Home() {
                     {item.label}
                   </p>
                   <p className="mt-2 text-3xl font-semibold text-white">{item.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              {surfacePillars.map((pillar) => (
+                <div
+                  key={pillar.title}
+                  className="rounded-[1.7rem] border border-white/10 bg-black/15 px-5 py-5 backdrop-blur"
+                >
+                  <p className="text-sm font-semibold text-white">{pillar.title}</p>
+                  <p className="mt-3 text-sm leading-6 text-white/62">{pillar.text}</p>
                 </div>
               ))}
             </div>
@@ -356,6 +384,49 @@ export default function Home() {
           </div>
         </section>
 
+        <section className="pb-10">
+          <div className="grid gap-4 rounded-[2.4rem] border border-white/10 bg-white/[0.04] p-5 backdrop-blur lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:p-7">
+            <div>
+              <p className="text-xs uppercase tracking-[0.28em] text-emerald-100/60">
+                Atualizacao de produto
+              </p>
+              <h3 className="mt-3 text-3xl font-semibold text-white">
+                A landing agora empurra para o produto real, nao para uma vitrine parada.
+              </h3>
+              <p className="mt-3 text-base leading-7 text-white/64">
+                O foco da home ficou mais objetivo: entrar no navegador, baixar a release
+                certa e continuar a mesma experiencia entre superficies.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                ["Abrir web", browserRoute],
+                ["Ver release", latestReleaseUrl],
+                ["Criar conta", registerRoute],
+              ].map(([label, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="group rounded-[1.6rem] border border-white/10 bg-black/15 px-4 py-4 transition hover:border-emerald-300/35 hover:bg-black/25"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-semibold text-white">{label}</p>
+                    <ArrowUpRight className="size-4 text-emerald-200 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-white/58">
+                    {label === "Abrir web"
+                      ? "Entre no app direto do navegador."
+                      : label === "Ver release"
+                        ? "Acompanhe a distribuicao publica."
+                        : "Cadastre um novo acesso para continuar."}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
         <section className="pb-16">
           <div className="rounded-[2.4rem] border border-white/10 bg-white/[0.04] px-6 py-7 backdrop-blur lg:flex lg:items-center lg:justify-between">
             <div className="max-w-2xl">
@@ -385,6 +456,23 @@ export default function Home() {
             </div>
           </div>
         </section>
+      </div>
+
+      <div className="pointer-events-none fixed inset-x-4 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-20 md:hidden">
+        <div className="pointer-events-auto mx-auto flex max-w-md items-center gap-2 rounded-[1.6rem] border border-white/10 bg-[#07131f]/88 p-2 shadow-[0_20px_60px_rgba(0,0,0,0.35)] backdrop-blur-xl">
+          <Link
+            href={browserRoute}
+            className="inline-flex min-w-0 flex-1 items-center justify-center rounded-[1.2rem] bg-white px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-100"
+          >
+            Abrir web
+          </Link>
+          <Link
+            href={androidDownloadUrl}
+            className="inline-flex min-w-0 flex-1 items-center justify-center rounded-[1.2rem] bg-emerald-300 px-4 py-3 text-sm font-semibold text-slate-950 transition hover:bg-emerald-200"
+          >
+            Baixar APK
+          </Link>
+        </div>
       </div>
     </main>
   );

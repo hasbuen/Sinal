@@ -19,6 +19,7 @@ import {
   Loader2,
   LogOut,
   Menu,
+  MessageCircleMore,
   Mic,
   Moon,
   Paperclip,
@@ -198,6 +199,7 @@ export default function ChatWorkspace({
   const [activeTab, setActiveTab] = useState<MobileTab>("chats");
   const [userSettings, setUserSettings] = useState(defaultStoredSettings);
   const [darkMode, setDarkMode] = useState(resolveThemeMode(defaultStoredSettings.theme));
+  const [mobileViewport, setMobileViewport] = useState(false);
   const deferredSearch = useDeferredValue(searchTerm);
   const websocketRealtime = supportsWebSocketRealtime();
   const appwriteEnabled = isAppwriteEnabled();
@@ -281,6 +283,7 @@ export default function ChatWorkspace({
       ? presenceMap[activeDirectUser.id]
       : null;
   const mobileShowingChat = activeTab === "chats" && Boolean(activeConversation);
+  const showMobileNav = mobileViewport && !mobileShowingChat;
 
   function patchMessage(updated: BackendMessage) {
     setMessages((current) =>
@@ -843,6 +846,15 @@ export default function ChatWorkspace({
   }, [userSettings]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const apply = () => setMobileViewport(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
     if (!activeConversationId || !currentUser) return;
     const cachedMessages = readMessagesCache(activeConversationId);
     if (cachedMessages?.messages?.length) {
@@ -974,7 +986,7 @@ export default function ChatWorkspace({
 
   return (
     <main
-      className={`${darkMode ? "dark" : ""} h-dvh overflow-hidden bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
+      className={`${darkMode ? "dark" : ""} flex h-dvh flex-col overflow-hidden bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
       style={
         {
           "--sinal-accent": accentPalette.accent,
@@ -983,7 +995,7 @@ export default function ChatWorkspace({
         } as CSSProperties
       }
     >
-      <div className="sticky top-0 z-30 shrink-0 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
+      <div className="z-30 shrink-0 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
         <div className="mx-auto flex max-w-[1480px] items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
@@ -1036,27 +1048,15 @@ export default function ChatWorkspace({
           </div>
         </div>
 
-        <div className={`${mobileShowingChat ? "hidden" : "grid"} grid-cols-3 md:hidden`}>
-          {mobileTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`border-b-2 px-4 py-3 text-sm font-medium transition ${
-                activeTab === tab.id
-                  ? "border-white text-white"
-                  : "border-transparent text-white/65"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
       </div>
 
-      <div className="mx-auto grid h-[calc(100dvh-74px)] max-w-[1480px] gap-0 overflow-hidden md:grid-cols-[380px_1fr]">
+      <div
+        className={`mx-auto grid min-h-0 w-full max-w-[1480px] flex-1 gap-0 overflow-hidden md:grid-cols-[380px_1fr] ${
+          showMobileNav ? "pb-[calc(5.5rem+env(safe-area-inset-bottom))]" : ""
+        } md:pb-0`}
+      >
         <aside
-          className={`min-h-0 overflow-hidden border-r border-black/5 bg-[#F8F5F1] dark:border-white/5 dark:bg-[#111B21] ${
+          className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-black/5 bg-[#F8F5F1] dark:border-white/5 dark:bg-[#111B21] ${
             mobileShowingChat ? "hidden md:block" : "block"
           }`}
         >
@@ -1101,7 +1101,11 @@ export default function ChatWorkspace({
             </Button>
           </div>
 
-          <div className="h-full min-h-0 overflow-y-auto overscroll-contain">
+          <div
+            className={`min-h-0 flex-1 overflow-y-auto overscroll-contain ${
+              showMobileNav ? "pb-6" : ""
+            }`}
+          >
             {activeTab === "chats" ? (
               <>
                 <div className="border-t border-black/5 dark:border-white/5">
@@ -1339,7 +1343,7 @@ export default function ChatWorkspace({
         </aside>
 
         <section
-          className={`h-full min-h-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#efeae2,#e8dfd3)] dark:bg-[linear-gradient(180deg,#0b141a,#111b21)] ${
+          className={`relative h-full min-h-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#efeae2,#e8dfd3)] dark:bg-[linear-gradient(180deg,#0b141a,#111b21)] ${
             mobileShowingChat ? "flex" : "hidden md:flex"
           }`}
         >
@@ -1416,8 +1420,12 @@ export default function ChatWorkspace({
                 </div>
               </div>
 
-              <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 ${wallpaperClass(userSettings.wallpaper)}`}>
-                <div className={`mx-auto w-full max-w-4xl ${userSettings.compactMode ? "space-y-1.5" : "space-y-2"}`}>
+              <div
+                className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3 sm:px-6 sm:py-4 ${wallpaperClass(userSettings.wallpaper)}`}
+              >
+                <div
+                  className={`mx-auto w-full max-w-3xl ${userSettings.compactMode ? "space-y-1.5" : "space-y-2"} pb-3 sm:pb-4`}
+                >
                   {visibleMessages.map((message) => (
                     <ChatMessageBubble
                       key={message.id}
@@ -1489,7 +1497,7 @@ export default function ChatWorkspace({
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-black/5 bg-[#F0F2F5] px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] dark:border-white/5 dark:bg-[#202c33] sm:px-4">
+              <div className="sticky bottom-0 z-20 shrink-0 border-t border-black/5 bg-[#F0F2F5]/96 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur dark:border-white/5 dark:bg-[#202c33]/96 sm:px-4">
                 <div className="mx-auto w-full max-w-4xl">
                 {replyingTo ? (
                   <div className="mb-3 flex items-start justify-between gap-3 rounded-[1.2rem] border-l-4 border-[#25D366] bg-white px-4 py-3 shadow-sm dark:bg-[#111B21]">
@@ -1553,7 +1561,7 @@ export default function ChatWorkspace({
                 ) : null}
 
                 <div className="space-y-3">
-                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 whitespace-nowrap">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {quickEmojis.map((emoji) => (
                       <button
                         key={emoji}
@@ -1563,7 +1571,7 @@ export default function ChatWorkspace({
                             `${composerText}${composerText.trim().length > 0 ? " " : ""}${emoji}`,
                           )
                         }
-                        className="shrink-0 rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
+                        className="shrink-0 snap-start rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
                         style={{ borderColor: "color-mix(in srgb, var(--sinal-accent, #14b8a6) 24%, transparent)" }}
                       >
                         {emoji}
@@ -1572,11 +1580,11 @@ export default function ChatWorkspace({
                   </div>
 
                   <div className="flex items-end gap-2">
-                    <div className="flex min-w-0 flex-1 items-end gap-1 rounded-[1.8rem] bg-white px-2 py-2 shadow-sm dark:bg-[#2a3942]">
+                    <div className="flex min-w-0 flex-1 items-end gap-0.5 rounded-[1.8rem] bg-white px-1.5 py-1.5 shadow-sm dark:bg-[#2a3942] sm:gap-1 sm:px-2 sm:py-2">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                      className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                       onClick={() => setShowEmojiPicker(true)}
                     >
                       <SmilePlus className="h-5 w-5" />
@@ -1584,7 +1592,7 @@ export default function ChatWorkspace({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                      className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <Paperclip className="h-5 w-5" />
@@ -1592,7 +1600,7 @@ export default function ChatWorkspace({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                      className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                       onClick={() => cameraInputRef.current?.click()}
                     >
                       <Camera className="h-5 w-5" />
@@ -1611,12 +1619,13 @@ export default function ChatWorkspace({
                         }
                       }}
                       placeholder="Mensagem"
-                      className="max-h-32 min-h-10 border-none bg-transparent px-1 py-2 text-[15px] shadow-none focus-visible:ring-0"
+                      rows={1}
+                      className="max-h-32 min-h-10 flex-1 resize-none border-none bg-transparent px-1 py-2 text-[15px] shadow-none focus-visible:ring-0"
                     />
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`rounded-full ${
+                      className={`h-10 w-10 rounded-full ${
                         recording
                           ? "text-red-500 hover:text-red-600"
                           : "text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
@@ -1703,6 +1712,37 @@ export default function ChatWorkspace({
           )}
         </section>
       </div>
+
+      {showMobileNav ? (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/8 bg-[#F8F5F1]/96 backdrop-blur dark:border-white/8 dark:bg-[#111B21]/96 md:hidden">
+          <div className="mx-auto flex max-w-[1480px] items-center justify-around gap-2 px-3 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-2">
+            {[
+              { id: "chats", label: "Chats", icon: MessageCircleMore },
+              { id: "status", label: "Status", icon: Camera },
+              { id: "calls", label: "Chamadas", icon: Phone },
+            ].map(({ id, label, icon: Icon }) => {
+              const active = activeTab === id;
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setActiveTab(id as MobileTab)}
+                  className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[1.3rem] px-3 py-2 text-xs font-medium transition ${
+                    active
+                      ? "text-[#111B21] shadow-sm dark:text-[#07131b]"
+                      : "text-[#667781] dark:text-white/60"
+                  }`}
+                  style={active ? { backgroundColor: "var(--sinal-accent)" } : undefined}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span className="truncate">{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
 
       {showEmojiPicker ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">

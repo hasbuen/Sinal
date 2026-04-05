@@ -59,6 +59,13 @@ export function ChatMessageBubble({
   const status = mine ? receiptState(message, conversation, currentUserId) : "sent";
   const expiryLabel = timeUntilExpiry(message, clock);
   const contextVisible = hovered || menuOpen || reactionRailOpen;
+  const mobilePreview =
+    message.text ||
+    message.emoji ||
+    message.linkTitle ||
+    message.linkUrl ||
+    message.attachments[0]?.fileName ||
+    messagePreview(message);
 
   useEffect(() => {
     if (!menuOpen) {
@@ -129,7 +136,7 @@ export function ChatMessageBubble({
       }}
     >
       <div
-        className={`relative w-fit max-w-[min(82vw,32rem)] px-1 pt-3 sm:max-w-[78%] sm:px-2 sm:pt-6 ${
+        className={`relative w-full max-w-[min(calc(100vw-1rem),32rem)] px-0.5 pt-3 sm:w-fit sm:max-w-[78%] sm:px-2 sm:pt-6 ${
           mine ? "items-end" : "items-start"
         }`}
         onContextMenu={(event) => {
@@ -168,7 +175,7 @@ export function ChatMessageBubble({
         ) : null}
 
         <div
-          className={`relative overflow-hidden rounded-[1.2rem] px-3 py-2 shadow-sm transition-all ${
+          className={`relative max-w-full overflow-hidden rounded-[1.2rem] px-3 py-2 shadow-sm transition-all ${
             mine
               ? "bg-[#DCF8C6] text-[#111B21] dark:bg-[#144d37] dark:text-white"
               : "bg-white text-[#111B21] dark:bg-[#202c33] dark:text-white"
@@ -234,7 +241,7 @@ export function ChatMessageBubble({
                   href={message.linkUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="mt-2 block rounded-2xl bg-black/5 px-3 py-3 text-sm font-medium text-[#075E54] dark:bg-white/5 dark:text-[#7fe7bc]"
+                  className="mt-2 block break-all rounded-2xl bg-black/5 px-3 py-3 text-sm font-medium text-[#075E54] dark:bg-white/5 dark:text-[#7fe7bc]"
                 >
                   {message.linkTitle || message.linkUrl}
                 </a>
@@ -266,7 +273,7 @@ export function ChatMessageBubble({
                           <img
                             src={src}
                             alt={attachment.fileName}
-                            className="max-h-80 w-full rounded-2xl object-cover"
+                            className="max-h-72 w-full rounded-2xl object-cover sm:max-h-80"
                           />
                         </a>
                       );
@@ -350,87 +357,97 @@ export function ChatMessageBubble({
                 className="fixed inset-0 z-30 bg-black/35 md:hidden"
               />
               <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-[1.8rem] bg-white px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-18px_60px_rgba(0,0,0,0.28)] dark:bg-[#16232c] md:hidden">
-                <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/10 dark:bg-white/15" />
-                {!deleted ? (
-                  <div className="mb-4 overflow-x-auto">
-                    <div className="flex w-max min-w-full gap-2 pb-1">
-                      {quickReactions.map((emoji) => (
+                <div className="mx-auto max-w-xl">
+                  <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/10 dark:bg-white/15" />
+                  <div className="mb-4 rounded-[1.25rem] bg-black/[0.04] px-4 py-3 dark:bg-white/[0.04]">
+                    <p className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-[#667781] dark:text-white/45">
+                      {mine ? "Sua mensagem" : message.sender.displayName}
+                    </p>
+                    <p className="mt-2 line-clamp-3 text-sm text-[#111B21] dark:text-white/80">
+                      {mobilePreview}
+                    </p>
+                  </div>
+                  {!deleted ? (
+                    <div className="mb-4 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                      <div className="flex w-max min-w-full gap-2 pb-1">
+                        {quickReactions.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              onReaction(message.id, emoji);
+                              setReactionRailOpen(false);
+                              closeMenuIfOpen();
+                            }}
+                            className="rounded-full border border-black/8 bg-black/[0.03] px-4 py-2 text-2xl transition hover:bg-black/8 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onReply(message);
+                        closeMenuIfOpen();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                    >
+                      <Reply className="h-4 w-4" />
+                      Responder
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onCopy(message);
+                        closeMenuIfOpen();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                    >
+                      <Copy className="h-4 w-4" />
+                      Copiar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onForward(message);
+                        closeMenuIfOpen();
+                      }}
+                      className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                    >
+                      <Forward className="h-4 w-4" />
+                      Encaminhar
+                    </button>
+                    {mine && !deleted ? (
+                      <>
                         <button
-                          key={emoji}
                           type="button"
                           onClick={() => {
-                            onReaction(message.id, emoji);
-                            setReactionRailOpen(false);
+                            onEdit(message);
                             closeMenuIfOpen();
                           }}
-                          className="rounded-full border border-black/8 bg-black/[0.03] px-4 py-2 text-2xl transition hover:bg-black/8 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                          className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
                         >
-                          {emoji}
+                          <Pencil className="h-4 w-4" />
+                          Editar
                         </button>
-                      ))}
-                    </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onDelete(message.id);
+                            closeMenuIfOpen();
+                          }}
+                          className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Apagar
+                        </button>
+                      </>
+                    ) : null}
                   </div>
-                ) : null}
-                <div className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onReply(message);
-                      closeMenuIfOpen();
-                    }}
-                    className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
-                  >
-                    <Reply className="h-4 w-4" />
-                    Responder
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onCopy(message);
-                      closeMenuIfOpen();
-                    }}
-                    className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
-                  >
-                    <Copy className="h-4 w-4" />
-                    Copiar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onForward(message);
-                      closeMenuIfOpen();
-                    }}
-                    className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
-                  >
-                    <Forward className="h-4 w-4" />
-                    Encaminhar
-                  </button>
-                  {mine && !deleted ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onEdit(message);
-                          closeMenuIfOpen();
-                        }}
-                        className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onDelete(message.id);
-                          closeMenuIfOpen();
-                        }}
-                        className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Apagar
-                      </button>
-                    </>
-                  ) : null}
                 </div>
               </div>
             </>

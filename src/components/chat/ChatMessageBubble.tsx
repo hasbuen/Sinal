@@ -53,6 +53,7 @@ export function ChatMessageBubble({
   const longPressRef = useRef<number | null>(null);
   const [hovered, setHovered] = useState(false);
   const [reactionRailOpen, setReactionRailOpen] = useState(false);
+  const [mobileViewport, setMobileViewport] = useState(false);
   const mine = message.sender.id === currentUserId;
   const deleted = Boolean(message.deletedAt);
   const status = mine ? receiptState(message, conversation, currentUserId) : "sent";
@@ -64,6 +65,32 @@ export function ChatMessageBubble({
       setReactionRailOpen(false);
     }
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const media = window.matchMedia("(max-width: 767px)");
+    const apply = () => setMobileViewport(media.matches);
+    apply();
+    media.addEventListener("change", apply);
+
+    return () => media.removeEventListener("change", apply);
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen || !mobileViewport) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [menuOpen, mobileViewport]);
 
   function clearLongPress() {
     if (longPressRef.current) {
@@ -94,7 +121,7 @@ export function ChatMessageBubble({
 
   return (
     <div
-      className={`group/message flex ${mine ? "justify-end" : "justify-start"} animate-in fade-in-0`}
+      className={`group/message flex w-full overflow-x-hidden ${mine ? "justify-end" : "justify-start"} animate-in fade-in-0`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
         setHovered(false);
@@ -102,7 +129,7 @@ export function ChatMessageBubble({
       }}
     >
       <div
-        className={`relative max-w-[92%] px-2 pt-6 sm:max-w-[78%] ${
+        className={`relative w-fit max-w-[min(82vw,32rem)] px-1 pt-3 sm:max-w-[78%] sm:px-2 sm:pt-6 ${
           mine ? "items-end" : "items-start"
         }`}
         onContextMenu={(event) => {
@@ -117,7 +144,7 @@ export function ChatMessageBubble({
         onPointerCancel={clearLongPress}
         onPointerLeave={clearLongPress}
       >
-        {!deleted && contextVisible ? (
+        {!deleted && contextVisible && !mobileViewport ? (
           <div
             className={`pointer-events-auto absolute top-0 z-20 flex -translate-y-1/2 items-center gap-1 rounded-full border border-black/5 bg-white px-2 py-1 shadow-lg transition dark:border-white/10 dark:bg-[#233138] ${
               mine ? "right-3" : "left-3"
@@ -141,7 +168,7 @@ export function ChatMessageBubble({
         ) : null}
 
         <div
-          className={`relative rounded-[1.2rem] px-3 py-2 shadow-sm transition-all ${
+          className={`relative overflow-hidden rounded-[1.2rem] px-3 py-2 shadow-sm transition-all ${
             mine
               ? "bg-[#DCF8C6] text-[#111B21] dark:bg-[#144d37] dark:text-white"
               : "bg-white text-[#111B21] dark:bg-[#202c33] dark:text-white"
@@ -163,7 +190,7 @@ export function ChatMessageBubble({
               className={`absolute top-2 rounded-full border border-black/5 bg-white/80 p-1 text-[#667781] shadow-sm transition ${
                 mine ? "left-2" : "right-2"
               } ${
-                contextVisible
+                contextVisible || mobileViewport
                   ? "translate-y-0 opacity-100"
                   : "pointer-events-none -translate-y-1 opacity-0"
               } dark:border-white/10 dark:bg-[#2a3942] dark:text-white/65`}
@@ -272,7 +299,7 @@ export function ChatMessageBubble({
                         key={attachment.id || attachment.url}
                         href={src}
                         target="_blank"
-                        className="block rounded-2xl bg-black/5 px-4 py-3 text-sm dark:bg-white/5"
+                        className="block break-all rounded-2xl bg-black/5 px-4 py-3 text-sm dark:bg-white/5"
                         rel="noreferrer"
                       >
                         {attachment.fileName}
@@ -314,9 +341,104 @@ export function ChatMessageBubble({
             ) : null}
           </div>
 
-          {menuOpen ? (
+          {menuOpen && mobileViewport ? (
+            <>
+              <button
+                type="button"
+                aria-label="Fechar menu"
+                onClick={closeMenuIfOpen}
+                className="fixed inset-0 z-30 bg-black/35 md:hidden"
+              />
+              <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-[1.8rem] bg-white px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-18px_60px_rgba(0,0,0,0.28)] dark:bg-[#16232c] md:hidden">
+                <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/10 dark:bg-white/15" />
+                {!deleted ? (
+                  <div className="mb-4 overflow-x-auto">
+                    <div className="flex w-max min-w-full gap-2 pb-1">
+                      {quickReactions.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => {
+                            onReaction(message.id, emoji);
+                            setReactionRailOpen(false);
+                            closeMenuIfOpen();
+                          }}
+                          className="rounded-full border border-black/8 bg-black/[0.03] px-4 py-2 text-2xl transition hover:bg-black/8 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onReply(message);
+                      closeMenuIfOpen();
+                    }}
+                    className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                  >
+                    <Reply className="h-4 w-4" />
+                    Responder
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onCopy(message);
+                      closeMenuIfOpen();
+                    }}
+                    className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                  >
+                    <Copy className="h-4 w-4" />
+                    Copiar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onForward(message);
+                      closeMenuIfOpen();
+                    }}
+                    className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                  >
+                    <Forward className="h-4 w-4" />
+                    Encaminhar
+                  </button>
+                  {mine && !deleted ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onEdit(message);
+                          closeMenuIfOpen();
+                        }}
+                        className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onDelete(message.id);
+                          closeMenuIfOpen();
+                        }}
+                        className="flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-sm text-rose-600 hover:bg-rose-50 dark:text-rose-300 dark:hover:bg-rose-400/10"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Apagar
+                      </button>
+                    </>
+                  ) : null}
+                </div>
+              </div>
+            </>
+          ) : null}
+
+          {menuOpen && !mobileViewport ? (
             <div
-              className={`absolute top-full z-20 mt-2 w-52 rounded-2xl bg-white p-2 text-[#111B21] shadow-2xl dark:bg-[#233138] dark:text-white ${
+              className={`absolute top-full z-20 mt-2 hidden w-52 rounded-2xl bg-white p-2 text-[#111B21] shadow-2xl dark:bg-[#233138] dark:text-white md:block ${
                 mine ? "right-0" : "left-0"
               }`}
             >

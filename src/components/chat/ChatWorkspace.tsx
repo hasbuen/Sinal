@@ -974,7 +974,7 @@ export default function ChatWorkspace({
 
   return (
     <main
-      className={`${darkMode ? "dark" : ""} min-h-screen bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
+      className={`${darkMode ? "dark" : ""} h-dvh overflow-hidden bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
       style={
         {
           "--sinal-accent": accentPalette.accent,
@@ -983,7 +983,7 @@ export default function ChatWorkspace({
         } as CSSProperties
       }
     >
-      <div className="sticky top-0 z-30 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
+      <div className="sticky top-0 z-30 shrink-0 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
         <div className="mx-auto flex max-w-[1480px] items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
@@ -1036,7 +1036,7 @@ export default function ChatWorkspace({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 md:hidden">
+        <div className={`${mobileShowingChat ? "hidden" : "grid"} grid-cols-3 md:hidden`}>
           {mobileTabs.map((tab) => (
             <button
               key={tab.id}
@@ -1054,9 +1054,9 @@ export default function ChatWorkspace({
         </div>
       </div>
 
-      <div className="mx-auto grid min-h-[calc(100vh-74px)] max-w-[1480px] gap-0 md:grid-cols-[380px_1fr]">
+      <div className="mx-auto grid h-[calc(100dvh-74px)] max-w-[1480px] gap-0 overflow-hidden md:grid-cols-[380px_1fr]">
         <aside
-          className={`border-r border-black/5 bg-[#F8F5F1] dark:border-white/5 dark:bg-[#111B21] ${
+          className={`min-h-0 overflow-hidden border-r border-black/5 bg-[#F8F5F1] dark:border-white/5 dark:bg-[#111B21] ${
             mobileShowingChat ? "hidden md:block" : "block"
           }`}
         >
@@ -1101,7 +1101,7 @@ export default function ChatWorkspace({
             </Button>
           </div>
 
-          <div className="h-[calc(100vh-210px)] overflow-y-auto">
+          <div className="h-full min-h-0 overflow-y-auto overscroll-contain">
             {activeTab === "chats" ? (
               <>
                 <div className="border-t border-black/5 dark:border-white/5">
@@ -1339,13 +1339,14 @@ export default function ChatWorkspace({
         </aside>
 
         <section
-          className={`flex min-h-[calc(100vh-74px)] flex-col bg-[linear-gradient(180deg,#efeae2,#e8dfd3)] dark:bg-[linear-gradient(180deg,#0b141a,#111b21)] ${
+          className={`h-full min-h-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#efeae2,#e8dfd3)] dark:bg-[linear-gradient(180deg,#0b141a,#111b21)] ${
             mobileShowingChat ? "flex" : "hidden md:flex"
           }`}
         >
           {activeConversation ? (
             <>
-              <div className="flex items-center gap-3 border-b border-black/5 bg-[#F0F2F5] px-3 py-3 dark:border-white/5 dark:bg-[#202c33]">
+              <div className="shrink-0 border-b border-black/5 bg-[#F0F2F5] dark:border-white/5 dark:bg-[#202c33]">
+                <div className="mx-auto flex max-w-4xl items-center gap-3 px-3 py-3">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1384,7 +1385,7 @@ export default function ChatWorkspace({
                     )}
                   </p>
                 </div>
-                <div className="flex gap-1">
+                <div className="flex shrink-0 gap-1">
                   <Button variant="ghost" size="icon" className="rounded-full">
                     <Search className="h-4 w-4" />
                   </Button>
@@ -1412,10 +1413,11 @@ export default function ChatWorkspace({
                     <Menu className="h-4 w-4" />
                   </Button>
                 </div>
+                </div>
               </div>
 
-              <div className={`flex-1 overflow-y-auto px-3 py-4 sm:px-6 ${wallpaperClass(userSettings.wallpaper)}`}>
-                <div className={userSettings.compactMode ? "space-y-1.5" : "space-y-2"}>
+              <div className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-6 ${wallpaperClass(userSettings.wallpaper)}`}>
+                <div className={`mx-auto w-full max-w-4xl ${userSettings.compactMode ? "space-y-1.5" : "space-y-2"}`}>
                   {visibleMessages.map((message) => (
                     <ChatMessageBubble
                       key={message.id}
@@ -1487,7 +1489,8 @@ export default function ChatWorkspace({
                 </div>
               </div>
 
-              <div className="border-t border-black/5 bg-[#F0F2F5] px-3 py-3 dark:border-white/5 dark:bg-[#202c33] sm:px-4">
+              <div className="shrink-0 border-t border-black/5 bg-[#F0F2F5] px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] dark:border-white/5 dark:bg-[#202c33] sm:px-4">
+                <div className="mx-auto w-full max-w-4xl">
                 {replyingTo ? (
                   <div className="mb-3 flex items-start justify-between gap-3 rounded-[1.2rem] border-l-4 border-[#25D366] bg-white px-4 py-3 shadow-sm dark:bg-[#111B21]">
                     <div className="min-w-0">
@@ -1550,7 +1553,7 @@ export default function ChatWorkspace({
                 ) : null}
 
                 <div className="space-y-3">
-                  <div className="flex flex-wrap gap-2">
+                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 whitespace-nowrap">
                     {quickEmojis.map((emoji) => (
                       <button
                         key={emoji}
@@ -1560,7 +1563,7 @@ export default function ChatWorkspace({
                             `${composerText}${composerText.trim().length > 0 ? " " : ""}${emoji}`,
                           )
                         }
-                        className="rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
+                        className="shrink-0 rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
                         style={{ borderColor: "color-mix(in srgb, var(--sinal-accent, #14b8a6) 24%, transparent)" }}
                       >
                         {emoji}
@@ -1569,7 +1572,7 @@ export default function ChatWorkspace({
                   </div>
 
                   <div className="flex items-end gap-2">
-                    <div className="flex flex-1 items-end gap-1 rounded-[1.8rem] bg-white px-2 py-2 shadow-sm dark:bg-[#2a3942]">
+                    <div className="flex min-w-0 flex-1 items-end gap-1 rounded-[1.8rem] bg-white px-2 py-2 shadow-sm dark:bg-[#2a3942]">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -1608,7 +1611,7 @@ export default function ChatWorkspace({
                         }
                       }}
                       placeholder="Mensagem"
-                      className="min-h-10 border-none bg-transparent px-1 py-2 text-[15px] shadow-none focus-visible:ring-0"
+                      className="max-h-32 min-h-10 border-none bg-transparent px-1 py-2 text-[15px] shadow-none focus-visible:ring-0"
                     />
                     <Button
                       variant="ghost"
@@ -1667,6 +1670,7 @@ export default function ChatWorkspace({
                       )}
                     </Button>
                   </div>
+                </div>
                 </div>
               </div>
             </>

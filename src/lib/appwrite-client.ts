@@ -32,6 +32,76 @@ const APPWRITE_GOOGLE_OAUTH_ENABLED =
 
 let clientSingleton: Client | null = null;
 
+function readAppwriteErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "message" in error &&
+    typeof (error as { message?: unknown }).message === "string"
+  ) {
+    return (error as { message: string }).message;
+  }
+
+  return null;
+}
+
+function isActiveSessionError(message: string) {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("session is active") ||
+    normalized.includes("creation of a session is prohibited")
+  );
+}
+
+export function getFriendlyAppwriteErrorMessage(
+  error: unknown,
+  fallback = "Nao foi possivel concluir a solicitacao.",
+) {
+  const message = readAppwriteErrorMessage(error);
+  if (!message) {
+    return fallback;
+  }
+
+  const normalized = message.toLowerCase();
+
+  if (isActiveSessionError(message)) {
+    return "Voce ja tem uma sessao ativa. Entrando direto no aplicativo.";
+  }
+
+  if (
+    normalized.includes("invalid credentials") ||
+    normalized.includes("invalid `email` or `password`")
+  ) {
+    return "E-mail ou senha invalidos.";
+  }
+
+  if (normalized.includes("already exists")) {
+    return "Ja existe uma conta com esse e-mail.";
+  }
+
+  if (normalized.includes("invalid email")) {
+    return "Digite um e-mail valido.";
+  }
+
+  if (normalized.includes("password") && normalized.includes("at least")) {
+    return "A senha precisa atender aos requisitos minimos do Appwrite.";
+  }
+
+  if (normalized.includes("user") && normalized.includes("unauthorized")) {
+    return "Sua sessao expirou. Faca login novamente.";
+  }
+
+  if (normalized.includes("too many")) {
+    return "Muitas tentativas seguidas. Aguarde um pouco e tente novamente.";
+  }
+
+  return message;
+}
+
 export function isAppwriteEnabled() {
   return Boolean(APPWRITE_ENDPOINT && APPWRITE_PROJECT_ID);
 }
@@ -88,9 +158,15 @@ export async function registerWithAppwriteEmailPassword(input: {
   name: string;
 }) {
   const account = getAppwriteAccount();
-  await account.create(ID.unique(), input.email.trim(), input.password, input.name.trim());
-  await account.createEmailPasswordSession(input.email.trim(), input.password);
-  return account.get();
+  try {
+    await account.create(ID.unique(), input.email.trim(), input.password, input.name.trim());
+    await account.createEmailPasswordSession(input.email.trim(), input.password);
+    return account.get();
+  } catch (error) {
+    throw new Error(
+      getFriendlyAppwriteErrorMessage(error, "Nao foi possivel criar a conta."),
+    );
+  }
 }
 
 export async function loginWithAppwriteEmailPassword(
@@ -98,8 +174,19 @@ export async function loginWithAppwriteEmailPassword(
   password: string,
 ) {
   const account = getAppwriteAccount();
-  await account.createEmailPasswordSession(email.trim(), password);
-  return account.get();
+  try {
+    await account.createEmailPasswordSession(email.trim(), password);
+    return account.get();
+  } catch (error) {
+    const message = readAppwriteErrorMessage(error);
+    if (message && isActiveSessionError(message)) {
+      return account.get();
+    }
+
+    throw new Error(
+      getFriendlyAppwriteErrorMessage(error, "Nao foi possivel entrar agora."),
+    );
+  }
 }
 
 export async function getAppwriteCurrentUser() {

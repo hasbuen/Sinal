@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import DownloadQrCard from "@/components/DownloadQrCard";
 import AppPlatformRedirect from "@/components/AppPlatformRedirect";
+import LatestReleaseTag from "@/components/LatestReleaseTag";
 import { withBasePath } from "@/lib/utils";
 import packageMeta from "../../package.json";
 
@@ -86,12 +87,6 @@ const distributionOptions = [
   },
 ];
 
-const stats = [
-  { label: "Login direto", value: "1 toque" },
-  { label: "Superficies", value: "3" },
-  { label: "Release atual", value: `v${packageMeta.version}` },
-];
-
 const surfacePillars = [
   {
     title: "Mesmo fluxo, telas mais consistentes",
@@ -108,6 +103,16 @@ const surfacePillars = [
 ];
 
 export default function Home() {
+  const releaseFallbackTag = `v${packageMeta.version}`;
+  const stats = [
+    { label: "Login direto", value: "1 toque" },
+    { label: "Superficies", value: "3" },
+    {
+      label: "Release atual",
+      value: <LatestReleaseTag fallback={releaseFallbackTag} />,
+    },
+  ];
+
   return (
     <main className="min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.22),transparent_28%),radial-gradient(circle_at_top_right,rgba(16,185,129,0.18),transparent_22%),linear-gradient(160deg,#04131d_12%,#07131f_46%,#031018_100%)] text-white">
       <AppPlatformRedirect />
@@ -126,7 +131,7 @@ export default function Home() {
             />
             <div>
               <p className="text-[0.65rem] uppercase tracking-[0.38em] text-emerald-200/70">
-                Sinal {packageMeta.version}
+                Sinal <LatestReleaseTag fallback={releaseFallbackTag} />
               </p>
               <h1 className="text-lg font-semibold">
                 Mensageria pronta para navegar, instalar e usar
@@ -205,7 +210,7 @@ export default function Home() {
                   <p className="text-xs uppercase tracking-[0.22em] text-white/45">
                     {item.label}
                   </p>
-                  <p className="mt-2 text-3xl font-semibold text-white">{item.value}</p>
+                  <div className="mt-2 text-3xl font-semibold text-white">{item.value}</div>
                 </div>
               ))}
             </div>
@@ -290,7 +295,7 @@ export default function Home() {
                         Release atual
                       </p>
                       <h3 className="mt-2 text-3xl font-semibold text-white">
-                        v{packageMeta.version}
+                        <LatestReleaseTag fallback={releaseFallbackTag} />
                       </h3>
                       <div className="mt-5 space-y-3">
                         {[

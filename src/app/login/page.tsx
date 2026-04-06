@@ -14,6 +14,7 @@ import {
 } from "@/lib/backend-client";
 import {
   createAppwriteJwt,
+  getFriendlyAppwriteErrorMessage,
   getAppwriteCurrentUser,
   isAppwriteEnabled,
   isAppwriteGoogleOAuthEnabled,
@@ -85,7 +86,13 @@ export default function PaginaLogin() {
       setBackendToken(auth.accessToken);
       router.replace(toAppHref("/chat"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erro ao entrar.");
+      toast.error(
+        appwriteEnabled
+          ? getFriendlyAppwriteErrorMessage(error, "Nao foi possivel entrar.")
+          : error instanceof Error
+            ? error.message
+            : "Nao foi possivel entrar.",
+      );
     } finally {
       setCarregando(false);
     }

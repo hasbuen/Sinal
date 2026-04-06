@@ -14,6 +14,7 @@ import {
 } from "@/lib/backend-client";
 import {
   createAppwriteJwt,
+  getFriendlyAppwriteErrorMessage,
   getAppwriteCurrentUser,
   isAppwriteEnabled,
   isAppwriteGoogleOAuthEnabled,
@@ -101,7 +102,13 @@ export default function PaginaCadastro() {
       toast.success("Conta criada com sucesso.");
       router.replace(toAppHref("/chat"));
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Falha ao cadastrar.");
+      toast.error(
+        appwriteEnabled
+          ? getFriendlyAppwriteErrorMessage(error, "Nao foi possivel criar a conta.")
+          : error instanceof Error
+            ? error.message
+            : "Nao foi possivel criar a conta.",
+      );
     } finally {
       setCarregando(false);
     }

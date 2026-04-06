@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -18,19 +18,15 @@ import {
   Camera,
   Loader2,
   LogOut,
-  Menu,
   MessageCircleMore,
-  Mic,
   Moon,
   Paperclip,
-  Phone,
   Search,
   Send,
   Settings2,
   SmilePlus,
   Sun,
   Users,
-  Video,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -91,7 +87,6 @@ import {
   conversationName,
   dedupeConversations,
   formatTypingLabel,
-  formatUserStatus,
   getConversationUser,
   hourFormatter,
   inferMessageKind,
@@ -136,13 +131,12 @@ const defaultCallState: ChatCallState & {
   cameraEnabled: true,
 };
 
-const mobileTabs = [
-  { id: "chats", label: "Chats" },
-  { id: "status", label: "Status" },
-  { id: "calls", label: "Chamadas" },
+const sidebarTabs = [
+  { id: "chats", label: "Conversas", icon: MessageCircleMore },
+  { id: "contacts", label: "Contatos", icon: Users },
 ] as const;
 
-type MobileTab = (typeof mobileTabs)[number]["id"];
+type SidebarTab = (typeof sidebarTabs)[number]["id"];
 
 export default function ChatWorkspace({
   initialConversationId,
@@ -153,8 +147,6 @@ export default function ChatWorkspace({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const cameraInputRef = useRef<HTMLInputElement | null>(null);
   const directOpenLocksRef = useRef<Set<string>>(new Set());
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const recorderChunksRef = useRef<Blob[]>([]);
   const typingTimeoutRef = useRef<number | null>(null);
   const messageRefreshTimeoutRef = useRef<number | null>(null);
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -167,7 +159,6 @@ export default function ChatWorkspace({
 
   const [booting, setBooting] = useState(true);
   const [pending, setPending] = useState(false);
-  const [recording, setRecording] = useState(false);
   const [showGroupComposer, setShowGroupComposer] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showForwardSheet, setShowForwardSheet] = useState(false);
@@ -196,7 +187,7 @@ export default function ChatWorkspace({
   const [callState, setCallState] = useState(defaultCallState);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const [activeTab, setActiveTab] = useState<MobileTab>("chats");
+  const [activeTab, setActiveTab] = useState<SidebarTab>("chats");
   const [userSettings, setUserSettings] = useState(defaultStoredSettings);
   const [darkMode, setDarkMode] = useState(resolveThemeMode(defaultStoredSettings.theme));
   const [mobileViewport, setMobileViewport] = useState(false);
@@ -247,6 +238,13 @@ export default function ChatWorkspace({
             .includes(term),
         );
   }, [deferredSearch, users]);
+  const filteredContacts = useMemo(
+    () =>
+      currentUser
+        ? filteredUsers.filter((user) => user.id !== currentUser.id)
+        : filteredUsers,
+    [currentUser, filteredUsers],
+  );
   const filteredConversations = useMemo(() => {
     if (!currentUser) return normalizedConversations;
     const term = deferredSearch.trim().toLowerCase();
@@ -260,35 +258,31 @@ export default function ChatWorkspace({
             .includes(term),
         );
   }, [currentUser, deferredSearch, normalizedConversations]);
-  const statusEntries = useMemo(() => {
-    if (!currentUser) return [];
-
-    return filteredUsers
-      .filter((user) => user.id !== currentUser.id)
-      .map((user) => ({
-        user,
-        presence: presenceMap[user.id],
-        label: formatUserStatus(user, presenceMap[user.id]),
-      }))
-      .sort(
-        (a, b) => Number(Boolean(b.presence?.online)) - Number(Boolean(a.presence?.online)),
-      );
-  }, [currentUser, filteredUsers, presenceMap]);
-  const callEntries = useMemo(
-    () => filteredConversations.filter((conversation) => conversation.kind === "DIRECT"),
-    [filteredConversations],
-  );
   const activePresence =
     activeDirectUser && activeConversation?.kind === "DIRECT"
       ? presenceMap[activeDirectUser.id]
       : null;
-  const mobileShowingChat = activeTab === "chats" && Boolean(activeConversation);
+  const mobileShowingChat = mobileViewport && Boolean(activeConversation);
   const showMobileNav = mobileViewport && !mobileShowingChat;
+  const activeConversationStatus = formatTypingLabel(
+    typingUsers,
+    mobileViewport
+      ? "Toque em voltar para ver outras conversas e contatos."
+      : "Mensagens desaparecem automaticamente apos 1 hora.",
+    activePresence,
+  );
+  const composerDisabled =
+    pending || (!composerText.trim() && selectedFiles.length === 0 && !editingMessage);
 
   function patchMessage(updated: BackendMessage) {
     setMessages((current) =>
       current.map((message) => (message.id === updated.id ? updated : message)),
     );
+  }
+
+  function appendSelectedFiles(nextFiles: FileList | null) {
+    if (!nextFiles?.length) return;
+    setSelectedFiles((current) => [...current, ...Array.from(nextFiles)]);
   }
 
   function appendMessage(message: BackendMessage) {
@@ -691,8 +685,6 @@ export default function ChatWorkspace({
           if (existing) {
             setActiveConversationId(existing.id);
           }
-        } else if (cachedConversations[0]) {
-          setActiveConversationId(cachedConversations[0].id);
         }
         setBooting(false);
       }
@@ -715,11 +707,7 @@ export default function ChatWorkspace({
         );
         if (existing) {
           setActiveConversationId(existing.id);
-        } else if (visibleConversations[0]) {
-          setActiveConversationId(visibleConversations[0].id);
         }
-      } else if (visibleConversations[0]) {
-        setActiveConversationId(visibleConversations[0].id);
       }
     } catch (error) {
       clearBackendToken();
@@ -727,36 +715,6 @@ export default function ChatWorkspace({
       toast.error(error instanceof Error ? error.message : "Falha ao autenticar.");
     } finally {
       setBooting(false);
-    }
-  }
-
-  async function handleRecordToggle() {
-    if (recording) {
-      recorderRef.current?.stop();
-      setRecording(false);
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      recorderChunksRef.current = [];
-      recorderRef.current = recorder;
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) recorderChunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        const blob = new Blob(recorderChunksRef.current, { type: "audio/webm" });
-        setSelectedFiles((current) => [
-          ...current,
-          new File([blob], `audio-${Date.now()}.webm`, { type: "audio/webm" }),
-        ]);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-      recorder.start();
-      setRecording(true);
-    } catch {
-      toast.error("Nao foi possivel acessar o microfone.");
     }
   }
 
@@ -878,13 +836,10 @@ export default function ChatWorkspace({
   }, []);
 
   useEffect(() => {
-    if (activeConversationId) router.replace(toAppHref(`/chat?id=${activeConversationId}`));
+    router.replace(
+      activeConversationId ? toAppHref(`/chat?id=${activeConversationId}`) : toAppHref("/chat"),
+    );
   }, [activeConversationId, router]);
-
-  useEffect(() => {
-    if (activeConversation || normalizedConversations.length === 0) return;
-    setActiveConversationId(normalizedConversations[0].id);
-  }, [activeConversation, normalizedConversations]);
 
   useEffect(() => {
     if (!activeConversationId) return;
@@ -986,7 +941,7 @@ export default function ChatWorkspace({
 
   return (
     <main
-      className={`${darkMode ? "dark" : ""} flex h-dvh flex-col overflow-hidden bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
+      className={`${darkMode ? "dark" : ""} flex h-dvh flex-col overflow-x-hidden overflow-y-hidden bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
       style={
         {
           "--sinal-accent": accentPalette.accent,
@@ -996,14 +951,16 @@ export default function ChatWorkspace({
       }
     >
       <div className="z-30 shrink-0 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
-        <div className="mx-auto flex max-w-[1480px] items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
               {avatarLabel(currentUser.displayName)}
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-lg font-semibold">Sinal</p>
-              <p className="text-xs text-white/75">Conversa pronta para abrir, responder e seguir.</p>
+              <p className="truncate text-xs text-white/75">
+                Suas conversas, contatos e ajustes em um so lugar.
+              </p>
             </div>
           </div>
 
@@ -1074,7 +1031,7 @@ export default function ChatWorkspace({
 
           <div className="hidden items-center justify-between gap-2 border-b border-black/5 px-4 py-3 md:flex dark:border-white/5">
             <div className="flex gap-2">
-              {mobileTabs.map((tab) => (
+              {sidebarTabs.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
@@ -1107,9 +1064,9 @@ export default function ChatWorkspace({
             }`}
           >
             {activeTab === "chats" ? (
-              <>
-                <div className="border-t border-black/5 dark:border-white/5">
-                  {filteredConversations.map((conversation) => {
+              <div className="border-t border-black/5 dark:border-white/5">
+                {filteredConversations.length > 0 ? (
+                  filteredConversations.map((conversation) => {
                     const other = getConversationUser(conversation, currentUser.id);
                     const presence =
                       other && conversation.kind === "DIRECT" ? presenceMap[other.id] : null;
@@ -1166,177 +1123,86 @@ export default function ChatWorkspace({
                             </p>
                           ) : (
                             <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
-                              Toque para abrir a conversa
+                              Toque para abrir a conversa.
                             </p>
                           )}
                         </div>
                       </button>
                     );
-                  })}
-                </div>
-
-                <div className="border-t border-black/5 p-4 dark:border-white/5">
-                  <div className="mb-3 flex items-center justify-between">
-                    <p className="text-sm font-semibold">Contatos</p>
-                    <span className="text-xs text-[#667781] dark:text-white/45">
-                      {filteredUsers.length}
-                    </span>
+                  })
+                ) : (
+                  <div className="p-4">
+                    <div className="rounded-[1.5rem] bg-white px-4 py-5 shadow-sm dark:bg-[#202c33]">
+                      <p className="text-sm font-semibold">Nenhuma conversa por aqui</p>
+                      <p className="mt-1 text-sm text-[#667781] dark:text-white/55">
+                        Abra a aba de contatos para iniciar uma nova conversa.
+                      </p>
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    {filteredUsers.map((user) => {
-                      const presence = presenceMap[user.id];
-                      const userStatus = formatUserStatus(user, presence);
-                      const online = userStatus === "Online";
-
-                      return (
-                        <button
-                          key={user.id}
-                          type="button"
-                          disabled={pending}
-                          onClick={() => void openDirectConversation(user)}
-                          className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[#f0ffef] disabled:opacity-60 dark:bg-[#202c33] dark:hover:bg-[#24343d]"
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <div className="relative shrink-0">
-                              {user.avatarUrl ? (
-                                <img
-                                  src={resolveBackendAssetUrl(user.avatarUrl)}
-                                  alt={user.displayName}
-                                  className="h-11 w-11 rounded-full object-cover"
-                                />
-                              ) : (
-                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
-                                  {avatarLabel(user.displayName)}
-                                </div>
-                              )}
-                              {online ? (
-                                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#25D366] dark:border-[#202c33]" />
-                              ) : null}
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate font-medium">{user.displayName}</p>
-                              <p className="truncate text-xs text-[#667781] dark:text-white/45">
-                                {userStatus}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="rounded-full bg-[#25D366]/15 px-3 py-1 text-xs font-medium text-[#075E54] dark:text-[#7fe7bc]">
-                            Abrir
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </>
-            ) : null}
-
-            {activeTab === "status" ? (
-              <div className="p-4">
-                <div className="rounded-[1.5rem] bg-white p-4 shadow-sm dark:bg-[#202c33]">
-                  <p className="text-sm font-semibold">Meu status</p>
-                  <p className="mt-1 text-sm text-[#667781] dark:text-white/55">
-                    A interface e o fluxo de Status foram adicionados ao app. A persistencia dedicada
-                    de historias ainda depende de backend especifico.
-                  </p>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  {statusEntries.map(({ user, label, presence }) => (
-                    <button
-                      key={user.id}
-                      type="button"
-                      onClick={() => void openDirectConversation(user)}
-                      className="flex w-full items-center gap-3 rounded-[1.5rem] bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[#f0ffef] dark:bg-[#202c33] dark:hover:bg-[#24343d]"
-                    >
-                      <div className="rounded-full border-2 border-[#25D366] p-0.5">
-                        {user.avatarUrl ? (
-                          <img
-                            src={resolveBackendAssetUrl(user.avatarUrl)}
-                            alt={user.displayName}
-                            className="h-12 w-12 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d9fdd3] font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
-                            {avatarLabel(user.displayName)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate font-medium">{user.displayName}</p>
-                        <p className="truncate text-sm text-[#667781] dark:text-white/55">
-                          {presence?.online ? "Online agora" : label}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
+                )}
               </div>
             ) : null}
 
-            {activeTab === "calls" ? (
+            {activeTab === "contacts" ? (
               <div className="p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-sm font-semibold">Contatos</p>
+                  <span className="text-xs text-[#667781] dark:text-white/45">
+                    {filteredContacts.length}
+                  </span>
+                </div>
                 <div className="grid gap-2">
-                  {callEntries.map((conversation) => {
-                    const other = getConversationUser(conversation, currentUser.id);
-                    if (!other) return null;
+                  {filteredContacts.map((user) => {
+                    const presence = presenceMap[user.id];
+                    const online = Boolean(presence?.online);
 
                     return (
-                      <div
-                        key={conversation.id}
-                        className="rounded-[1.5rem] bg-white px-4 py-3 shadow-sm dark:bg-[#202c33]"
+                      <button
+                        key={user.id}
+                        type="button"
+                        disabled={pending}
+                        onClick={() => void openDirectConversation(user)}
+                        className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[#f0ffef] disabled:opacity-60 dark:bg-[#202c33] dark:hover:bg-[#24343d]"
                       >
-                        <div className="flex items-center gap-3">
-                          {other.avatarUrl ? (
-                            <img
-                              src={resolveBackendAssetUrl(other.avatarUrl)}
-                              alt={other.displayName}
-                              className="h-12 w-12 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d9fdd3] font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
-                              {avatarLabel(other.displayName)}
-                            </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium">{other.displayName}</p>
-                            <p className="truncate text-sm text-[#667781] dark:text-white/55">
-                              {userSettings.messagePreview
-                                ? messagePreview(conversation.latestMessage)
-                                : "Abrir para iniciar ou continuar a chamada"}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="relative shrink-0">
+                            {user.avatarUrl ? (
+                              <img
+                                src={resolveBackendAssetUrl(user.avatarUrl)}
+                                alt={user.displayName}
+                                className="h-11 w-11 rounded-full object-cover"
+                              />
+                            ) : (
+                              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
+                                {avatarLabel(user.displayName)}
+                              </div>
+                            )}
+                            {online ? (
+                              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#25D366] dark:border-[#202c33]" />
+                            ) : null}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">{user.displayName}</p>
+                            <p className="truncate text-xs text-[#667781] dark:text-white/45">
+                              {online ? "Online agora" : "Toque para conversar"}
                             </p>
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-full text-[#075E54] hover:bg-[#25D366]/10 dark:text-[#7fe7bc]"
-                              onClick={() => {
-                                setActiveConversationId(conversation.id);
-                                setActiveTab("chats");
-                                void startOutgoingCall("audio", conversation, other);
-                              }}
-                            >
-                              <Phone className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="rounded-full text-[#075E54] hover:bg-[#25D366]/10 dark:text-[#7fe7bc]"
-                              onClick={() => {
-                                setActiveConversationId(conversation.id);
-                                setActiveTab("chats");
-                                void startOutgoingCall("video", conversation, other);
-                              }}
-                            >
-                              <Video className="h-4 w-4" />
-                            </Button>
-                          </div>
                         </div>
-                      </div>
+                        <span className="rounded-full bg-[#25D366]/15 px-3 py-1 text-xs font-medium text-[#075E54] dark:text-[#7fe7bc]">
+                          Abrir
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
+                {filteredContacts.length === 0 ? (
+                  <div className="mt-3 rounded-[1.5rem] bg-white px-4 py-5 shadow-sm dark:bg-[#202c33]">
+                    <p className="text-sm font-semibold">Nenhum contato encontrado</p>
+                    <p className="mt-1 text-sm text-[#667781] dark:text-white/55">
+                      Ajuste a busca para encontrar outra pessoa.
+                    </p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -1351,75 +1217,45 @@ export default function ChatWorkspace({
             <>
               <div className="shrink-0 border-b border-black/5 bg-[#F0F2F5] dark:border-white/5 dark:bg-[#202c33]">
                 <div className="mx-auto flex max-w-4xl items-center gap-3 px-3 py-3">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full md:hidden"
-                  onClick={() => setActiveConversationId(null)}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-                <div className="relative">
-                  {activeDirectUser?.avatarUrl ? (
-                    <img
-                      src={resolveBackendAssetUrl(activeDirectUser.avatarUrl)}
-                      alt={conversationName(activeConversation, currentUser.id)}
-                      className="h-11 w-11 rounded-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
-                      {activeConversation.kind === "GROUP"
-                        ? "GR"
-                        : avatarLabel(activeDirectUser?.displayName)}
-                    </div>
-                  )}
-                  {activePresence?.online ? (
-                    <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#F0F2F5] bg-[#25D366] dark:border-[#202c33]" />
-                  ) : null}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">
-                    {conversationName(activeConversation, currentUser.id)}
-                  </p>
-                  <p className="truncate text-xs text-[#667781] dark:text-white/55">
-                    {formatTypingLabel(
-                      typingUsers,
-                      "Mensagens desaparecem automaticamente após 1 hora",
-                      activePresence,
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="rounded-full md:hidden"
+                    onClick={() => {
+                      setActiveConversationId(null);
+                      setActiveTab("chats");
+                    }}
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                  </Button>
+                  <div className="relative">
+                    {activeDirectUser?.avatarUrl ? (
+                      <img
+                        src={resolveBackendAssetUrl(activeDirectUser.avatarUrl)}
+                        alt={conversationName(activeConversation, currentUser.id)}
+                        className="h-11 w-11 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
+                        {activeConversation.kind === "GROUP"
+                          ? "GR"
+                          : avatarLabel(activeDirectUser?.displayName)}
+                      </div>
                     )}
-                  </p>
-                </div>
-                <div className="flex shrink-0 gap-1">
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Search className="h-4 w-4" />
-                  </Button>
-                  {activeConversation.kind === "DIRECT" ? (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full"
-                        onClick={() => void startOutgoingCall("audio")}
-                      >
-                        <Phone className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="rounded-full"
-                        onClick={() => void startOutgoingCall("video")}
-                      >
-                        <Video className="h-4 w-4" />
-                      </Button>
-                    </>
-                  ) : null}
-                  <Button variant="ghost" size="icon" className="rounded-full">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </div>
+                    {activePresence?.online ? (
+                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#F0F2F5] bg-[#25D366] dark:border-[#202c33]" />
+                    ) : null}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-medium">
+                      {conversationName(activeConversation, currentUser.id)}
+                    </p>
+                    <p className="truncate text-xs text-[#667781] dark:text-white/55">
+                      {activeConversationStatus}
+                    </p>
+                  </div>
                 </div>
               </div>
-
               <div
                 className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3 sm:px-6 sm:py-4 ${wallpaperClass(userSettings.wallpaper)}`}
               >
@@ -1487,9 +1323,9 @@ export default function ChatWorkspace({
                   {visibleMessages.length === 0 ? (
                     <div className="flex min-h-80 items-center justify-center">
                       <div className="max-w-md rounded-[2rem] bg-white/85 px-6 py-8 text-center shadow-sm dark:bg-[#202c33]">
-                        <p className="text-lg font-semibold">Conversa pronta</p>
+                        <p className="text-lg font-semibold">Conversa aberta</p>
                         <p className="mt-2 text-sm text-[#667781] dark:text-white/55">
-                          Texto, imagem, video, audio, reacoes, edicao, encaminhamento e chamadas.
+                          Envie texto, imagem ou arquivo para iniciar este chat.
                         </p>
                       </div>
                     </div>
@@ -1499,176 +1335,130 @@ export default function ChatWorkspace({
 
               <div className="sticky bottom-0 z-20 shrink-0 border-t border-black/5 bg-[#F0F2F5]/96 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur dark:border-white/5 dark:bg-[#202c33]/96 sm:px-4">
                 <div className="mx-auto w-full max-w-4xl">
-                {replyingTo ? (
-                  <div className="mb-3 flex items-start justify-between gap-3 rounded-[1.2rem] border-l-4 border-[#25D366] bg-white px-4 py-3 shadow-sm dark:bg-[#111B21]">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#075E54] dark:text-[#7fe7bc]">
-                        Respondendo a {replyingTo.sender.displayName}
-                      </p>
-                      <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
-                        {replyingTo.text ||
-                          replyingTo.emoji ||
-                          replyingTo.linkUrl ||
-                          messagePreview(replyingTo)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full"
-                      onClick={() => setReplyingTo(null)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : null}
-
-                {editingMessage ? (
-                  <div className="mb-3 flex items-start justify-between gap-3 rounded-[1.2rem] border-l-4 border-amber-500 bg-white px-4 py-3 shadow-sm dark:bg-[#111B21]">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
-                        Editando mensagem
-                      </p>
-                      <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
-                        {messagePreview(editingMessage)}
-                      </p>
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="rounded-full"
-                      onClick={() => {
-                        setEditingMessage(null);
-                        setComposerText("");
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ) : null}
-
-                {selectedFiles.length > 0 ? (
-                  <div className="mb-3 flex flex-wrap gap-2">
-                    {selectedFiles.map((file) => (
-                      <span
-                        key={`${file.name}-${file.lastModified}`}
-                        className="rounded-full bg-white px-3 py-1 text-xs shadow-sm dark:bg-[#111B21]"
+                  {replyingTo ? (
+                    <div className="mb-3 flex items-start justify-between gap-3 rounded-[1.2rem] border-l-4 border-[#25D366] bg-white px-4 py-3 shadow-sm dark:bg-[#111B21]">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#075E54] dark:text-[#7fe7bc]">
+                          Respondendo a {replyingTo.sender.displayName}
+                        </p>
+                        <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
+                          {replyingTo.text ||
+                            replyingTo.emoji ||
+                            replyingTo.linkUrl ||
+                            messagePreview(replyingTo)}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full"
+                        onClick={() => setReplyingTo(null)}
                       >
-                        {file.name}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : null}
 
-                <div className="space-y-3">
-                  <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {quickEmojis.map((emoji) => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() =>
-                          queueTyping(
-                            `${composerText}${composerText.trim().length > 0 ? " " : ""}${emoji}`,
-                          )
-                        }
-                        className="shrink-0 snap-start rounded-full border border-black/5 bg-white px-3 py-1.5 text-sm shadow-sm transition hover:bg-[#e9fff2] dark:border-white/8 dark:bg-[#111B21] dark:hover:bg-[#1c2b32]"
-                        style={{ borderColor: "color-mix(in srgb, var(--sinal-accent, #14b8a6) 24%, transparent)" }}
+                  {editingMessage ? (
+                    <div className="mb-3 flex items-start justify-between gap-3 rounded-[1.2rem] border-l-4 border-amber-500 bg-white px-4 py-3 shadow-sm dark:bg-[#111B21]">
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-600 dark:text-amber-300">
+                          Editando mensagem
+                        </p>
+                        <p className="mt-1 truncate text-sm text-[#667781] dark:text-white/55">
+                          {messagePreview(editingMessage)}
+                        </p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="rounded-full"
+                        onClick={() => {
+                          setEditingMessage(null);
+                          setComposerText("");
+                        }}
                       >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : null}
+
+                  {selectedFiles.length > 0 ? (
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      {selectedFiles.map((file) => (
+                        <span
+                          key={`${file.name}-${file.lastModified}`}
+                          className="rounded-full bg-white px-3 py-1 text-xs shadow-sm dark:bg-[#111B21]"
+                        >
+                          {file.name}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
 
                   <div className="flex items-end gap-2">
                     <div className="flex min-w-0 flex-1 items-end gap-0.5 rounded-[1.8rem] bg-white px-1.5 py-1.5 shadow-sm dark:bg-[#2a3942] sm:gap-1 sm:px-2 sm:py-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
-                      onClick={() => setShowEmojiPicker(true)}
-                    >
-                      <SmilePlus className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      <Paperclip className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
-                      onClick={() => cameraInputRef.current?.click()}
-                    >
-                      <Camera className="h-5 w-5" />
-                    </Button>
-                    <Textarea
-                      value={composerText}
-                      onChange={(event) => queueTyping(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (
-                          userSettings.enterToSend &&
-                          event.key === "Enter" &&
-                          !event.shiftKey
-                        ) {
-                          event.preventDefault();
-                          void handleSend();
-                        }
-                      }}
-                      placeholder="Mensagem"
-                      rows={1}
-                      className="max-h-32 min-h-10 flex-1 resize-none border-none bg-transparent px-1 py-2 text-[15px] shadow-none focus-visible:ring-0"
-                    />
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-10 w-10 rounded-full ${
-                        recording
-                          ? "text-red-500 hover:text-red-600"
-                          : "text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
-                      }`}
-                      onClick={() => void handleRecordToggle()}
-                    >
-                      <Mic className="h-5 w-5" />
-                    </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      multiple
-                      className="hidden"
-                      onChange={(event) =>
-                        setSelectedFiles((current) => [
-                          ...current,
-                          ...Array.from(event.target.files || []),
-                        ])
-                      }
-                    />
-                    <input
-                      ref={cameraInputRef}
-                      type="file"
-                      accept="image/*,video/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(event) =>
-                        setSelectedFiles((current) => [
-                          ...current,
-                          ...Array.from(event.target.files || []),
-                        ])
-                      }
-                    />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        onClick={() => setShowEmojiPicker(true)}
+                      >
+                        <SmilePlus className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        onClick={() => cameraInputRef.current?.click()}
+                      >
+                        <Camera className="h-5 w-5" />
+                      </Button>
+                      <Textarea
+                        value={composerText}
+                        onChange={(event) => queueTyping(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (
+                            userSettings.enterToSend &&
+                            event.key === "Enter" &&
+                            !event.shiftKey
+                          ) {
+                            event.preventDefault();
+                            void handleSend();
+                          }
+                        }}
+                        placeholder="Mensagem"
+                        rows={1}
+                        className="max-h-32 min-h-10 flex-1 resize-none border-none bg-transparent px-1 py-2 text-[15px] shadow-none focus-visible:ring-0"
+                      />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        multiple
+                        className="hidden"
+                        onChange={(event) => appendSelectedFiles(event.target.files)}
+                      />
+                      <input
+                        ref={cameraInputRef}
+                        type="file"
+                        accept="image/*,video/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(event) => appendSelectedFiles(event.target.files)}
+                      />
                     </div>
 
                     <Button
                       onClick={() => void handleSend()}
-                      disabled={
-                        pending ||
-                        (!composerText.trim() &&
-                          selectedFiles.length === 0 &&
-                          !editingMessage)
-                      }
+                      disabled={composerDisabled}
                       className="h-12 w-12 rounded-full p-0 text-[#111B21] hover:opacity-90"
                       style={{ backgroundColor: "var(--sinal-accent)" }}
                     >
@@ -1680,7 +1470,6 @@ export default function ChatWorkspace({
                     </Button>
                   </div>
                 </div>
-                </div>
               </div>
             </>
           ) : (
@@ -1689,19 +1478,18 @@ export default function ChatWorkspace({
                 <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--sinal-accent)]">
                   Sinal
                 </p>
-                <h1 className="mt-4 text-3xl font-semibold">Mensageria com identidade propria</h1>
+                <h1 className="mt-4 text-3xl font-semibold">Escolha uma conversa</h1>
                 <p className="mt-4 text-[#667781] dark:text-white/55">
-                  Abra uma conversa na lista, use as abas de Chats, Status e Chamadas e siga em um
-                  layout unificado entre web, desktop e Android.
+                  Abra uma conversa existente ou escolha um contato para comecar um novo chat.
                 </p>
                 <div className="mt-6 flex flex-wrap justify-center gap-3">
                   <Button
-                    onClick={() => setShowGroupComposer(true)}
+                    onClick={() => setActiveTab("contacts")}
                     className="rounded-full text-[#111B21] hover:opacity-90"
                     style={{ backgroundColor: "var(--sinal-accent)" }}
                   >
                     <Users className="h-4 w-4" />
-                    Criar grupo
+                    Ver contatos
                   </Button>
                   <Button asChild variant="ghost" className="rounded-full border border-black/10 dark:border-white/10">
                     <Link href={toAppHref("/configuracoes")}>Abrir configuracoes</Link>
@@ -1716,18 +1504,14 @@ export default function ChatWorkspace({
       {showMobileNav ? (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/8 bg-[#F8F5F1]/96 backdrop-blur dark:border-white/8 dark:bg-[#111B21]/96 md:hidden">
           <div className="mx-auto flex max-w-[1480px] items-center justify-around gap-2 px-3 pb-[calc(env(safe-area-inset-bottom)+0.45rem)] pt-2">
-            {[
-              { id: "chats", label: "Chats", icon: MessageCircleMore },
-              { id: "status", label: "Status", icon: Camera },
-              { id: "calls", label: "Chamadas", icon: Phone },
-            ].map(({ id, label, icon: Icon }) => {
+            {sidebarTabs.map(({ id, label, icon: Icon }) => {
               const active = activeTab === id;
 
               return (
                 <button
                   key={id}
                   type="button"
-                  onClick={() => setActiveTab(id as MobileTab)}
+                  onClick={() => setActiveTab(id)}
                   className={`flex min-w-0 flex-1 flex-col items-center gap-1 rounded-[1.3rem] px-3 py-2 text-xs font-medium transition ${
                     active
                       ? "text-[#111B21] shadow-sm dark:text-[#07131b]"
@@ -1894,3 +1678,4 @@ export default function ChatWorkspace({
     </main>
   );
 }
+

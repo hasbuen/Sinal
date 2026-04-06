@@ -38,8 +38,8 @@ const highlights = [
     icon: Zap,
   },
   {
-    title: "Visual limpo e rapido",
-    text: "Conversa, anexos, reacoes e chamadas em uma interface mais simples de entender.",
+    title: "Workspace mais direto",
+    text: "Conversas e contatos ficaram mais claros, com menos remendos visuais no fluxo principal.",
     icon: MessageCircleMore,
   },
   {
@@ -89,8 +89,8 @@ const distributionOptions = [
 
 const surfacePillars = [
   {
-    title: "Mesmo fluxo, telas mais consistentes",
-    text: "A entrada web, o desktop e o Android foram organizados para cair no mesmo produto, sem versoes conflitantes da interface.",
+    title: "Mesmo fluxo, workspace mais consistente",
+    text: "A entrada web, o desktop e o Android agora compartilham uma area de conversa mais enxuta, sem variacoes improvisadas da interface.",
   },
   {
     title: "Download e acesso sem friccao",
@@ -165,7 +165,7 @@ export default function Home() {
           <div className="space-y-8">
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-4 py-2 text-sm text-emerald-100">
               <Sparkles className="size-4" />
-              Release unica com navegador, desktop e Android
+              Release unica com landing, desktop e Android alinhados
             </div>
 
             <div className="space-y-5">
@@ -276,7 +276,7 @@ export default function Home() {
                         Bora fechar a release nova hoje?
                       </div>
                       <div className="ml-12 rounded-[1.6rem] bg-[#DCF8C6] px-4 py-3 text-sm text-slate-900 shadow-sm">
-                        Sim. Ja deixei web, desktop e Android apontando para o chat.
+                        Sim. O chat ficou mais limpo e os downloads continuam alinhados.
                       </div>
                       <div className="mr-16 rounded-[1.6rem] bg-white/95 px-4 py-3 text-sm text-slate-900">
                         Manda o QR do APK e segue.

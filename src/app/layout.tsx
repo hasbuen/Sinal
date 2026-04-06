@@ -48,7 +48,7 @@ export default function RootLayout({
         <link rel="icon" type="image/png" sizes="64x64" href={`${basePath}/favicon.png`} />
         <meta name="theme-color" content="#14b8a6" />
       </head>
-      <body className="min-h-screen w-screen bg-[#1e1f2b] antialiased">
+      <body className="min-h-screen w-full overflow-x-hidden bg-[#1e1f2b] antialiased">
         <ServiceWorkerRegistration />
         <AppUpdateBanner />
         {children}

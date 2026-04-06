@@ -192,6 +192,34 @@ export type BackendCallSignal = {
   createdAt: string;
 };
 
+const userSettingsFields = `
+  settings {
+    theme
+    accentTone
+    wallpaper
+    compactMode
+    enterToSend
+    autoDownloadMedia
+    readReceipts
+    soundEnabled
+    desktopNotifications
+    messagePreview
+  }
+`;
+
+function userFields(includeSettings = false) {
+  return `
+    id
+    email
+    username
+    displayName
+    avatarUrl
+    bio
+    lastSeenAt
+    ${includeSettings ? userSettingsFields : ""}
+  `;
+}
+
 const messageReferenceFields = `
   id
   kind
@@ -404,6 +432,34 @@ function parseGraphQlError(error: unknown) {
   }
 }
 
+function isMissingUserSettingsFieldError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const normalized = error.message.toLowerCase();
+  return (
+    normalized.includes("cannot query field") &&
+    normalized.includes("settings") &&
+    normalized.includes("usermodel")
+  );
+}
+
+async function gqlRequestWithOptionalUserSettings<TData>(
+  buildQuery: (includeSettings: boolean) => string,
+  variables?: Record<string, unknown>,
+) {
+  try {
+    return await gqlRequest<TData>(buildQuery(true), variables);
+  } catch (error) {
+    if (!isMissingUserSettingsFieldError(error)) {
+      throw error;
+    }
+
+    return gqlRequest<TData>(buildQuery(false), variables);
+  }
+}
+
 export function getBackendToken() {
   if (typeof window === "undefined") {
     return null;
@@ -534,82 +590,40 @@ export function supportsWebSocketRealtime() {
 }
 
 export async function loginUser(email: string, password: string) {
-  const data = await gqlRequest<{
+  const data = await gqlRequestWithOptionalUserSettings<{
     login: { accessToken: string; user: BackendUser };
-  }>(
-    `
+  }>((includeSettings) => `
       mutation Login($input: LoginInput!) {
         login(input: $input) {
           accessToken
           user {
-            id
-            email
-            username
-            displayName
-            avatarUrl
-            bio
-            lastSeenAt
-            settings {
-              theme
-              accentTone
-              wallpaper
-              compactMode
-              enterToSend
-              autoDownloadMedia
-              readReceipts
-              soundEnabled
-              desktopNotifications
-              messagePreview
-            }
+            ${userFields(includeSettings)}
           }
         }
       }
-    `,
-    {
-      input: {
-        email,
-        password,
-      },
+    `, {
+    input: {
+      email,
+      password,
     },
-  );
+  });
 
   return data.login;
 }
 
 export async function exchangeAppwriteJwt(jwt: string) {
-  const data = await gqlRequest<{
+  const data = await gqlRequestWithOptionalUserSettings<{
     appwriteExchangeToken: { accessToken: string; user: BackendUser };
-  }>(
-    `
+  }>((includeSettings) => `
       mutation AppwriteExchangeToken($jwt: String!) {
         appwriteExchangeToken(jwt: $jwt) {
           accessToken
           user {
-            id
-            email
-            username
-            displayName
-            avatarUrl
-            bio
-            lastSeenAt
-            settings {
-              theme
-              accentTone
-              wallpaper
-              compactMode
-              enterToSend
-              autoDownloadMedia
-              readReceipts
-              soundEnabled
-              desktopNotifications
-              messagePreview
-            }
+            ${userFields(includeSettings)}
           }
         }
       }
-    `,
-    { jwt },
-  );
+    `, { jwt });
 
   return data.appwriteExchangeToken;
 }
@@ -620,69 +634,32 @@ export async function registerUser(input: {
   displayName: string;
   username: string;
 }) {
-  const data = await gqlRequest<{
+  const data = await gqlRequestWithOptionalUserSettings<{
     register: { accessToken: string; user: BackendUser };
-  }>(
-    `
+  }>((includeSettings) => `
       mutation Register($input: RegisterInput!) {
         register(input: $input) {
           accessToken
           user {
-            id
-            email
-            username
-            displayName
-            avatarUrl
-            bio
-            lastSeenAt
-            settings {
-              theme
-              accentTone
-              wallpaper
-              compactMode
-              enterToSend
-              autoDownloadMedia
-              readReceipts
-              soundEnabled
-              desktopNotifications
-              messagePreview
-            }
+            ${userFields(includeSettings)}
           }
         }
       }
-    `,
-    { input },
-  );
+    `, { input });
 
   return data.register;
 }
 
 export async function getCurrentUser() {
-  const data = await gqlRequest<{ me: BackendUser }>(`
-    query Me {
-      me {
-        id
-        email
-        username
-        displayName
-        avatarUrl
-        bio
-        lastSeenAt
-        settings {
-          theme
-          accentTone
-          wallpaper
-          compactMode
-          enterToSend
-          autoDownloadMedia
-          readReceipts
-          soundEnabled
-          desktopNotifications
-          messagePreview
+  const data = await gqlRequestWithOptionalUserSettings<{ me: BackendUser }>(
+    (includeSettings) => `
+      query Me {
+        me {
+          ${userFields(includeSettings)}
         }
       }
-    }
-  `);
+    `,
+  );
 
   return data.me;
 }
@@ -1236,29 +1213,11 @@ export async function updateProfile(input: {
   bio?: string;
   avatarUrl?: string;
 }) {
-  const data = await gqlRequest<{ updateProfile: BackendUser }>(
-    `
+  const data = await gqlRequestWithOptionalUserSettings<{ updateProfile: BackendUser }>(
+    (includeSettings) => `
       mutation UpdateProfile($input: UpdateProfileInput!) {
         updateProfile(input: $input) {
-          id
-          email
-          username
-          displayName
-          avatarUrl
-          bio
-          lastSeenAt
-          settings {
-            theme
-            accentTone
-            wallpaper
-            compactMode
-            enterToSend
-            autoDownloadMedia
-            readReceipts
-            soundEnabled
-            desktopNotifications
-            messagePreview
-          }
+          ${userFields(includeSettings)}
         }
       }
     `,

@@ -47,6 +47,7 @@ export default function RootLayout({
       <head>
         <link rel="icon" type="image/png" sizes="64x64" href={`${basePath}/favicon.png`} />
         <meta name="theme-color" content="#14b8a6" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
       <body className="min-h-screen w-full overflow-x-hidden bg-[#1e1f2b] antialiased">
         <ServiceWorkerRegistration />

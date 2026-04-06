@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
@@ -951,7 +951,7 @@ export default function ChatWorkspace({
       }
     >
       <div className="z-30 shrink-0 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
-        <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
               {avatarLabel(currentUser.displayName)}
@@ -1079,7 +1079,7 @@ export default function ChatWorkspace({
                           setActiveConversationId(conversation.id);
                           setActiveTab("chats");
                         }}
-                        className={`flex w-full items-start gap-3 border-b border-black/5 px-4 py-3 text-left transition dark:border-white/5 ${
+                        className={`flex w-full items-start gap-3 border-b border-black/5 px-4 py-3.5 text-left transition dark:border-white/5 ${
                           conversation.id === activeConversationId
                             ? "bg-[#e7ffef] dark:bg-[#202c33]"
                             : "hover:bg-black/5 dark:hover:bg-white/5"
@@ -1401,7 +1401,7 @@ export default function ChatWorkspace({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        className="h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                         onClick={() => setShowEmojiPicker(true)}
                       >
                         <SmilePlus className="h-5 w-5" />
@@ -1409,7 +1409,7 @@ export default function ChatWorkspace({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        className="h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Paperclip className="h-5 w-5" />
@@ -1417,7 +1417,7 @@ export default function ChatWorkspace({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        className="h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                         onClick={() => cameraInputRef.current?.click()}
                       >
                         <Camera className="h-5 w-5" />
@@ -1678,4 +1678,7 @@ export default function ChatWorkspace({
     </main>
   );
 }
+
+
+
 

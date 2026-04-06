@@ -87,7 +87,7 @@ export function AuthShell({
             </div>
           </section>
 
-          <section className="flex min-h-[calc(100vh-10rem)] flex-col justify-center bg-[#f3efe8] p-5 dark:bg-[#0f1720] md:p-10">
+          <section className="flex min-h-[calc(100dvh-10rem)] flex-col justify-center bg-[#f3efe8] p-5 dark:bg-[#0f1720] md:p-10">
             <div className="mx-auto w-full max-w-md">
               <div className="mb-6 rounded-[1.8rem] border border-black/5 bg-white/80 p-5 shadow-sm dark:border-white/8 dark:bg-[#111b21]/90 lg:hidden">
                 <div className="flex items-center gap-3">
@@ -121,3 +121,4 @@ export function AuthShell({
     </main>
   );
 }
+

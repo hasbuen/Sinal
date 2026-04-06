@@ -136,7 +136,7 @@ export function ChatMessageBubble({
       }}
     >
       <div
-        className={`relative w-full max-w-[min(calc(100vw-1rem),32rem)] px-0.5 pt-3 sm:w-fit sm:max-w-[78%] sm:px-2 sm:pt-6 ${
+        className={`relative w-full max-w-[min(calc(100vw-1rem),32rem)] px-2 pt-3 sm:w-fit sm:max-w-[78%] sm:px-2 sm:pt-6 ${
           mine ? "items-end" : "items-start"
         }`}
         onContextMenu={(event) => {
@@ -194,7 +194,7 @@ export function ChatMessageBubble({
                 setReactionRailOpen((current) => !current);
                 onToggleMenu();
               }}
-              className={`absolute top-2 rounded-full border border-black/5 bg-white/80 p-1 text-[#667781] shadow-sm transition ${
+              className={`absolute top-2 rounded-full border border-black/5 bg-white/80 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#667781] shadow-sm transition ${
                 mine ? "left-2" : "right-2"
               } ${
                 contextVisible || mobileViewport
@@ -525,3 +525,4 @@ export function ChatMessageBubble({
     </div>
   );
 }
+

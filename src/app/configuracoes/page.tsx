@@ -170,7 +170,7 @@ export default function ConfiguracoesPage() {
 
   return (
     <div
-      className={`min-h-screen overflow-x-hidden ${previewDarkMode ? "dark" : ""} bg-[linear-gradient(180deg,#edf5f7,#e7edef)] text-[#102027] dark:bg-[linear-gradient(180deg,#07131b,#0c1822)] dark:text-white`}
+      className={`min-h-dvh overflow-x-hidden ${previewDarkMode ? "dark" : ""} bg-[linear-gradient(180deg,#edf5f7,#e7edef)] text-[#102027] dark:bg-[linear-gradient(180deg,#07131b,#0c1822)] dark:text-white`}
       style={
         {
           "--sinal-accent": accent.accent,
@@ -180,7 +180,7 @@ export default function ConfiguracoesPage() {
       }
     >
       <header className="border-b border-black/5 bg-[linear-gradient(135deg,var(--sinal-accent),#102027)] text-white shadow-[0_20px_60px_rgba(0,0,0,0.16)]">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-5">
+        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
           <div className="min-w-0">
             <p className="text-sm text-white/72">Configuracoes</p>
             <h1 className="mt-1 text-2xl font-semibold sm:text-4xl">
@@ -529,3 +529,4 @@ export default function ConfiguracoesPage() {
     </div>
   );
 }
+

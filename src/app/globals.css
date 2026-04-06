@@ -130,6 +130,8 @@
 }
 
 @layer utilities {
+  .pt-safe { padding-top: env(safe-area-inset-top); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
   .destaque-mensagem {
     animation: flash 1.5s ease-in-out;
   }
@@ -158,8 +160,8 @@
   bottom: 100%; 
   left: 0;
   margin-bottom: 7px; 
-  background: #1f2937; 
-  border: 0.5px solid #00a884; 
+  background: var(--color-card, #1f2937); 
+  border: 0.5px solid var(--sinal-accent, #14b8a6); 
   padding: 8px;
   display: flex;
   gap: 8px;
@@ -170,8 +172,9 @@
 .formatter-menu button {
   padding: 0.005rem 0.010rem;
   cursor: pointer;
-  background-color: #00a884;
+  background-color: var(--sinal-accent, #14b8a6);
   color: white;
   border: none;
   border-radius: 4px;
 }
+

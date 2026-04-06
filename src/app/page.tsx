@@ -33,8 +33,8 @@ const androidDownloadUrl = `${latestReleaseUrl}/download/sinal-android.apk`;
 
 const highlights = [
   {
-    title: "Abre no ponto certo",
-    text: "Cada superficie entra direto em login ou chat. Nada de cair na landing dentro do app.",
+    title: "Mobile sem tropecos",
+    text: "Telas preparadas para notch, teclados virtuais e toques precisos. O fluxo nativo mobile esta muito mais limpo.",
     icon: Zap,
   },
   {
@@ -396,11 +396,10 @@ export default function Home() {
                 Atualizacao de produto
               </p>
               <h3 className="mt-3 text-3xl font-semibold text-white">
-                A landing agora empurra para o produto real, nao para uma vitrine parada.
+                A experiencia mobile foi totalmente polida, respeitando o notch e o teclado virtual.
               </h3>
               <p className="mt-3 text-base leading-7 text-white/64">
-                O foco da home ficou mais objetivo: entrar no navegador, baixar a release
-                certa e continuar a mesma experiencia entre superficies.
+                O foco desta atualizacao foi remover todos os pequenos obstaculos visuais no uso via celular: areas seguras, rolagem e espacamentos ajustados.
               </p>
             </div>
 
@@ -482,3 +481,5 @@ export default function Home() {
     </main>
   );
 }
+
+

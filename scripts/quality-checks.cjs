@@ -20,6 +20,8 @@ const backendSchema = read("backend/prisma/schema.prisma");
 const messagesService = read("backend/src/modules/messages/messages.service.ts");
 const backendClient = read("src/lib/backend-client.ts");
 const appModule = read("backend/src/app.module.ts");
+const updateProfileInput = read("backend/src/modules/users/dto/update-profile.input.ts");
+const settingsPage = read("src/app/configuracoes/page.tsx");
 
 const appVersion = packageJson.version;
 
@@ -67,6 +69,17 @@ assert(
 assert(
   /\^\(https\?:\|data:\|blob:\)/.test(backendClient),
   "resolveBackendAssetUrl precisa aceitar data: e blob: para avatar/anexos locais.",
+);
+
+assert(
+  updateProfileInput.includes("data:image") && !updateProfileInput.includes("@IsUrl()"),
+  "UpdateProfileInput precisa aceitar avatar data:image gerado no fallback web/APK/desktop.",
+);
+
+assert(
+  settingsPage.includes("setAvatarUrl(me.avatarUrl ? resolveBackendAssetUrl(me.avatarUrl) : \"\")") &&
+    settingsPage.includes("src={resolveBackendAssetUrl(avatarUrl)}"),
+  "Configuracoes precisa normalizar avatar antes de exibir em web/APK/desktop.",
 );
 
 console.log("Quality checks passed.");

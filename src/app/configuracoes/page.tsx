@@ -148,7 +148,7 @@ export default function ConfiguracoesPage() {
         setUser(me);
         setDisplayName(me.displayName);
         setBio(me.bio || "");
-        setAvatarUrl(me.avatarUrl || "");
+        setAvatarUrl(me.avatarUrl ? resolveBackendAssetUrl(me.avatarUrl) : "");
         setSettings(normalized);
         storeUserSettings(normalized);
       } catch {
@@ -189,6 +189,7 @@ export default function ConfiguracoesPage() {
         avatarUrl: avatarUrl || undefined,
       });
       setUser(updated);
+      setAvatarUrl(updated.avatarUrl ? resolveBackendAssetUrl(updated.avatarUrl) : "");
       toast.success("Perfil salvo.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Nao foi possivel salvar o perfil.");
@@ -261,7 +262,7 @@ export default function ConfiguracoesPage() {
               <div className="flex flex-col items-center text-center">
                 {avatarUrl ? (
                   <img
-                    src={avatarUrl}
+                    src={resolveBackendAssetUrl(avatarUrl)}
                     alt={displayName || "Perfil"}
                     className="h-32 w-32 rounded-full object-cover ring-4 ring-[color:var(--sinal-accent)]/20"
                   />

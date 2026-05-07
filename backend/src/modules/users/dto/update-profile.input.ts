@@ -1,5 +1,11 @@
 import { Field, InputType } from "@nestjs/graphql";
-import { IsOptional, IsString, MaxLength, MinLength, IsUrl } from "class-validator";
+import {
+  IsOptional,
+  IsString,
+  Matches,
+  MaxLength,
+  MinLength,
+} from "class-validator";
 
 @InputType()
 export class UpdateProfileInput {
@@ -18,6 +24,9 @@ export class UpdateProfileInput {
 
   @Field(() => String, { nullable: true })
   @IsOptional()
-  @IsUrl()
+  @IsString()
+  @Matches(/^(https?:\/\/\S+|data:image\/(?:png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=]+)$/i, {
+    message: "avatarUrl precisa ser uma URL de imagem valida.",
+  })
   avatarUrl?: string;
 }

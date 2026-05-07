@@ -16,17 +16,23 @@ import {
 import {
   ArrowLeft,
   Camera,
+  FileText,
   Loader2,
   LogOut,
   MessageCircleMore,
   Moon,
   Paperclip,
+  Phone,
+  Plus,
   Search,
   Send,
   Settings2,
   SmilePlus,
   Sun,
   Users,
+  Video,
+  Wifi,
+  WifiOff,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -201,6 +207,21 @@ export default function ChatWorkspace({
       currentUser ? dedupeConversations(conversations, currentUser.id) : conversations,
     [conversations, currentUser],
   );
+  const onlineContactCount = useMemo(
+    () =>
+      currentUser
+        ? users.filter((user) => user.id !== currentUser.id && presenceMap[user.id]?.online)
+            .length
+        : 0,
+    [currentUser, presenceMap, users],
+  );
+  const groupConversationCount = useMemo(
+    () =>
+      normalizedConversations.filter((conversation) => conversation.kind === "GROUP")
+        .length,
+    [normalizedConversations],
+  );
+  const conversationCount = normalizedConversations.length;
   const activeConversation = normalizedConversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
@@ -1027,6 +1048,58 @@ export default function ChatWorkspace({
                 className="w-full bg-transparent text-sm outline-none placeholder:text-[#667781] dark:placeholder:text-white/45"
               />
             </div>
+
+            <div className="mt-4 rounded-[1.4rem] border border-black/5 bg-white p-3 shadow-sm dark:border-white/5 dark:bg-[#202c33]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    Ola, {currentUser.displayName}
+                  </p>
+                  <div className="mt-1 flex items-center gap-1.5 text-xs text-[#667781] dark:text-white/55">
+                    {websocketRealtime ? (
+                      <Wifi className="h-3.5 w-3.5 text-[color:var(--sinal-accent)]" />
+                    ) : (
+                      <WifiOff className="h-3.5 w-3.5 text-amber-500" />
+                    )}
+                    <span>
+                      {websocketRealtime
+                        ? "Sincronizacao em tempo real"
+                        : "Sincronizacao periodica ativa"}
+                    </span>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-10 w-10 shrink-0 rounded-full text-[#111B21] hover:opacity-90"
+                  style={{ backgroundColor: "var(--sinal-accent)" }}
+                  onClick={() => {
+                    setActiveTab("contacts");
+                    setActiveConversationId(null);
+                  }}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                {[
+                  ["Conversas", conversationCount],
+                  ["Online", onlineContactCount],
+                  ["Grupos", groupConversationCount],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-2xl bg-[#f2f7f7] px-2 py-2 dark:bg-[#111B21]"
+                  >
+                    <p className="text-base font-semibold">{value}</p>
+                    <p className="mt-0.5 truncate text-[11px] text-[#667781] dark:text-white/45">
+                      {label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="hidden items-center justify-between gap-2 border-b border-black/5 px-4 py-3 md:flex dark:border-white/5">
@@ -1254,6 +1327,28 @@ export default function ChatWorkspace({
                       {activeConversationStatus}
                     </p>
                   </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full text-[#667781] hover:bg-black/5 hover:text-[#075E54] disabled:opacity-35 dark:text-white/65 dark:hover:bg-white/8 dark:hover:text-white"
+                      disabled={activeConversation.kind !== "DIRECT" || !websocketRealtime}
+                      onClick={() => void startOutgoingCall("audio")}
+                    >
+                      <Phone className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="rounded-full text-[#667781] hover:bg-black/5 hover:text-[#075E54] disabled:opacity-35 dark:text-white/65 dark:hover:bg-white/8 dark:hover:text-white"
+                      disabled={activeConversation.kind !== "DIRECT" || !websocketRealtime}
+                      onClick={() => void startOutgoingCall("video")}
+                    >
+                      <Video className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
               <div
@@ -1385,12 +1480,25 @@ export default function ChatWorkspace({
 
                   {selectedFiles.length > 0 ? (
                     <div className="mb-3 flex flex-wrap gap-2">
-                      {selectedFiles.map((file) => (
+                      {selectedFiles.map((file, index) => (
                         <span
                           key={`${file.name}-${file.lastModified}`}
-                          className="rounded-full bg-white px-3 py-1 text-xs shadow-sm dark:bg-[#111B21]"
+                          className="inline-flex max-w-full items-center gap-2 rounded-full bg-white py-1 pl-2.5 pr-1 text-xs shadow-sm dark:bg-[#111B21]"
                         >
-                          {file.name}
+                          <FileText className="h-3.5 w-3.5 shrink-0 text-[#667781] dark:text-white/45" />
+                          <span className="max-w-[13rem] truncate">{file.name}</span>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#667781] transition hover:bg-black/5 hover:text-[#111B21] dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+                            onClick={() =>
+                              setSelectedFiles((current) =>
+                                current.filter((_, fileIndex) => fileIndex !== index),
+                              )
+                            }
+                            aria-label={`Remover ${file.name}`}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
                         </span>
                       ))}
                     </div>

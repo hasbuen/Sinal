@@ -2,7 +2,7 @@
   "name": "sinal",
   "description": "Um aplicativo de chat e mensagens em tempo real para conexoes rapidas e seguras.",
   "author": "Julio Cesar O. Bueno <https://github.com/hasbuen>",
-  "version": "0.2.25",
+  "version": "0.2.26",
   "main": "electron/main.cjs",
   "private": true,
   "scripts": {
@@ -82,7 +82,7 @@
       }
     ],
     "directories": {
-      "output": "release/electron",
+      "output": "release/electron-v0222",
       "buildResources": "electron/build"
     },
     "publish": [
@@ -107,4 +107,5 @@
     }
   }
 }
+
 

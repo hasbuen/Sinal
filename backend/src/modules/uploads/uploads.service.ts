@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { extname } from "path";
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
@@ -38,6 +38,7 @@ type AppwriteStoredFile = {
 
 @Injectable()
 export class UploadsService {
+  private readonly logger = new Logger(UploadsService.name);
   private readonly appwriteBucketId = appConfig.appwrite.mediaBucketId;
   private readonly appwriteEndpoint = appConfig.appwrite.endpoint;
   private readonly appwriteProjectId = appConfig.appwrite.projectId;
@@ -63,26 +64,34 @@ export class UploadsService {
 
   async storeFile(file: Express.Multer.File): Promise<StoredAttachment> {
     if (this.appwriteStorage && this.appwriteBucketId) {
-      await this.ensureAppwriteBucket();
+      try {
+        await this.ensureAppwriteBucket();
 
-      const stored = await this.appwriteStorage.createFile(
-        this.appwriteBucketId,
-        ID.unique(),
-        InputFile.fromBuffer(file.buffer, file.originalname),
-      );
+        const stored = await this.appwriteStorage.createFile(
+          this.appwriteBucketId,
+          ID.unique(),
+          InputFile.fromBuffer(file.buffer, file.originalname),
+        );
 
-      return {
-        id: stored.$id,
-        kind: this.inferKind(file.mimetype),
-        url: this.createAppwriteProxyUrl(stored.$id, "view"),
-        mimeType: stored.mimeType || file.mimetype,
-        fileName: stored.name || file.originalname,
-        sizeBytes: stored.sizeOriginal || file.size,
-        thumbnailUrl:
-          this.inferKind(file.mimetype) === MediaKind.IMAGE
-            ? this.createAppwriteProxyUrl(stored.$id, "preview")
-            : undefined,
-      };
+        return {
+          id: stored.$id,
+          kind: this.inferKind(file.mimetype),
+          url: this.createAppwriteProxyUrl(stored.$id, "view"),
+          mimeType: stored.mimeType || file.mimetype,
+          fileName: stored.name || file.originalname,
+          sizeBytes: stored.sizeOriginal || file.size,
+          thumbnailUrl:
+            this.inferKind(file.mimetype) === MediaKind.IMAGE
+              ? this.createAppwriteProxyUrl(stored.$id, "preview")
+              : undefined,
+        };
+      } catch (error) {
+        this.logger.warn(
+          `Falha no Appwrite Storage; usando fallback de upload: ${
+            error instanceof Error ? error.message : "erro desconhecido"
+          }`,
+        );
+      }
     }
 
     if (appConfig.blobReadWriteToken) {

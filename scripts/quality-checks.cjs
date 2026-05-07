@@ -22,6 +22,9 @@ const backendClient = read("src/lib/backend-client.ts");
 const appModule = read("backend/src/app.module.ts");
 const updateProfileInput = read("backend/src/modules/users/dto/update-profile.input.ts");
 const settingsPage = read("src/app/configuracoes/page.tsx");
+const chatWorkspace = read("src/components/chat/ChatWorkspace.tsx");
+const uploadsService = read("backend/src/modules/uploads/uploads.service.ts");
+const uploadsController = read("backend/src/modules/uploads/uploads.controller.ts");
 
 const appVersion = packageJson.version;
 
@@ -80,6 +83,23 @@ assert(
   settingsPage.includes("setAvatarUrl(me.avatarUrl ? resolveBackendAssetUrl(me.avatarUrl) : \"\")") &&
     settingsPage.includes("src={resolveBackendAssetUrl(avatarUrl)}"),
   "Configuracoes precisa normalizar avatar antes de exibir em web/APK/desktop.",
+);
+
+assert(
+  !chatWorkspace.includes("isFakeContact") &&
+    !/suelen|cesar|memu/i.test(chatWorkspace),
+  "Contatos reais nao podem ser filtrados por nomes hardcoded.",
+);
+
+assert(
+  uploadsService.includes("Falha no Appwrite Storage; usando fallback de upload") &&
+    uploadsService.includes("appConfig.blobReadWriteToken"),
+  "Upload precisa cair para Vercel Blob/local quando Appwrite Storage falhar.",
+);
+
+assert(
+  uploadsController.includes("Arquivo ausente."),
+  "Upload precisa responder erro claro quando nenhum arquivo for enviado.",
 );
 
 console.log("Quality checks passed.");

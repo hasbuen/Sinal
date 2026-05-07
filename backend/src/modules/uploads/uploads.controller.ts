@@ -9,6 +9,7 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  BadRequestException,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
@@ -31,6 +32,10 @@ export class UploadsController {
     }),
   )
   async upload(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Arquivo ausente.");
+    }
+
     return this.uploadsService.storeFile(file);
   }
 

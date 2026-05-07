@@ -146,14 +146,6 @@ const sidebarTabs = [
 
 type SidebarTab = (typeof sidebarTabs)[number]["id"];
 
-function isFakeContact(user?: BackendUser | null) {
-  if (!user) return false;
-  const signature = `${user.displayName} ${user.username} ${user.email}`.toLowerCase();
-  return ["teste", "test ", "memu", "suelen", "cesar"].some((term) =>
-    signature.includes(term),
-  );
-}
-
 function UserAvatar({
   user,
   label,
@@ -250,18 +242,10 @@ export default function ChatWorkspace({
     () =>
       normalizedConversations.filter(
         (conversation) => {
-          const directUser = currentUser
-            ? getConversationUser(conversation, currentUser.id)
-            : null;
-
-          if (directUser && isFakeContact(directUser)) {
-            return false;
-          }
-
           return conversation.kind === "GROUP" || Boolean(conversation.latestMessage);
         },
       ),
-    [currentUser, normalizedConversations],
+    [normalizedConversations],
   );
   const onlineContactCount = useMemo(
     () =>
@@ -307,10 +291,9 @@ export default function ChatWorkspace({
   );
   const filteredUsers = useMemo(() => {
     const term = deferredSearch.trim().toLowerCase();
-    const businessUsers = users.filter((user) => !isFakeContact(user));
     return !term
-      ? businessUsers
-      : businessUsers.filter((user) =>
+      ? users
+      : users.filter((user) =>
           `${user.displayName} ${user.username} ${user.email}`
             .toLowerCase()
             .includes(term),

@@ -2,7 +2,7 @@
   "name": "sinal",
   "description": "Um aplicativo de chat e mensagens em tempo real para conexoes rapidas e seguras.",
   "author": "Julio Cesar O. Bueno <https://github.com/hasbuen>",
-  "version": "0.2.27",
+  "version": "0.2.28",
   "main": "electron/main.cjs",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
     "build:web": "node scripts/build-next-surface.cjs web",
     "build:app": "node scripts/build-next-surface.cjs native && node scripts/prepare-native-webdir.cjs",
     "start": "next start",
+    "test": "node scripts/quality-checks.cjs",
     "typecheck": "tsc --noEmit",
     "electron:icon": "node tools/generate-electron-icon.cjs",
     "desktop:dev": "concurrently -k \"npm:dev\" \"wait-on http://localhost:3000 && electron .\"",

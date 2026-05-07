@@ -36,6 +36,19 @@ enum MediaKind {
   FILE
 }
 
+enum PushPlatform {
+  ANDROID
+  IOS
+  WEB
+  DESKTOP
+}
+
+enum StatusKind {
+  TEXT
+  IMAGE
+  VIDEO
+}
+
 model User {
   id             String               @id @default(auto()) @map("_id") @db.ObjectId
   email          String               @unique
@@ -52,6 +65,8 @@ model User {
   sentMessages   Message[]            @relation("MessageSender")
   reactions      Reaction[]
   ownedGroups    Conversation[]       @relation("ConversationOwner")
+  statusUpdates  StatusUpdate[]
+  pushDevices    PushDevice[]
 }
 
 model Conversation {
@@ -145,4 +160,40 @@ model Reaction {
   user           User        @relation(fields: [userId], references: [id])
 
   @@unique([messageId, userId, emoji])
+}
+
+model StatusUpdate {
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  authorId       String      @db.ObjectId
+  kind           StatusKind
+  text           String?
+  mediaUrl       String?
+  thumbnailUrl   String?
+  background     String?
+  mimeType       String?
+  sizeBytes      Int?
+  durationMs     Int?
+  viewIds        String[]    @db.ObjectId
+  createdAt      DateTime    @default(now())
+  expiresAt      DateTime
+  author         User        @relation(fields: [authorId], references: [id])
+
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([expiresAt])
+}
+
+model PushDevice {
+  id             String       @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String       @db.ObjectId
+  platform       PushPlatform
+  token          String       @unique
+  deviceName     String?
+  appVersion     String?
+  enabled        Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  lastSeenAt     DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id])
+
+  @@index([userId])
 }

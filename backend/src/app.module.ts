@@ -11,6 +11,8 @@ import { UsersModule } from "./modules/users/users.module";
 import { ConversationsModule } from "./modules/conversations/conversations.module";
 import { MessagesModule } from "./modules/messages/messages.module";
 import { UploadsModule } from "./modules/uploads/uploads.module";
+import { StatusModule } from "./modules/status/status.module";
+import { PushModule } from "./modules/push/push.module";
 import { RealtimeModule } from "./realtime/realtime.module";
 import { AppwriteModule } from "./appwrite/appwrite.module";
 
@@ -73,6 +75,8 @@ import { AppwriteModule } from "./appwrite/appwrite.module";
     ConversationsModule,
     MessagesModule,
     UploadsModule,
+    StatusModule,
+    PushModule,
     RealtimeModule,
     AppwriteModule,
   ],

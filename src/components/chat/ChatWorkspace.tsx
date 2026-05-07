@@ -146,6 +146,43 @@ const sidebarTabs = [
 
 type SidebarTab = (typeof sidebarTabs)[number]["id"];
 
+function isFakeContact(user?: BackendUser | null) {
+  if (!user) return false;
+  const signature = `${user.displayName} ${user.username} ${user.email}`.toLowerCase();
+  return ["teste", "test ", "memu", "suelen", "cesar"].some((term) =>
+    signature.includes(term),
+  );
+}
+
+function UserAvatar({
+  user,
+  label,
+  className,
+  fallbackClassName,
+}: {
+  user?: BackendUser | null;
+  label?: string;
+  className: string;
+  fallbackClassName: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const avatarUrl = user?.avatarUrl ? resolveBackendAssetUrl(user.avatarUrl) : "";
+  const fallbackLabel = label || avatarLabel(user?.displayName);
+
+  if (avatarUrl && !failed) {
+    return (
+      <img
+        src={avatarUrl}
+        alt={user?.displayName || fallbackLabel}
+        className={className}
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return <div className={fallbackClassName}>{fallbackLabel}</div>;
+}
+
 export default function ChatWorkspace({
   initialConversationId,
 }: {
@@ -212,11 +249,19 @@ export default function ChatWorkspace({
   const listedConversations = useMemo(
     () =>
       normalizedConversations.filter(
-        (conversation) =>
-          conversation.kind === "GROUP" ||
-          Boolean(conversation.latestMessage || conversation.lastMessageAt),
+        (conversation) => {
+          const directUser = currentUser
+            ? getConversationUser(conversation, currentUser.id)
+            : null;
+
+          if (directUser && isFakeContact(directUser)) {
+            return false;
+          }
+
+          return conversation.kind === "GROUP" || Boolean(conversation.latestMessage);
+        },
       ),
-    [normalizedConversations],
+    [currentUser, normalizedConversations],
   );
   const onlineContactCount = useMemo(
     () =>
@@ -262,9 +307,10 @@ export default function ChatWorkspace({
   );
   const filteredUsers = useMemo(() => {
     const term = deferredSearch.trim().toLowerCase();
+    const businessUsers = users.filter((user) => !isFakeContact(user));
     return !term
-      ? users
-      : users.filter((user) =>
+      ? businessUsers
+      : businessUsers.filter((user) =>
           `${user.displayName} ${user.username} ${user.email}`
             .toLowerCase()
             .includes(term),
@@ -992,16 +1038,12 @@ export default function ChatWorkspace({
       >
         <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-2 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] sm:gap-3 sm:px-4">
           <div id="tour-profile" className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="sinal-glow flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/15 font-semibold ring-1 ring-white/18">
-              {currentUser.avatarUrl ? (
-                <img
-                  src={resolveBackendAssetUrl(currentUser.avatarUrl)}
-                  alt={currentUser.displayName}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                avatarLabel(currentUser.displayName)
-              )}
+            <div className="sinal-glow shrink-0 rounded-full">
+              <UserAvatar
+                user={currentUser}
+                className="h-11 w-11 rounded-full object-cover ring-1 ring-white/18"
+                fallbackClassName="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold ring-1 ring-white/18"
+              />
             </div>
             <div className="min-w-0">
               <p className="truncate text-base font-semibold leading-tight sm:text-lg">
@@ -1191,21 +1233,14 @@ export default function ChatWorkspace({
                             ? "bg-[#e7ffef] shadow-[inset_4px_0_0_var(--sinal-accent)] dark:bg-[#202c33]"
                             : "hover:bg-black/5 dark:hover:bg-white/5"
                         }`}
-                      >
-                        <div className="relative mt-0.5 shrink-0">
-                          {other?.avatarUrl ? (
-                            <img
-                              src={resolveBackendAssetUrl(other.avatarUrl)}
-                              alt={conversationName(conversation, currentUser.id)}
-                              className="h-12 w-12 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
-                              {conversation.kind === "GROUP"
-                                ? "GR"
-                                : avatarLabel(other?.displayName)}
-                            </div>
-                          )}
+                        >
+                          <div className="relative mt-0.5 shrink-0">
+                          <UserAvatar
+                            user={other}
+                            label={conversation.kind === "GROUP" ? "GR" : undefined}
+                            className="h-12 w-12 rounded-full object-cover"
+                            fallbackClassName="flex h-12 w-12 items-center justify-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]"
+                          />
                           {presence?.online ? (
                             <span className="sinal-online-dot absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#F8F5F1] bg-[#25D366] dark:border-[#111B21]" />
                           ) : null}
@@ -1277,17 +1312,11 @@ export default function ChatWorkspace({
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="relative shrink-0">
-                            {user.avatarUrl ? (
-                              <img
-                                src={resolveBackendAssetUrl(user.avatarUrl)}
-                                alt={user.displayName}
-                                className="h-11 w-11 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
-                                {avatarLabel(user.displayName)}
-                              </div>
-                            )}
+                            <UserAvatar
+                              user={user}
+                              className="h-11 w-11 rounded-full object-cover"
+                              fallbackClassName="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] text-sm font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]"
+                            />
                             {online ? (
                               <span className="sinal-online-dot absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#25D366] dark:border-[#202c33]" />
                             ) : null}
@@ -1346,19 +1375,12 @@ export default function ChatWorkspace({
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                   <div className="relative">
-                    {activeDirectUser?.avatarUrl ? (
-                      <img
-                        src={resolveBackendAssetUrl(activeDirectUser.avatarUrl)}
-                        alt={conversationName(activeConversation, currentUser.id)}
-                        className="h-11 w-11 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]">
-                        {activeConversation.kind === "GROUP"
-                          ? "GR"
-                          : avatarLabel(activeDirectUser?.displayName)}
-                      </div>
-                    )}
+                    <UserAvatar
+                      user={activeDirectUser}
+                      label={activeConversation.kind === "GROUP" ? "GR" : undefined}
+                      className="h-11 w-11 rounded-full object-cover"
+                      fallbackClassName="flex h-11 w-11 items-center justify-center rounded-full bg-[#d9fdd3] font-semibold text-[#075E54] dark:bg-[#223239] dark:text-[#7fe7bc]"
+                    />
                     {activePresence?.online ? (
                       <span className="sinal-online-dot absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#F0F2F5] bg-[#25D366] dark:border-[#202c33]" />
                     ) : null}

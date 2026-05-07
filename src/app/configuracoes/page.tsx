@@ -21,6 +21,7 @@ import {
   getCurrentUser,
   resolveBackendAssetUrl,
   updateProfile,
+  updateUserSettings,
   uploadMedia,
   type BackendUser,
   type BackendUserSettings,
@@ -155,11 +156,16 @@ export default function ConfiguracoesPage() {
   async function handleSaveSettings() {
     try {
       setSavingSettings(true);
-      const normalized = normalizeUserSettings(settings);
+      const saved = await updateUserSettings(settings);
+      const normalized = normalizeUserSettings(saved);
       setSettings(normalized);
       setUser((current) => (current ? { ...current, settings: normalized } : current));
       storeUserSettings(normalized);
-      toast.success("Preferencias salvas neste aparelho.");
+      toast.success("Preferencias salvas.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Nao foi possivel salvar as preferencias.",
+      );
     } finally {
       setSavingSettings(false);
     }

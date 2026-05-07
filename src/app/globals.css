@@ -132,8 +132,149 @@
 @layer utilities {
   .pt-safe { padding-top: env(safe-area-inset-top); }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+  .sinal-app-shell {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .sinal-glow {
+    position: relative;
+  }
+
+  .sinal-glow::after {
+    animation: sinalPulse 2.4s ease-in-out infinite;
+    border-radius: inherit;
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--sinal-accent, #14b8a6) 38%, transparent);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .sinal-glass-card {
+    backdrop-filter: blur(18px);
+    box-shadow: 0 16px 48px rgba(15, 23, 42, 0.08);
+  }
+
+  .sinal-list-row {
+    transform: translateZ(0);
+  }
+
+  .sinal-list-row:hover {
+    box-shadow: inset 0 0 0 999px rgba(20, 184, 166, 0.035);
+  }
+
+  .sinal-online-dot {
+    box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.12);
+  }
+
+  .sinal-chat-surface {
+    background-image:
+      radial-gradient(circle at 12% 18%, rgba(20, 184, 166, 0.08), transparent 24%),
+      radial-gradient(circle at 82% 2%, rgba(59, 130, 246, 0.06), transparent 22%),
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18) 0 1px, transparent 1px);
+    background-size: auto, auto, 28px 28px;
+  }
+
+  .sinal-message-bubble {
+    backdrop-filter: blur(12px);
+    will-change: transform;
+  }
+
+  .sinal-message-bubble::before {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.28), transparent 42%);
+    content: "";
+    inset: 0;
+    opacity: 0.45;
+    pointer-events: none;
+    position: absolute;
+  }
+
+  .sinal-composer {
+    box-shadow: 0 14px 36px rgba(15, 23, 42, 0.09);
+    transition: box-shadow 160ms ease, transform 160ms ease;
+  }
+
+  .sinal-composer:focus-within {
+    box-shadow:
+      0 18px 42px rgba(15, 23, 42, 0.12),
+      0 0 0 3px color-mix(in oklab, var(--sinal-accent, #14b8a6) 20%, transparent);
+    transform: translateY(-1px);
+  }
+
+  .sinal-send-button,
+  .sinal-fab,
+  .sinal-pressable {
+    transition: transform 140ms ease, filter 140ms ease;
+  }
+
+  .sinal-send-button:active,
+  .sinal-fab:active,
+  .sinal-pressable:active {
+    transform: scale(0.94);
+  }
+
+  .sinal-send-button:not(:disabled) {
+    animation: sinalSendBreath 2.8s ease-in-out infinite;
+  }
+
+  .sinal-fab {
+    animation: sinalFloat 3s ease-in-out infinite;
+  }
+
+  .sinal-focus-ring:focus-within {
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--sinal-accent, #14b8a6) 22%, transparent);
+  }
+
   .destaque-mensagem {
     animation: flash 1.5s ease-in-out;
+  }
+}
+
+@keyframes sinalPulse {
+  0%, 100% {
+    opacity: 0.65;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+@keyframes sinalFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes sinalSendBreath {
+  0%, 100% {
+    filter: saturate(1);
+  }
+
+  50% {
+    filter: saturate(1.18) brightness(1.03);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sinal-glow::after,
+  .sinal-send-button:not(:disabled),
+  .sinal-fab {
+    animation: none;
+  }
+
+  .sinal-composer,
+  .sinal-send-button,
+  .sinal-fab,
+  .sinal-pressable {
+    transition: none;
   }
 }
 

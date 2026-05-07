@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, m } from "framer-motion";
 import {
   Check,
   CheckCheck,
@@ -127,7 +128,12 @@ export function ChatMessageBubble({
   }
 
   return (
-    <div
+    <m.div
+      layout
+      initial={{ opacity: 0, y: 12, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
       className={`group/message flex w-full overflow-x-hidden ${mine ? "justify-end" : "justify-start"} animate-in fade-in-0`}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => {
@@ -151,31 +157,41 @@ export function ChatMessageBubble({
         onPointerCancel={clearLongPress}
         onPointerLeave={clearLongPress}
       >
-        {!deleted && contextVisible && !mobileViewport ? (
-          <div
-            className={`pointer-events-auto absolute top-0 z-20 flex -translate-y-1/2 items-center gap-1 rounded-full border border-black/5 bg-white px-2 py-1 shadow-lg transition dark:border-white/10 dark:bg-[#233138] ${
-              mine ? "right-3" : "left-3"
-            }`}
-          >
-            {quickReactions.map((emoji) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => {
-                  onReaction(message.id, emoji);
-                  setReactionRailOpen(false);
-                  closeMenuIfOpen();
-                }}
-                className="rounded-full px-2 py-1 text-base transition hover:bg-black/5 dark:hover:bg-white/10"
-              >
-                {emoji}
-              </button>
-            ))}
-          </div>
-        ) : null}
+        <AnimatePresence>
+          {!deleted && contextVisible && !mobileViewport ? (
+            <m.div
+              initial={{ opacity: 0, y: 8, scale: 0.94 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.96 }}
+              transition={{ duration: 0.16 }}
+              className={`pointer-events-auto absolute top-0 z-20 flex -translate-y-1/2 items-center gap-1 rounded-full border border-black/5 bg-white px-2 py-1 shadow-lg transition dark:border-white/10 dark:bg-[#233138] ${
+                mine ? "right-3" : "left-3"
+              }`}
+            >
+              {quickReactions.map((emoji) => (
+                <m.button
+                  key={emoji}
+                  type="button"
+                  whileHover={{ scale: 1.18 }}
+                  whileTap={{ scale: 0.9 }}
+                  onClick={() => {
+                    onReaction(message.id, emoji);
+                    setReactionRailOpen(false);
+                    closeMenuIfOpen();
+                  }}
+                  className="rounded-full px-2 py-1 text-base transition hover:bg-black/5 dark:hover:bg-white/10"
+                >
+                  {emoji}
+                </m.button>
+              ))}
+            </m.div>
+          ) : null}
+        </AnimatePresence>
 
-        <div
-          className={`relative max-w-full overflow-hidden rounded-[1.2rem] px-3 py-2 shadow-sm transition-all ${
+        <m.div
+          layout
+          whileTap={{ scale: 0.995 }}
+          className={`sinal-message-bubble relative max-w-full overflow-hidden rounded-[1.2rem] px-3 py-2 shadow-sm transition-all ${
             mine
               ? "bg-[#DCF8C6] text-[#111B21] dark:bg-[#144d37] dark:text-white"
               : "bg-white text-[#111B21] dark:bg-[#202c33] dark:text-white"
@@ -248,7 +264,14 @@ export function ChatMessageBubble({
               ) : null}
 
               {message.kind === "EMOJI" && message.emoji ? (
-                <p className="mt-1 text-4xl leading-none">{message.emoji}</p>
+                <m.p
+                  initial={{ scale: 0.72, rotate: -7 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ type: "spring", stiffness: 430, damping: 18 }}
+                  className="mt-1 text-4xl leading-none"
+                >
+                  {message.emoji}
+                </m.p>
               ) : null}
 
               {message.text ? (
@@ -348,15 +371,25 @@ export function ChatMessageBubble({
             ) : null}
           </div>
 
+          <AnimatePresence>
           {menuOpen && mobileViewport ? (
             <>
-              <button
+              <m.button
                 type="button"
                 aria-label="Fechar menu"
                 onClick={closeMenuIfOpen}
-                className="fixed inset-0 z-30 bg-black/35 md:hidden"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-30 bg-black/35 backdrop-blur-sm md:hidden"
               />
-              <div className="fixed inset-x-0 bottom-0 z-40 rounded-t-[1.8rem] bg-white px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-18px_60px_rgba(0,0,0,0.28)] dark:bg-[#16232c] md:hidden">
+              <m.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                className="fixed inset-x-0 bottom-0 z-40 rounded-t-[1.8rem] bg-white px-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] pt-4 shadow-[0_-18px_60px_rgba(0,0,0,0.28)] dark:bg-[#16232c] md:hidden"
+              >
                 <div className="mx-auto max-w-xl">
                   <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/10 dark:bg-white/15" />
                   <div className="mb-4 rounded-[1.25rem] bg-black/[0.04] px-4 py-3 dark:bg-white/[0.04]">
@@ -449,12 +482,17 @@ export function ChatMessageBubble({
                     ) : null}
                   </div>
                 </div>
-              </div>
+              </m.div>
             </>
           ) : null}
+          </AnimatePresence>
 
+          <AnimatePresence>
           {menuOpen && !mobileViewport ? (
-            <div
+            <m.div
+              initial={{ opacity: 0, y: -6, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -4, scale: 0.98 }}
               className={`absolute top-full z-20 mt-2 hidden w-52 rounded-2xl bg-white p-2 text-[#111B21] shadow-2xl dark:bg-[#233138] dark:text-white md:block ${
                 mine ? "right-0" : "left-0"
               }`}
@@ -518,11 +556,12 @@ export function ChatMessageBubble({
                   </button>
                 </>
               ) : null}
-            </div>
+            </m.div>
           ) : null}
-        </div>
+          </AnimatePresence>
+        </m.div>
       </div>
-    </div>
+    </m.div>
   );
 }
 

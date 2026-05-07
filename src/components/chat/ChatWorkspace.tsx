@@ -14,6 +14,12 @@ import {
   useState,
 } from "react";
 import {
+  AnimatePresence,
+  LazyMotion,
+  domAnimation,
+  m,
+} from "framer-motion";
+import {
   ArrowLeft,
   Camera,
   FileText,
@@ -962,7 +968,7 @@ export default function ChatWorkspace({
 
   return (
     <main
-      className={`${darkMode ? "dark" : ""} flex h-dvh flex-col overflow-x-hidden overflow-y-hidden bg-[linear-gradient(180deg,#eef5f7,#e7ecef)] text-[#111B21] dark:bg-[linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
+      className={`${darkMode ? "dark" : ""} sinal-app-shell flex h-dvh flex-col overflow-x-hidden overflow-y-hidden bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.18),transparent_28%),linear-gradient(180deg,#eef6f6,#e6ecef)] text-[#111B21] dark:bg-[radial-gradient(circle_at_top_left,rgba(20,184,166,0.16),transparent_28%),linear-gradient(180deg,#07131b,#0b141a)] dark:text-white`}
       style={
         {
           "--sinal-accent": accentPalette.accent,
@@ -971,10 +977,17 @@ export default function ChatWorkspace({
         } as CSSProperties
       }
     >
-      <div className="z-30 shrink-0 text-white shadow-md" style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}>
+      <LazyMotion features={domAnimation}>
+      <m.div
+        initial={{ y: -18, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.34, ease: "easeOut" }}
+        className="z-30 shrink-0 text-white shadow-[0_18px_55px_rgba(2,8,23,0.18)]"
+        style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}
+      >
         <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
+            <div className="sinal-glow flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
               {avatarLabel(currentUser.displayName)}
             </div>
             <div className="min-w-0">
@@ -1026,7 +1039,7 @@ export default function ChatWorkspace({
           </div>
         </div>
 
-      </div>
+      </m.div>
 
       <div
         className={`mx-auto grid min-h-0 w-full max-w-[1480px] flex-1 gap-0 overflow-hidden md:grid-cols-[380px_1fr] ${
@@ -1034,12 +1047,12 @@ export default function ChatWorkspace({
         } md:pb-0`}
       >
         <aside
-          className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-black/5 bg-[#F8F5F1] dark:border-white/5 dark:bg-[#111B21] ${
+          className={`flex h-full min-h-0 flex-col overflow-hidden border-r border-black/5 bg-[#F8F5F1]/92 shadow-[18px_0_60px_rgba(15,23,42,0.05)] backdrop-blur-xl dark:border-white/5 dark:bg-[#111B21]/94 ${
             mobileShowingChat ? "hidden md:block" : "block"
           }`}
         >
           <div className="border-b border-black/5 p-4 dark:border-white/5">
-            <div className="flex items-center gap-3 rounded-full bg-white px-4 py-3 shadow-sm dark:bg-[#202c33]">
+            <div className="sinal-focus-ring flex items-center gap-3 rounded-full bg-white px-4 py-3 shadow-sm dark:bg-[#202c33]">
               <Search className="h-4 w-4 text-[#667781]" />
               <input
                 value={searchTerm}
@@ -1049,7 +1062,12 @@ export default function ChatWorkspace({
               />
             </div>
 
-            <div className="mt-4 rounded-[1.4rem] border border-black/5 bg-white p-3 shadow-sm dark:border-white/5 dark:bg-[#202c33]">
+            <m.div
+              initial={{ scale: 0.98, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.32, delay: 0.06 }}
+              className="sinal-glass-card mt-4 rounded-[1.4rem] border border-black/5 bg-white p-3 shadow-sm dark:border-white/5 dark:bg-[#202c33]"
+            >
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold">
@@ -1071,7 +1089,7 @@ export default function ChatWorkspace({
                 <Button
                   type="button"
                   size="icon"
-                  className="h-10 w-10 shrink-0 rounded-full text-[#111B21] hover:opacity-90"
+                  className="sinal-pressable h-10 w-10 shrink-0 rounded-full text-[#111B21] hover:opacity-90"
                   style={{ backgroundColor: "var(--sinal-accent)" }}
                   onClick={() => {
                     setActiveTab("contacts");
@@ -1088,18 +1106,20 @@ export default function ChatWorkspace({
                   ["Online", onlineContactCount],
                   ["Grupos", groupConversationCount],
                 ].map(([label, value]) => (
-                  <div
+                  <m.div
                     key={label}
+                    whileHover={{ y: -2 }}
+                    transition={{ type: "spring", stiffness: 360, damping: 26 }}
                     className="rounded-2xl bg-[#f2f7f7] px-2 py-2 dark:bg-[#111B21]"
                   >
                     <p className="text-base font-semibold">{value}</p>
                     <p className="mt-0.5 truncate text-[11px] text-[#667781] dark:text-white/45">
                       {label}
                     </p>
-                  </div>
+                  </m.div>
                 ))}
               </div>
-            </div>
+            </m.div>
           </div>
 
           <div className="hidden items-center justify-between gap-2 border-b border-black/5 px-4 py-3 md:flex dark:border-white/5">
@@ -1145,16 +1165,20 @@ export default function ChatWorkspace({
                       other && conversation.kind === "DIRECT" ? presenceMap[other.id] : null;
 
                     return (
-                      <button
+                      <m.button
                         key={conversation.id}
                         type="button"
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        whileTap={{ scale: 0.985 }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
                         onClick={() => {
                           setActiveConversationId(conversation.id);
                           setActiveTab("chats");
                         }}
-                        className={`flex w-full items-start gap-3 border-b border-black/5 px-4 py-3.5 text-left transition dark:border-white/5 ${
+                        className={`sinal-list-row flex w-full items-start gap-3 border-b border-black/5 px-4 py-3.5 text-left transition dark:border-white/5 ${
                           conversation.id === activeConversationId
-                            ? "bg-[#e7ffef] dark:bg-[#202c33]"
+                            ? "bg-[#e7ffef] shadow-[inset_4px_0_0_var(--sinal-accent)] dark:bg-[#202c33]"
                             : "hover:bg-black/5 dark:hover:bg-white/5"
                         }`}
                       >
@@ -1173,7 +1197,7 @@ export default function ChatWorkspace({
                             </div>
                           )}
                           {presence?.online ? (
-                            <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#F8F5F1] bg-[#25D366] dark:border-[#111B21]" />
+                            <span className="sinal-online-dot absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-[#F8F5F1] bg-[#25D366] dark:border-[#111B21]" />
                           ) : null}
                         </div>
 
@@ -1200,7 +1224,7 @@ export default function ChatWorkspace({
                             </p>
                           )}
                         </div>
-                      </button>
+                      </m.button>
                     );
                   })
                 ) : (
@@ -1230,12 +1254,16 @@ export default function ChatWorkspace({
                     const online = Boolean(presence?.online);
 
                     return (
-                      <button
+                      <m.button
                         key={user.id}
                         type="button"
                         disabled={pending}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileTap={{ scale: 0.985 }}
+                        transition={{ duration: 0.22, ease: "easeOut" }}
                         onClick={() => void openDirectConversation(user)}
-                        className="flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[#f0ffef] disabled:opacity-60 dark:bg-[#202c33] dark:hover:bg-[#24343d]"
+                        className="sinal-list-row flex items-center justify-between rounded-2xl bg-white px-4 py-3 text-left shadow-sm transition hover:bg-[#f0ffef] disabled:opacity-60 dark:bg-[#202c33] dark:hover:bg-[#24343d]"
                       >
                         <div className="flex min-w-0 items-center gap-3">
                           <div className="relative shrink-0">
@@ -1251,7 +1279,7 @@ export default function ChatWorkspace({
                               </div>
                             )}
                             {online ? (
-                              <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#25D366] dark:border-[#202c33]" />
+                              <span className="sinal-online-dot absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-[#25D366] dark:border-[#202c33]" />
                             ) : null}
                           </div>
                           <div className="min-w-0">
@@ -1264,7 +1292,7 @@ export default function ChatWorkspace({
                         <span className="rounded-full bg-[#25D366]/15 px-3 py-1 text-xs font-medium text-[#075E54] dark:text-[#7fe7bc]">
                           Abrir
                         </span>
-                      </button>
+                      </m.button>
                     );
                   })}
                 </div>
@@ -1288,7 +1316,13 @@ export default function ChatWorkspace({
         >
           {activeConversation ? (
             <>
-              <div className="shrink-0 border-b border-black/5 bg-[#F0F2F5] dark:border-white/5 dark:bg-[#202c33]">
+              <m.div
+                key={activeConversation.id}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.24, ease: "easeOut" }}
+                className="shrink-0 border-b border-black/5 bg-[#F0F2F5]/92 shadow-[0_12px_38px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/5 dark:bg-[#202c33]/92"
+              >
                 <div className="mx-auto flex max-w-4xl items-center gap-3 px-3 py-3">
                   <Button
                     variant="ghost"
@@ -1316,7 +1350,7 @@ export default function ChatWorkspace({
                       </div>
                     )}
                     {activePresence?.online ? (
-                      <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#F0F2F5] bg-[#25D366] dark:border-[#202c33]" />
+                      <span className="sinal-online-dot absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-[#F0F2F5] bg-[#25D366] dark:border-[#202c33]" />
                     ) : null}
                   </div>
                   <div className="min-w-0 flex-1">
@@ -1332,7 +1366,7 @@ export default function ChatWorkspace({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="rounded-full text-[#667781] hover:bg-black/5 hover:text-[#075E54] disabled:opacity-35 dark:text-white/65 dark:hover:bg-white/8 dark:hover:text-white"
+                      className="sinal-pressable rounded-full text-[#667781] hover:bg-black/5 hover:text-[#075E54] disabled:opacity-35 dark:text-white/65 dark:hover:bg-white/8 dark:hover:text-white"
                       disabled={activeConversation.kind !== "DIRECT" || !websocketRealtime}
                       onClick={() => void startOutgoingCall("audio")}
                     >
@@ -1342,7 +1376,7 @@ export default function ChatWorkspace({
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="rounded-full text-[#667781] hover:bg-black/5 hover:text-[#075E54] disabled:opacity-35 dark:text-white/65 dark:hover:bg-white/8 dark:hover:text-white"
+                      className="sinal-pressable rounded-full text-[#667781] hover:bg-black/5 hover:text-[#075E54] disabled:opacity-35 dark:text-white/65 dark:hover:bg-white/8 dark:hover:text-white"
                       disabled={activeConversation.kind !== "DIRECT" || !websocketRealtime}
                       onClick={() => void startOutgoingCall("video")}
                     >
@@ -1350,85 +1384,91 @@ export default function ChatWorkspace({
                     </Button>
                   </div>
                 </div>
-              </div>
+              </m.div>
               <div
-                className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3 sm:px-6 sm:py-4 ${wallpaperClass(userSettings.wallpaper)}`}
+                className={`sinal-chat-surface min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-3 sm:px-6 sm:py-4 ${wallpaperClass(userSettings.wallpaper)}`}
               >
                 <div
                   className={`mx-auto w-full max-w-3xl ${userSettings.compactMode ? "space-y-1.5" : "space-y-2"} pb-3 sm:pb-4`}
                 >
-                  {visibleMessages.map((message) => (
-                    <ChatMessageBubble
-                      key={message.id}
-                      message={message}
-                      currentUserId={currentUser.id}
-                      conversation={activeConversation}
-                      clock={clock}
-                      menuOpen={menuMessageId === message.id}
-                      onToggleMenu={() =>
-                        setMenuMessageId((current) =>
-                          current === message.id ? null : message.id,
-                        )
-                      }
-                      onReply={setReplyingTo}
-                      onCopy={(item) =>
-                        void navigator.clipboard
-                          .writeText(
-                            item.text ||
-                              item.emoji ||
-                              item.linkUrl ||
-                              item.attachments[0]?.url ||
-                              "",
+                  <AnimatePresence initial={false}>
+                    {visibleMessages.map((message) => (
+                      <ChatMessageBubble
+                        key={message.id}
+                        message={message}
+                        currentUserId={currentUser.id}
+                        conversation={activeConversation}
+                        clock={clock}
+                        menuOpen={menuMessageId === message.id}
+                        onToggleMenu={() =>
+                          setMenuMessageId((current) =>
+                            current === message.id ? null : message.id,
                           )
-                          .then(() => toast.success("Mensagem copiada."))
-                      }
-                      onForward={(item) => {
-                        setForwardingMessage(item);
-                        setShowForwardSheet(true);
-                        setMenuMessageId(null);
-                      }}
-                      onEdit={(item) => {
-                        setEditingMessage(item);
-                        setReplyingTo(null);
-                        setComposerText(
-                          item.kind === "LINK"
-                            ? item.linkUrl || ""
-                            : item.kind === "EMOJI"
-                              ? item.emoji || ""
-                              : item.text || "",
-                        );
-                        setMenuMessageId(null);
-                      }}
-                      onDelete={(messageId) =>
-                        void deleteMessage(messageId).then((updated) => {
-                          patchMessage(updated);
-                          syncConversationPreview(activeConversation.id, updated);
+                        }
+                        onReply={setReplyingTo}
+                        onCopy={(item) =>
+                          void navigator.clipboard
+                            .writeText(
+                              item.text ||
+                                item.emoji ||
+                                item.linkUrl ||
+                                item.attachments[0]?.url ||
+                                "",
+                            )
+                            .then(() => toast.success("Mensagem copiada."))
+                        }
+                        onForward={(item) => {
+                          setForwardingMessage(item);
+                          setShowForwardSheet(true);
                           setMenuMessageId(null);
-                        })
-                      }
-                      onReaction={(messageId, emoji) =>
-                        void reactToMessage(messageId, emoji).then((updated) => {
-                          patchMessage(updated);
-                          syncConversationPreview(activeConversation.id, updated);
-                        })
-                      }
-                    />
-                  ))}
+                        }}
+                        onEdit={(item) => {
+                          setEditingMessage(item);
+                          setReplyingTo(null);
+                          setComposerText(
+                            item.kind === "LINK"
+                              ? item.linkUrl || ""
+                              : item.kind === "EMOJI"
+                                ? item.emoji || ""
+                                : item.text || "",
+                          );
+                          setMenuMessageId(null);
+                        }}
+                        onDelete={(messageId) =>
+                          void deleteMessage(messageId).then((updated) => {
+                            patchMessage(updated);
+                            syncConversationPreview(activeConversation.id, updated);
+                            setMenuMessageId(null);
+                          })
+                        }
+                        onReaction={(messageId, emoji) =>
+                          void reactToMessage(messageId, emoji).then((updated) => {
+                            patchMessage(updated);
+                            syncConversationPreview(activeConversation.id, updated);
+                          })
+                        }
+                      />
+                    ))}
+                  </AnimatePresence>
 
                   {visibleMessages.length === 0 ? (
                     <div className="flex min-h-80 items-center justify-center">
-                      <div className="max-w-md rounded-[2rem] bg-white/85 px-6 py-8 text-center shadow-sm dark:bg-[#202c33]">
+                      <m.div
+                        initial={{ opacity: 0, scale: 0.96 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="sinal-glass-card max-w-md rounded-[2rem] bg-white/85 px-6 py-8 text-center shadow-sm dark:bg-[#202c33]"
+                      >
                         <p className="text-lg font-semibold">Conversa aberta</p>
                         <p className="mt-2 text-sm text-[#667781] dark:text-white/55">
                           Envie texto, imagem ou arquivo para iniciar este chat.
                         </p>
-                      </div>
+                      </m.div>
                     </div>
                   ) : null}
                 </div>
               </div>
 
-              <div className="sticky bottom-0 z-20 shrink-0 border-t border-black/5 bg-[#F0F2F5]/96 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] backdrop-blur dark:border-white/5 dark:bg-[#202c33]/96 sm:px-4">
+              <div className="sticky bottom-0 z-20 shrink-0 border-t border-black/5 bg-[#F0F2F5]/90 px-3 py-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] shadow-[0_-18px_45px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/5 dark:bg-[#202c33]/90 sm:px-4">
                 <div className="mx-auto w-full max-w-4xl">
                   {replyingTo ? (
                     <div className="mb-3 flex items-start justify-between gap-3 rounded-[1.2rem] border-l-4 border-[#25D366] bg-white px-4 py-3 shadow-sm dark:bg-[#111B21]">
@@ -1505,11 +1545,11 @@ export default function ChatWorkspace({
                   ) : null}
 
                   <div className="flex items-end gap-2">
-                    <div className="flex min-w-0 flex-1 items-end gap-0.5 rounded-[1.8rem] bg-white px-1.5 py-1.5 shadow-sm dark:bg-[#2a3942] sm:gap-1 sm:px-2 sm:py-2">
+                    <div className="sinal-composer flex min-w-0 flex-1 items-end gap-0.5 rounded-[1.8rem] bg-white px-1.5 py-1.5 shadow-sm dark:bg-[#2a3942] sm:gap-1 sm:px-2 sm:py-2">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        className="sinal-pressable h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                         onClick={() => setShowEmojiPicker(true)}
                       >
                         <SmilePlus className="h-5 w-5" />
@@ -1517,7 +1557,7 @@ export default function ChatWorkspace({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        className="sinal-pressable h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                         onClick={() => fileInputRef.current?.click()}
                       >
                         <Paperclip className="h-5 w-5" />
@@ -1525,7 +1565,7 @@ export default function ChatWorkspace({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        className="sinal-pressable h-11 w-11 rounded-full text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
                         onClick={() => cameraInputRef.current?.click()}
                       >
                         <Camera className="h-5 w-5" />
@@ -1567,7 +1607,7 @@ export default function ChatWorkspace({
                     <Button
                       onClick={() => void handleSend()}
                       disabled={composerDisabled}
-                      className="h-12 w-12 rounded-full p-0 text-[#111B21] hover:opacity-90"
+                      className="sinal-send-button h-12 w-12 rounded-full p-0 text-[#111B21] hover:opacity-90"
                       style={{ backgroundColor: "var(--sinal-accent)" }}
                     >
                       {pending ? (
@@ -1582,7 +1622,12 @@ export default function ChatWorkspace({
             </>
           ) : (
             <div className="flex h-full items-center justify-center px-6">
-              <div className="max-w-lg rounded-[2rem] bg-white/85 px-8 py-10 text-center shadow-sm dark:bg-[#202c33]">
+              <m.div
+                initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.32, ease: "easeOut" }}
+                className="sinal-glass-card max-w-lg rounded-[2rem] bg-white/85 px-8 py-10 text-center shadow-sm dark:bg-[#202c33]"
+              >
                 <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--sinal-accent)]">
                   Sinal
                 </p>
@@ -1603,7 +1648,7 @@ export default function ChatWorkspace({
                     <Link href={toAppHref("/configuracoes")}>Abrir configuracoes</Link>
                   </Button>
                 </div>
-              </div>
+              </m.div>
             </div>
           )}
         </section>
@@ -1636,9 +1681,40 @@ export default function ChatWorkspace({
         </div>
       ) : null}
 
+      {showMobileNav ? (
+        <m.button
+          type="button"
+          initial={{ opacity: 0, scale: 0.8, y: 18 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          whileTap={{ scale: 0.92 }}
+          transition={{ type: "spring", stiffness: 420, damping: 28 }}
+          onClick={() => {
+            setActiveTab("contacts");
+            setActiveConversationId(null);
+          }}
+          className="sinal-fab fixed bottom-[calc(5.9rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full text-[#07131b] shadow-[0_18px_42px_rgba(15,23,42,0.32)] md:hidden"
+          style={{ backgroundColor: "var(--sinal-accent)" }}
+          aria-label="Nova conversa"
+        >
+          <Plus className="h-6 w-6" />
+        </m.button>
+      ) : null}
+
+      <AnimatePresence>
       {showEmojiPicker ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
-          <div className="w-full max-w-3xl rounded-[2rem] bg-white p-4 shadow-2xl dark:bg-[#202c33]">
+        <m.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+        >
+          <m.div
+            initial={{ opacity: 0, y: 24, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.98 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="w-full max-w-3xl rounded-[2rem] bg-white p-4 shadow-2xl dark:bg-[#202c33]"
+          >
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.25em] text-[#075E54] dark:text-[#7fe7bc]">
@@ -1682,9 +1758,10 @@ export default function ChatWorkspace({
                 </button>
               ))}
             </div>
-          </div>
-        </div>
+          </m.div>
+        </m.div>
       ) : null}
+      </AnimatePresence>
 
       <ChatForwardSheet
         open={showForwardSheet}
@@ -1783,6 +1860,7 @@ export default function ChatWorkspace({
           }
         }}
       />
+      </LazyMotion>
     </main>
   );
 }

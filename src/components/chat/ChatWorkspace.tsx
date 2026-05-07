@@ -29,7 +29,6 @@ import {
   Moon,
   Paperclip,
   Phone,
-  Plus,
   Search,
   Send,
   Settings2,
@@ -108,9 +107,6 @@ import {
 import { toAppHref } from "@/lib/runtime";
 import { withBasePath } from "@/lib/utils";
 
-const OnboardingTour = dynamic(() => import("@/components/OnboardingTour"), {
-  ssr: false,
-});
 const GroupComposer = dynamic(() => import("./GroupComposer"), { ssr: false });
 const EmojiBoard = dynamic(() => import("@/components/EmojisCustom"), {
   ssr: false,
@@ -213,6 +209,15 @@ export default function ChatWorkspace({
       currentUser ? dedupeConversations(conversations, currentUser.id) : conversations,
     [conversations, currentUser],
   );
+  const listedConversations = useMemo(
+    () =>
+      normalizedConversations.filter(
+        (conversation) =>
+          conversation.kind === "GROUP" ||
+          Boolean(conversation.latestMessage || conversation.lastMessageAt),
+      ),
+    [normalizedConversations],
+  );
   const onlineContactCount = useMemo(
     () =>
       currentUser
@@ -227,7 +232,7 @@ export default function ChatWorkspace({
         .length,
     [normalizedConversations],
   );
-  const conversationCount = normalizedConversations.length;
+  const conversationCount = listedConversations.length;
   const activeConversation = normalizedConversations.find(
     (conversation) => conversation.id === activeConversationId,
   );
@@ -273,18 +278,18 @@ export default function ChatWorkspace({
     [currentUser, filteredUsers],
   );
   const filteredConversations = useMemo(() => {
-    if (!currentUser) return normalizedConversations;
+    if (!currentUser) return listedConversations;
     const term = deferredSearch.trim().toLowerCase();
     return !term
-      ? normalizedConversations
-      : normalizedConversations.filter((conversation) =>
+      ? listedConversations
+      : listedConversations.filter((conversation) =>
           `${conversationName(conversation, currentUser.id)} ${messagePreview(
             conversation.latestMessage,
           )}`
             .toLowerCase()
             .includes(term),
         );
-  }, [currentUser, deferredSearch, normalizedConversations]);
+  }, [currentUser, deferredSearch, listedConversations]);
   const activePresence =
     activeDirectUser && activeConversation?.kind === "DIRECT"
       ? presenceMap[activeDirectUser.id]
@@ -985,25 +990,35 @@ export default function ChatWorkspace({
         className="z-30 shrink-0 text-white shadow-[0_18px_55px_rgba(2,8,23,0.18)]"
         style={{ background: `linear-gradient(135deg, ${accentPalette.accent}, #102027)` }}
       >
-        <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-3 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-          <div className="flex items-center gap-3">
-            <div className="sinal-glow flex h-11 w-11 items-center justify-center rounded-full bg-white/15 font-semibold">
-              {avatarLabel(currentUser.displayName)}
+        <div className="mx-auto flex max-w-[1480px] items-center justify-between gap-2 px-3 pb-3 pt-[max(0.65rem,env(safe-area-inset-top))] sm:gap-3 sm:px-4">
+          <div id="tour-profile" className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="sinal-glow flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/15 font-semibold ring-1 ring-white/18">
+              {currentUser.avatarUrl ? (
+                <img
+                  src={resolveBackendAssetUrl(currentUser.avatarUrl)}
+                  alt={currentUser.displayName}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                avatarLabel(currentUser.displayName)
+              )}
             </div>
             <div className="min-w-0">
-              <p className="text-lg font-semibold">Sinal</p>
+              <p className="truncate text-base font-semibold leading-tight sm:text-lg">
+                {currentUser.displayName}
+              </p>
               <p className="truncate text-xs text-white/75">
-                Suas conversas, contatos e ajustes em um so lugar.
+                {currentUser.bio?.trim() || "Disponivel para conversar."}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-1">
-            <OnboardingTour />
+          <div className="flex shrink-0 items-center gap-0.5 sm:gap-1">
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full text-white hover:bg-white/10"
+              className="sinal-pressable h-10 w-10 rounded-full text-white hover:bg-white/10"
+              aria-label={darkMode ? "Usar tema claro" : "Usar tema escuro"}
               onClick={() =>
                 setUserSettings((current) => {
                   const nextTheme: "light" | "dark" = darkMode ? "light" : "dark";
@@ -1015,7 +1030,13 @@ export default function ChatWorkspace({
             >
               {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
-            <Button asChild variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/10">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className="sinal-pressable h-10 w-10 rounded-full text-white hover:bg-white/10"
+              aria-label="Abrir configuracoes"
+            >
               <Link href={toAppHref("/configuracoes")}>
                 <Settings2 className="h-4 w-4" />
               </Link>
@@ -1023,7 +1044,8 @@ export default function ChatWorkspace({
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full text-white hover:bg-white/10"
+              className="sinal-pressable h-10 w-10 rounded-full text-white hover:bg-white/10"
+              aria-label="Sair"
               onClick={() =>
                 void (async () => {
                   if (appwriteEnabled) {
@@ -1068,8 +1090,8 @@ export default function ChatWorkspace({
               transition={{ duration: 0.32, delay: 0.06 }}
               className="sinal-glass-card mt-4 rounded-[1.4rem] border border-black/5 bg-white p-3 shadow-sm dark:border-white/5 dark:bg-[#202c33]"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
+              <div className="flex items-center gap-3">
+                <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">
                     Ola, {currentUser.displayName}
                   </p>
@@ -1086,18 +1108,6 @@ export default function ChatWorkspace({
                     </span>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  size="icon"
-                  className="sinal-pressable h-10 w-10 shrink-0 rounded-full text-[#111B21] hover:opacity-90"
-                  style={{ backgroundColor: "var(--sinal-accent)" }}
-                  onClick={() => {
-                    setActiveTab("contacts");
-                    setActiveConversationId(null);
-                  }}
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
               </div>
 
               <div className="mt-3 grid grid-cols-3 gap-2 text-center">
@@ -1679,25 +1689,6 @@ export default function ChatWorkspace({
             })}
           </div>
         </div>
-      ) : null}
-
-      {showMobileNav ? (
-        <m.button
-          type="button"
-          initial={{ opacity: 0, scale: 0.8, y: 18 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          whileTap={{ scale: 0.92 }}
-          transition={{ type: "spring", stiffness: 420, damping: 28 }}
-          onClick={() => {
-            setActiveTab("contacts");
-            setActiveConversationId(null);
-          }}
-          className="sinal-fab fixed bottom-[calc(5.9rem+env(safe-area-inset-bottom))] right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full text-[#07131b] shadow-[0_18px_42px_rgba(15,23,42,0.32)] md:hidden"
-          style={{ backgroundColor: "var(--sinal-accent)" }}
-          aria-label="Nova conversa"
-        >
-          <Plus className="h-6 w-6" />
-        </m.button>
       ) : null}
 
       <AnimatePresence>

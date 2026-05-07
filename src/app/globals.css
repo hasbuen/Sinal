@@ -203,23 +203,17 @@
   }
 
   .sinal-send-button,
-  .sinal-fab,
   .sinal-pressable {
     transition: transform 140ms ease, filter 140ms ease;
   }
 
   .sinal-send-button:active,
-  .sinal-fab:active,
   .sinal-pressable:active {
     transform: scale(0.94);
   }
 
   .sinal-send-button:not(:disabled) {
     animation: sinalSendBreath 2.8s ease-in-out infinite;
-  }
-
-  .sinal-fab {
-    animation: sinalFloat 3s ease-in-out infinite;
   }
 
   .sinal-focus-ring:focus-within {
@@ -243,16 +237,6 @@
   }
 }
 
-@keyframes sinalFloat {
-  0%, 100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-5px);
-  }
-}
-
 @keyframes sinalSendBreath {
   0%, 100% {
     filter: saturate(1);
@@ -265,14 +249,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .sinal-glow::after,
-  .sinal-send-button:not(:disabled),
-  .sinal-fab {
+  .sinal-send-button:not(:disabled) {
     animation: none;
   }
 
   .sinal-composer,
   .sinal-send-button,
-  .sinal-fab,
   .sinal-pressable {
     transition: none;
   }

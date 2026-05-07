@@ -91,6 +91,43 @@ const behaviorCards = [
   icon: typeof Bell;
 }>;
 
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(reader.error || new Error("Falha ao ler a imagem."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function createAvatarDataUrl(file: File) {
+  const source = await readFileAsDataUrl(file);
+
+  return new Promise<string>((resolve) => {
+    const image = new Image();
+    image.onload = () => {
+      const size = 512;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const context = canvas.getContext("2d");
+
+      if (!context) {
+        resolve(source);
+        return;
+      }
+
+      const scale = Math.max(size / image.width, size / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    image.onerror = () => resolve(source);
+    image.src = source;
+  });
+}
+
 export default function ConfiguracoesPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -126,11 +163,18 @@ export default function ConfiguracoesPage() {
   async function handleUpload(file: File) {
     try {
       setUploadingAvatar(true);
-      const uploaded = await uploadMedia(file);
-      setAvatarUrl(resolveBackendAssetUrl(uploaded.url));
-      toast.success("Foto atualizada.");
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Nao foi possivel enviar a foto.");
+      const previewUrl = await createAvatarDataUrl(file);
+      setAvatarUrl(previewUrl);
+
+      try {
+        const uploaded = await uploadMedia(file);
+        setAvatarUrl(resolveBackendAssetUrl(uploaded.url));
+        toast.success("Foto enviada.");
+      } catch {
+        toast("Foto aplicada localmente. Salve o perfil para manter no app.");
+      }
+    } catch {
+      toast.error("Nao foi possivel ler a imagem.");
     } finally {
       setUploadingAvatar(false);
     }
@@ -280,7 +324,7 @@ export default function ConfiguracoesPage() {
                   value={displayName}
                   onChange={(event) => setDisplayName(event.target.value)}
                   placeholder="Como voce quer aparecer"
-                  className="border-black/10 bg-[#f6fafb] dark:border-white/10 dark:bg-[#0a131b]"
+                  className="border-black/10 bg-[#f6fafb] text-[#102027] placeholder:text-slate-400 dark:border-white/10 dark:bg-[#0a131b] dark:text-white dark:placeholder:text-white/38"
                 />
               </div>
 
@@ -290,7 +334,7 @@ export default function ConfiguracoesPage() {
                   value={bio}
                   onChange={(event) => setBio(event.target.value)}
                   placeholder="Escreva um recado curto sobre voce"
-                  className="min-h-28 border-black/10 bg-[#f6fafb] dark:border-white/10 dark:bg-[#0a131b]"
+                  className="min-h-28 border-black/10 bg-[#f6fafb] text-[#102027] placeholder:text-slate-400 dark:border-white/10 dark:bg-[#0a131b] dark:text-white dark:placeholder:text-white/38"
                 />
               </div>
 

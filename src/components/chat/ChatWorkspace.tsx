@@ -106,6 +106,7 @@ import {
 } from "./chat-helpers";
 import { toAppHref } from "@/lib/runtime";
 import { withBasePath } from "@/lib/utils";
+import { applyLocalProfile, applyLocalProfiles } from "@/lib/profile-cache";
 
 const GroupComposer = dynamic(() => import("./GroupComposer"), { ssr: false });
 const EmojiBoard = dynamic(() => import("@/components/EmojisCustom"), {
@@ -726,7 +727,7 @@ export default function ChatWorkspace({
 
   async function bootstrap() {
     try {
-      const me = await getCurrentUser();
+      const me = applyLocalProfile(await getCurrentUser());
       const normalizedSettings = normalizeUserSettings(me.settings);
       const bootstrapCache = readBootstrapCache(me.id);
 
@@ -737,7 +738,7 @@ export default function ChatWorkspace({
 
       if (bootstrapCache) {
         const cachedConversations = dedupeConversations(bootstrapCache.conversations, me.id);
-        setUsers(bootstrapCache.users);
+        setUsers(applyLocalProfiles(bootstrapCache.users));
         setConversations(bootstrapCache.conversations);
         if (initialConversationId) {
           const existing = cachedConversations.find(
@@ -755,10 +756,10 @@ export default function ChatWorkspace({
         getConversations(),
       ]);
       const visibleConversations = dedupeConversations(nextConversations, me.id);
-      setUsers(nextUsers);
+      setUsers(applyLocalProfiles(nextUsers));
       setConversations(nextConversations);
       writeBootstrapCache(me.id, {
-        users: nextUsers,
+        users: applyLocalProfiles(nextUsers),
         conversations: nextConversations,
       });
 

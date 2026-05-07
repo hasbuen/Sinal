@@ -23,6 +23,8 @@ const appModule = read("backend/src/app.module.ts");
 const updateProfileInput = read("backend/src/modules/users/dto/update-profile.input.ts");
 const settingsPage = read("src/app/configuracoes/page.tsx");
 const chatWorkspace = read("src/components/chat/ChatWorkspace.tsx");
+const chatMessageBubble = read("src/components/chat/ChatMessageBubble.tsx");
+const profileCache = read("src/lib/profile-cache.ts");
 const uploadsService = read("backend/src/modules/uploads/uploads.service.ts");
 const uploadsController = read("backend/src/modules/uploads/uploads.controller.ts");
 
@@ -88,14 +90,35 @@ assert(
 assert(
   !settingsPage.includes("uploadMedia,") &&
     !settingsPage.includes("await uploadMedia(file)") &&
-    settingsPage.includes("Foto pronta. Salve o perfil para manter no app."),
+    settingsPage.includes("Foto pronta. Salve o perfil para manter no app.") &&
+    settingsPage.includes("Perfil salvo neste aparelho."),
   "Foto de perfil nao pode depender de /api/uploads; deve salvar fallback local comprimido.",
+);
+
+assert(
+  settingsPage.includes("const size = 192") &&
+    settingsPage.includes("toDataURL(\"image/jpeg\", 0.72)"),
+  "Avatar de perfil precisa ser comprimido antes de salvar para evitar payload grande.",
+);
+
+assert(
+  profileCache.includes("sinal-local-profile") &&
+    chatWorkspace.includes("applyLocalProfile(await getCurrentUser())") &&
+    settingsPage.includes("storeLocalProfile"),
+  "Perfil local precisa persistir em web/APK/desktop mesmo se o backend rejeitar avatar.",
 );
 
 assert(
   !chatWorkspace.includes("isFakeContact") &&
     !/suelen|cesar|memu/i.test(chatWorkspace),
   "Contatos reais nao podem ser filtrados por nomes hardcoded.",
+);
+
+assert(
+  chatMessageBubble.includes("absolute top-2 hidden rounded-full") &&
+    chatMessageBubble.includes("md:flex") &&
+    chatMessageBubble.includes("md:pr-4"),
+  "Botao de acoes da mensagem nao pode cobrir texto no mobile.",
 );
 
 assert(

@@ -210,10 +210,10 @@ export function ChatMessageBubble({
                 setReactionRailOpen((current) => !current);
                 onToggleMenu();
               }}
-              className={`absolute top-2 rounded-full border border-black/5 bg-white/80 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-[#667781] shadow-sm transition ${
+              className={`absolute top-2 hidden rounded-full border border-black/5 bg-white/80 p-2 text-[#667781] shadow-sm transition md:flex md:h-8 md:min-h-0 md:w-8 md:min-w-0 md:items-center md:justify-center ${
                 mine ? "left-2" : "right-2"
               } ${
-                contextVisible || mobileViewport
+                contextVisible
                   ? "translate-y-0 opacity-100"
                   : "pointer-events-none -translate-y-1 opacity-0"
               } dark:border-white/10 dark:bg-[#2a3942] dark:text-white/65`}
@@ -275,7 +275,7 @@ export function ChatMessageBubble({
               ) : null}
 
               {message.text ? (
-                <p className="mt-1 whitespace-pre-wrap break-words pr-4 text-[15px] leading-6">
+                <p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-6 md:pr-4">
                   {message.text}
                 </p>
               ) : null}

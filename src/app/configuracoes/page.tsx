@@ -38,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toAppHref } from "@/lib/runtime";
+import { applyLocalProfile, storeLocalProfile } from "@/lib/profile-cache";
 
 const themeOptions = [
   { value: "system", label: "Sistema", icon: Monitor },
@@ -105,7 +106,7 @@ async function createAvatarDataUrl(file: File) {
   return new Promise<string>((resolve) => {
     const image = new Image();
     image.onload = () => {
-      const size = 512;
+      const size = 192;
       const canvas = document.createElement("canvas");
       canvas.width = size;
       canvas.height = size;
@@ -120,7 +121,7 @@ async function createAvatarDataUrl(file: File) {
       const width = image.width * scale;
       const height = image.height * scale;
       context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
-      resolve(canvas.toDataURL("image/jpeg", 0.82));
+      resolve(canvas.toDataURL("image/jpeg", 0.72));
     };
     image.onerror = () => resolve(source);
     image.src = source;
@@ -142,7 +143,7 @@ export default function ConfiguracoesPage() {
   useEffect(() => {
     async function load() {
       try {
-        const me = await getCurrentUser();
+        const me = applyLocalProfile(await getCurrentUser());
         const normalized = normalizeUserSettings(me.settings);
         setUser(me);
         setDisplayName(me.displayName);
@@ -182,8 +183,52 @@ export default function ConfiguracoesPage() {
       });
       setUser(updated);
       setAvatarUrl(updated.avatarUrl ? resolveBackendAssetUrl(updated.avatarUrl) : "");
+      storeLocalProfile(updated.id, {
+        displayName: updated.displayName,
+        bio: updated.bio,
+        avatarUrl: updated.avatarUrl,
+      });
       toast.success("Perfil salvo.");
     } catch (error) {
+      if (user && avatarUrl.startsWith("data:image/")) {
+        try {
+          const updated = await updateProfile({
+            displayName,
+            bio,
+          });
+          const merged = {
+            ...updated,
+            avatarUrl,
+          };
+          setUser(merged);
+          storeLocalProfile(updated.id, {
+            displayName: updated.displayName,
+            bio: updated.bio,
+            avatarUrl,
+          });
+          toast.success("Perfil salvo neste aparelho.");
+          return;
+        } catch {
+          storeLocalProfile(user.id, {
+            displayName,
+            bio,
+            avatarUrl,
+          });
+          setUser((current) =>
+            current
+              ? {
+                  ...current,
+                  displayName,
+                  bio,
+                  avatarUrl,
+                }
+              : current,
+          );
+          toast.success("Foto salva neste aparelho.");
+          return;
+        }
+      }
+
       toast.error(error instanceof Error ? error.message : "Nao foi possivel salvar o perfil.");
     } finally {
       setSavingProfile(false);

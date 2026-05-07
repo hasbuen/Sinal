@@ -22,7 +22,6 @@ import {
   resolveBackendAssetUrl,
   updateProfile,
   updateUserSettings,
-  uploadMedia,
   type BackendUser,
   type BackendUserSettings,
 } from "@/lib/backend-client";
@@ -165,14 +164,7 @@ export default function ConfiguracoesPage() {
       setUploadingAvatar(true);
       const previewUrl = await createAvatarDataUrl(file);
       setAvatarUrl(previewUrl);
-
-      try {
-        const uploaded = await uploadMedia(file);
-        setAvatarUrl(resolveBackendAssetUrl(uploaded.url));
-        toast.success("Foto enviada.");
-      } catch {
-        toast("Foto aplicada localmente. Salve o perfil para manter no app.");
-      }
+      toast.success("Foto pronta. Salve o perfil para manter no app.");
     } catch {
       toast.error("Nao foi possivel ler a imagem.");
     } finally {

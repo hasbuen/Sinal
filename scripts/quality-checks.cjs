@@ -86,6 +86,13 @@ assert(
 );
 
 assert(
+  !settingsPage.includes("uploadMedia,") &&
+    !settingsPage.includes("await uploadMedia(file)") &&
+    settingsPage.includes("Foto pronta. Salve o perfil para manter no app."),
+  "Foto de perfil nao pode depender de /api/uploads; deve salvar fallback local comprimido.",
+);
+
+assert(
   !chatWorkspace.includes("isFakeContact") &&
     !/suelen|cesar|memu/i.test(chatWorkspace),
   "Contatos reais nao podem ser filtrados por nomes hardcoded.",

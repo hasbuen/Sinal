@@ -497,7 +497,7 @@ export function resolveBackendAssetUrl(url?: string | null) {
     return "";
   }
 
-  if (/^https?:\/\//i.test(url)) {
+  if (/^(https?:|data:|blob:)/i.test(url)) {
     return url;
   }
 

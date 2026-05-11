@@ -1,0 +1,111 @@
+name: Vercel Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Deployment target"
+        required: true
+        default: "preview"
+        type: choice
+        options:
+          - preview
+          - production
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vercel-${{ github.ref }}-${{ github.event.inputs.target || 'production' }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend deploy
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_FRONTEND_PROJECT_ID }}
+      DEPLOY_TARGET: ${{ github.event.inputs.target || 'production' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@53.3.2
+
+      - name: Deploy frontend
+        shell: bash
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "Skipping frontend deploy: configure VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_FRONTEND_PROJECT_ID secrets."
+            exit 0
+          fi
+
+          if [ "$DEPLOY_TARGET" = "production" ]; then
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+            vercel build --prod --token="$VERCEL_TOKEN"
+            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          else
+            vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+            vercel build --token="$VERCEL_TOKEN"
+            vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+          fi
+
+  backend:
+    name: Backend deploy
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_BACKEND_PROJECT_ID }}
+      DEPLOY_TARGET: ${{ github.event.inputs.target || 'production' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+        working-directory: backend
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@53.3.2
+
+      - name: Deploy backend
+        shell: bash
+        working-directory: backend
+        run: |
+          if [ -z "$VERCEL_TOKEN" ] || [ -z "$VERCEL_ORG_ID" ] || [ -z "$VERCEL_PROJECT_ID" ]; then
+            echo "Skipping backend deploy: configure VERCEL_TOKEN, VERCEL_ORG_ID and VERCEL_BACKEND_PROJECT_ID secrets."
+            exit 0
+          fi
+
+          if [ "$DEPLOY_TARGET" = "production" ]; then
+            vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+            vercel build --prod --token="$VERCEL_TOKEN"
+            vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+          else
+            vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
+            vercel build --token="$VERCEL_TOKEN"
+            vercel deploy --prebuilt --token="$VERCEL_TOKEN"
+          fi

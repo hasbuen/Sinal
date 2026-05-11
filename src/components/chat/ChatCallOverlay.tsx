@@ -52,8 +52,8 @@ export function ChatCallOverlay({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[radial-gradient(circle_at_top,#19d7ff22,transparent_24%),linear-gradient(180deg,#020611ee,#040914f2)] px-4">
-      <div className="w-full max-w-5xl overflow-hidden rounded-[2.2rem] border border-white/10 bg-slate-950/90 shadow-2xl backdrop-blur">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[linear-gradient(180deg,rgba(12,18,24,0.94),rgba(5,9,13,0.98))] px-4 py-6">
+      <div className="w-full max-w-5xl overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#0b1117]/95 shadow-2xl backdrop-blur">
         <div className="grid gap-0 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="relative min-h-[22rem] bg-black/40">
             {hasRemoteStream && state.mode === "video" ? (
@@ -64,9 +64,9 @@ export function ChatCallOverlay({
                 className="h-full min-h-[22rem] w-full object-cover"
               />
             ) : (
-              <div className="flex min-h-[22rem] items-center justify-center bg-[radial-gradient(circle_at_top,#19d7ff22,transparent_35%),linear-gradient(180deg,#08111d,#050814)]">
+              <div className="flex min-h-[22rem] items-center justify-center bg-[linear-gradient(180deg,#111c25,#070b10)]">
                 <div className="text-center">
-                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/10 text-3xl font-semibold text-cyan-200">
+                  <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-white/10 text-3xl font-semibold text-emerald-200">
                     {avatarLabel(state.remoteLabel)}
                   </div>
                   <p className="mt-4 text-2xl font-semibold">
@@ -86,7 +86,7 @@ export function ChatCallOverlay({
             )}
 
             {hasLocalStream ? (
-              <div className="absolute bottom-4 right-4 w-40 overflow-hidden rounded-[1.5rem] border border-white/10 bg-black/60 shadow-xl">
+              <div className="absolute bottom-4 right-4 w-40 overflow-hidden rounded-[1rem] border border-white/10 bg-black/60 shadow-xl">
                 {state.mode === "video" ? (
                   <video
                     ref={localVideoRef}
@@ -97,7 +97,7 @@ export function ChatCallOverlay({
                   />
                 ) : (
                   <div className="flex aspect-[4/5] items-center justify-center">
-                    <Mic className="h-10 w-10 text-cyan-200" />
+                    <Mic className="h-10 w-10 text-emerald-200" />
                   </div>
                 )}
               </div>
@@ -106,7 +106,7 @@ export function ChatCallOverlay({
 
           <div className="flex flex-col justify-between p-6">
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-cyan-300/70">
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-200/70">
                 Chamada {state.mode === "video" ? "de video" : "de voz"}
               </p>
               <h3 className="mt-3 text-3xl font-semibold">
@@ -114,8 +114,10 @@ export function ChatCallOverlay({
               </h3>
               <p className="mt-3 text-white/55">
                 {state.phase === "incoming"
-                  ? "Aceite para iniciar a conversa. O outro lado ja enviou a oferta WebRTC."
-                  : "Sinalizacao em tempo real, audio/video e controle de dispositivo na mesma tela."}
+                  ? "Aceite para iniciar a conversa quando estiver pronto."
+                  : state.phase === "active"
+                    ? "Conversa em andamento com controles de microfone e camera."
+                    : "Aguardando o outro contato atender."}
               </p>
             </div>
 

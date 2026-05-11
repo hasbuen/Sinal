@@ -26,6 +26,7 @@ import {
   Loader2,
   LogOut,
   MessageCircleMore,
+  Mic,
   Moon,
   Paperclip,
   Phone,
@@ -33,6 +34,7 @@ import {
   Send,
   Settings2,
   SmilePlus,
+  Square,
   Sun,
   Users,
   Video,
@@ -147,6 +149,41 @@ const sidebarTabs = [
 
 type SidebarTab = (typeof sidebarTabs)[number]["id"];
 
+function formatDuration(totalSeconds: number) {
+  const minutes = Math.floor(totalSeconds / 60)
+    .toString()
+    .padStart(2, "0");
+  const seconds = Math.max(0, totalSeconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${minutes}:${seconds}`;
+}
+
+function formatFileSize(size: number) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileIntentLabel(file: File) {
+  if (file.type.startsWith("image/")) return "Imagem";
+  if (file.type.startsWith("audio/")) return "Audio";
+  if (file.type.startsWith("video/")) return "Video";
+  return "Arquivo";
+}
+
+function preferredAudioMimeType() {
+  if (typeof MediaRecorder === "undefined") return "";
+  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || "";
+}
+
+function audioExtension(mimeType: string) {
+  if (mimeType.includes("mp4")) return "m4a";
+  if (mimeType.includes("ogg")) return "ogg";
+  return "webm";
+}
+
 function UserAvatar({
   user,
   label,
@@ -194,9 +231,15 @@ export default function ChatWorkspace({
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const voiceRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceStreamRef = useRef<MediaStream | null>(null);
+  const voiceChunksRef = useRef<BlobPart[]>([]);
+  const cancelVoiceRef = useRef(false);
 
   const [booting, setBooting] = useState(true);
   const [pending, setPending] = useState(false);
+  const [recordingVoice, setRecordingVoice] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [showGroupComposer, setShowGroupComposer] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showForwardSheet, setShowForwardSheet] = useState(false);
@@ -334,7 +377,9 @@ export default function ChatWorkspace({
     activePresence,
   );
   const composerDisabled =
-    pending || (!composerText.trim() && selectedFiles.length === 0 && !editingMessage);
+    pending ||
+    recordingVoice ||
+    (!composerText.trim() && selectedFiles.length === 0 && !editingMessage);
 
   function patchMessage(updated: BackendMessage) {
     setMessages((current) =>
@@ -345,6 +390,81 @@ export default function ChatWorkspace({
   function appendSelectedFiles(nextFiles: FileList | null) {
     if (!nextFiles?.length) return;
     setSelectedFiles((current) => [...current, ...Array.from(nextFiles)]);
+  }
+
+  async function startVoiceRecording() {
+    if (recordingVoice || pending) return;
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      toast.error("Gravacao de audio indisponivel neste dispositivo.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = preferredAudioMimeType();
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      voiceStreamRef.current = stream;
+      voiceRecorderRef.current = recorder;
+      voiceChunksRef.current = [];
+      cancelVoiceRef.current = false;
+
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          voiceChunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onstop = () => {
+        const finalMimeType = recorder.mimeType || mimeType || "audio/webm";
+        const shouldAttach = !cancelVoiceRef.current && voiceChunksRef.current.length > 0;
+        if (shouldAttach) {
+          const blob = new Blob(voiceChunksRef.current, { type: finalMimeType });
+          const createdAt = new Date().toISOString().replace(/[:.]/g, "-");
+          const file = new File(
+            [blob],
+            `audio-${createdAt}.${audioExtension(finalMimeType)}`,
+            { type: finalMimeType },
+          );
+          setSelectedFiles((current) => [...current, file]);
+          toast.success("Audio pronto para envio.");
+        }
+
+        voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
+        voiceStreamRef.current = null;
+        voiceRecorderRef.current = null;
+        voiceChunksRef.current = [];
+        cancelVoiceRef.current = false;
+        setRecordingVoice(false);
+        setRecordingSeconds(0);
+      };
+
+      recorder.start();
+      setRecordingVoice(true);
+      setRecordingSeconds(0);
+    } catch {
+      voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
+      voiceStreamRef.current = null;
+      voiceRecorderRef.current = null;
+      setRecordingVoice(false);
+      toast.error("Nao foi possivel acessar o microfone.");
+    }
+  }
+
+  function stopVoiceRecording(cancel = false) {
+    const recorder = voiceRecorderRef.current;
+    cancelVoiceRef.current = cancel;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+      return;
+    }
+
+    voiceStreamRef.current?.getTracks().forEach((track) => track.stop());
+    voiceStreamRef.current = null;
+    voiceRecorderRef.current = null;
+    voiceChunksRef.current = [];
+    cancelVoiceRef.current = false;
+    setRecordingVoice(false);
+    setRecordingSeconds(0);
   }
 
   function appendMessage(message: BackendMessage) {
@@ -898,6 +1018,14 @@ export default function ChatWorkspace({
   }, []);
 
   useEffect(() => {
+    if (!recordingVoice) return;
+    const interval = window.setInterval(() => {
+      setRecordingSeconds((current) => current + 1);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [recordingVoice]);
+
+  useEffect(() => {
     router.replace(
       activeConversationId ? toAppHref(`/chat?id=${activeConversationId}`) : toAppHref("/chat"),
     );
@@ -964,7 +1092,13 @@ export default function ChatWorkspace({
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream;
   }, [remoteStream]);
 
-  useEffect(() => () => cleanupCall(), []);
+  useEffect(
+    () => () => {
+      cleanupCall();
+      stopVoiceRecording(true);
+    },
+    [],
+  );
 
   useEffect(() => {
     return () => {
@@ -1535,17 +1669,32 @@ export default function ChatWorkspace({
                   ) : null}
 
                   {selectedFiles.length > 0 ? (
-                    <div className="mb-3 flex flex-wrap gap-2">
+                    <div className="mb-3 grid gap-2 sm:grid-cols-2">
                       {selectedFiles.map((file, index) => (
-                        <span
+                        <div
                           key={`${file.name}-${file.lastModified}`}
-                          className="inline-flex max-w-full items-center gap-2 rounded-full bg-white py-1 pl-2.5 pr-1 text-xs shadow-sm dark:bg-[#111B21]"
+                          className="flex min-w-0 items-center gap-3 rounded-[1rem] border border-black/5 bg-white px-3 py-2 text-xs shadow-sm dark:border-white/5 dark:bg-[#111B21]"
                         >
-                          <FileText className="h-3.5 w-3.5 shrink-0 text-[#667781] dark:text-white/45" />
-                          <span className="max-w-[13rem] truncate">{file.name}</span>
+                          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#e7ffef] text-[#075E54] dark:bg-white/8 dark:text-[#7fe7bc]">
+                            {file.type.startsWith("audio/") ? (
+                              <Mic className="h-4 w-4" />
+                            ) : file.type.startsWith("image/") ? (
+                              <Camera className="h-4 w-4" />
+                            ) : (
+                              <FileText className="h-4 w-4" />
+                            )}
+                          </div>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium text-[#111B21] dark:text-white">
+                              {file.name}
+                            </span>
+                            <span className="mt-0.5 block truncate text-[#667781] dark:text-white/45">
+                              {fileIntentLabel(file)} | {formatFileSize(file.size)}
+                            </span>
+                          </span>
                           <button
                             type="button"
-                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[#667781] transition hover:bg-black/5 hover:text-[#111B21] dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
+                            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[#667781] transition hover:bg-black/5 hover:text-[#111B21] dark:text-white/55 dark:hover:bg-white/10 dark:hover:text-white"
                             onClick={() =>
                               setSelectedFiles((current) =>
                                 current.filter((_, fileIndex) => fileIndex !== index),
@@ -1555,8 +1704,43 @@ export default function ChatWorkspace({
                           >
                             <X className="h-3.5 w-3.5" />
                           </button>
-                        </span>
+                        </div>
                       ))}
+                    </div>
+                  ) : null}
+
+                  {recordingVoice ? (
+                    <div className="mb-3 flex items-center justify-between gap-3 rounded-[1rem] border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-900 dark:border-rose-400/20 dark:bg-rose-400/10 dark:text-rose-100">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-600 text-white">
+                          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-rose-500 opacity-30" />
+                          <Mic className="relative h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <p className="font-semibold">Gravando audio</p>
+                          <p className="text-xs text-rose-700/75 dark:text-rose-100/65">
+                            {formatDuration(recordingSeconds)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="h-9 rounded-full px-3 text-rose-700 hover:bg-rose-100 dark:text-rose-100 dark:hover:bg-rose-400/15"
+                          onClick={() => stopVoiceRecording(true)}
+                        >
+                          Cancelar
+                        </Button>
+                        <Button
+                          type="button"
+                          className="h-9 rounded-full bg-rose-600 px-3 text-white hover:bg-rose-700"
+                          onClick={() => stopVoiceRecording(false)}
+                        >
+                          <Square className="h-3.5 w-3.5 fill-current" />
+                          Concluir
+                        </Button>
+                      </div>
                     </div>
                   ) : null}
 
@@ -1586,6 +1770,28 @@ export default function ChatWorkspace({
                       >
                         <Camera className="h-5 w-5" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`sinal-pressable h-11 w-11 rounded-full ${
+                          recordingVoice
+                            ? "bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-400/10 dark:text-rose-200"
+                            : "text-[#667781] hover:text-[#075E54] dark:text-white/60 dark:hover:text-white"
+                        }`}
+                        onClick={() =>
+                          recordingVoice
+                            ? stopVoiceRecording(false)
+                            : void startVoiceRecording()
+                        }
+                        disabled={pending}
+                        aria-label={recordingVoice ? "Concluir audio" : "Gravar audio"}
+                      >
+                        {recordingVoice ? (
+                          <Square className="h-4 w-4 fill-current" />
+                        ) : (
+                          <Mic className="h-5 w-5" />
+                        )}
+                      </Button>
                       <Textarea
                         value={composerText}
                         onChange={(event) => queueTyping(event.target.value)}
@@ -1607,6 +1813,7 @@ export default function ChatWorkspace({
                         ref={fileInputRef}
                         type="file"
                         multiple
+                        accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip"
                         className="hidden"
                         onChange={(event) => appendSelectedFiles(event.target.files)}
                       />
